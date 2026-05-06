@@ -62,7 +62,7 @@ export default function Login() {
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
               <BookUser className="w-4 h-4" />
             </div>
-            <span className="font-serif font-bold text-xl">FamilyBranch</span>
+            <span className="font-serif font-bold text-xl">Olive</span>
           </div>
         </Link>
       </header>

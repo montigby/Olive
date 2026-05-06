@@ -12,10 +12,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("familyBranchToken"));
+  const [token, setToken] = useState<string | null>(localStorage.getItem("oliveToken"));
 
   useEffect(() => {
-    setAuthTokenGetter(() => localStorage.getItem("familyBranchToken"));
+    setAuthTokenGetter(() => localStorage.getItem("oliveToken"));
   }, []);
 
   const { data: user, isLoading: isUserLoading, error } = useGetMe({
@@ -27,12 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = (newToken: string) => {
-    localStorage.setItem("familyBranchToken", newToken);
+    localStorage.setItem("oliveToken", newToken);
     setToken(newToken);
   };
 
   const logout = () => {
-    localStorage.removeItem("familyBranchToken");
+    localStorage.removeItem("oliveToken");
     setToken(null);
   };
 

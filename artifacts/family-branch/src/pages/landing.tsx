@@ -10,7 +10,7 @@ export default function Landing() {
           <div className="w-8 h-8 rounded-full bg-[#4A7C59] flex items-center justify-center text-white">
             <BookUser className="w-4 h-4" />
           </div>
-          <span className="font-serif font-bold text-2xl tracking-tight">FamilyBranch</span>
+          <span className="font-serif font-bold text-2xl tracking-tight">Olive</span>
         </div>
         <div className="flex items-center gap-4">
           <Link href="/login">

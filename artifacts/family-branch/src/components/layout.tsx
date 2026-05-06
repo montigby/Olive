@@ -78,7 +78,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </SheetTrigger>
           <SheetContent side="left" className="w-64 flex flex-col p-6">
             <div className="mb-8">
-               <span className="font-serif font-bold text-2xl text-primary">FamilyBranch</span>
+               <span className="font-serif font-bold text-2xl text-primary">Olive</span>
             </div>
             <nav className="flex flex-col gap-2 flex-1">
               <NavLinks />
@@ -112,7 +112,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <BookUser className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-serif font-bold text-2xl leading-none text-foreground">FamilyBranch</h1>
+            <h1 className="font-serif font-bold text-2xl leading-none text-foreground">Olive</h1>
             <p className="text-xs text-muted-foreground mt-1 truncate">{user.familyUnit.unitName}</p>
           </div>
         </div>

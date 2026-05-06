@@ -1,4 +1,4 @@
-# FamilyBranch
+# Olive
 
 A private living family directory where families stay connected — members claim their profile, admins manage the unit, and the family tree grows by linking related units.
 
