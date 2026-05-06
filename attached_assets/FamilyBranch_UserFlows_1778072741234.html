@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FamilyBranch — User Flows v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas:   #1A1A1F;
+    --surface:  #23232A;
+    --panel:    #2A2A33;
+    --border:   #3A3A45;
+    --green:    #2DD67B;
+    --green-dim:#1A6B3C;
+    --green-bg: rgba(45,214,123,0.08);
+    --amber:    #F5A623;
+    --amber-bg: rgba(245,166,35,0.10);
+    --red:      #FF5757;
+    --red-bg:   rgba(255,87,87,0.10);
+    --blue:     #4B9EFF;
+    --blue-bg:  rgba(75,158,255,0.10);
+    --purple:   #B06EFF;
+    --purple-bg:rgba(176,110,255,0.10);
+    --text:     #F0F0F5;
+    --sub:      #8888A0;
+    --muted:    #55556A;
+    --white:    #FFFFFF;
+
+    --node-w:   160px;
+    --node-h:   52px;
+    --gap-x:    80px;
+    --gap-y:    48px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--canvas);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Figma toolbar ─────────────────────────────────────────────── */
+  .toolbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 44px;
+    background: #111116;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 20px;
+    padding: 0 16px; z-index: 200;
+  }
+  .tb-logo {
+    font-family: 'Fira Code', monospace;
+    font-size: 12px; font-weight: 500;
+    color: var(--green);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tb-mark {
+    width: 20px; height: 20px;
+    background: var(--green);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #111;
+  }
+  .tb-sep { width: 1px; height: 20px; background: var(--border); }
+  .tb-breadcrumb {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px; color: var(--sub);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tb-breadcrumb span { color: var(--text); }
+  .tb-tools {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tb-btn {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px; color: var(--sub);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 10px; cursor: pointer;
+  }
+  .tb-btn.share {
+    background: var(--green); color: #111;
+    border-color: var(--green); font-weight: 600;
+  }
+  .tb-zoom {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px; color: var(--sub);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 10px;
+  }
+
+  /* ── Left panel ────────────────────────────────────────────────── */
+  .left-panel {
+    position: fixed; top: 44px; left: 0; bottom: 0;
+    width: 200px; background: #111116;
+    border-right: 1px solid var(--border);
+    overflow-y: auto; z-index: 100; padding: 16px 0;
+  }
+  .lp-section { margin-bottom: 8px; }
+  .lp-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    padding: 0 12px 6px;
+  }
+  .lp-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px; font-size: 12px; color: var(--sub);
+    cursor: pointer; border-radius: 4px; margin: 0 4px;
+    transition: background 0.1s;
+  }
+  .lp-item:hover { background: var(--surface); }
+  .lp-item.active { background: var(--green-bg); color: var(--green); }
+  .lp-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor; flex-shrink: 0;
+  }
+  .lp-count {
+    margin-left: auto;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; color: var(--muted);
+  }
+
+  /* ── Right panel ───────────────────────────────────────────────── */
+  .right-panel {
+    position: fixed; top: 44px; right: 0; bottom: 0;
+    width: 220px; background: #111116;
+    border-left: 1px solid var(--border);
+    overflow-y: auto; z-index: 100; padding: 16px 12px;
+  }
+  .rp-section { margin-bottom: 20px; }
+  .rp-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 10px;
+  }
+  .rp-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .rp-key { font-size: 11px; color: var(--sub); }
+  .rp-val {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; padding: 2px 7px;
+  }
+
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .legend-chip {
+    width: 32px; height: 18px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-family: 'Fira Code', monospace;
+    flex-shrink: 0;
+  }
+  .legend-text { font-size: 11px; color: var(--sub); }
+
+  /* ── Canvas ────────────────────────────────────────────────────── */
+  .canvas {
+    margin-top: 44px;
+    margin-left: 200px;
+    margin-right: 220px;
+    min-height: calc(100vh - 44px);
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-color: var(--canvas);
+    padding: 48px 48px 100px;
+  }
+
+  /* ── Flow section ──────────────────────────────────────────────── */
+  .flow-section { margin-bottom: 80px; }
+
+  .flow-section-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .flow-badge {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 500;
+    padding: 4px 10px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .flow-title {
+    font-size: 18px; font-weight: 700;
+    color: var(--text); letter-spacing: -0.01em;
+  }
+
+  .flow-desc {
+    font-size: 12px; color: var(--sub);
+    font-family: 'Fira Code', monospace;
+    margin-left: auto;
+    max-width: 320px; text-align: right;
+    line-height: 1.5;
+  }
+
+  .flow-rule {
+    flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── Flow diagram row ──────────────────────────────────────────── */
+  .flow-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  /* ── Node ──────────────────────────────────────────────────────── */
+  .node-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .node {
+    width: var(--node-w);
+    min-height: var(--node-h);
+    border-radius: 10px;
+    border: 1.5px solid;
+    display: flex; flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 12px;
+    position: relative;
+    cursor: default;
+    transition: transform 0.15s;
+  }
+
+  .node:hover { transform: translateY(-2px); }
+
+  .node-screen {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 4px; opacity: 0.7;
+  }
+
+  .node-title {
+    font-size: 12px; font-weight: 600;
+    line-height: 1.3; color: var(--white);
+  }
+
+  .node-sub {
+    font-size: 10px; color: var(--sub);
+    margin-top: 3px; line-height: 1.3;
+    font-family: 'Fira Code', monospace;
+  }
+
+  .node-tag {
+    position: absolute; top: -8px; left: 10px;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 600;
+    padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase;
+  }
+
+  /* Node variants */
+  .node.start {
+    border-color: var(--green);
+    background: var(--green-bg);
+  }
+  .node.start .node-screen { color: var(--green); }
+
+  .node.screen-node {
+    border-color: var(--border);
+    background: var(--surface);
+  }
+  .node.screen-node .node-screen { color: var(--sub); }
+
+  .node.action-node {
+    border-color: var(--blue);
+    background: var(--blue-bg);
+  }
+  .node.action-node .node-screen { color: var(--blue); }
+
+  .node.decision {
+    border-color: var(--amber);
+    background: var(--amber-bg);
+    border-radius: 6px;
+  }
+  .node.decision .node-screen { color: var(--amber); }
+
+  .node.end {
+    border-color: var(--purple);
+    background: var(--purple-bg);
+  }
+  .node.end .node-screen { color: var(--purple); }
+
+  .node.error-node {
+    border-color: var(--red);
+    background: var(--red-bg);
+  }
+  .node.error-node .node-screen { color: var(--red); }
+
+  .node.system {
+    border-color: var(--muted);
+    background: rgba(85,85,106,0.15);
+    border-style: dashed;
+  }
+  .node.system .node-screen { color: var(--muted); }
+
+  /* ── Connector ─────────────────────────────────────────────────── */
+  .connector {
+    display: flex; align-items: center;
+    flex-shrink: 0;
+    align-self: center;
+    margin-top: -10px;
+  }
+
+  .conn-line {
+    height: 1.5px;
+    background: var(--border);
+    min-width: var(--gap-x);
+  }
+
+  .conn-line.yes  { background: var(--green); }
+  .conn-line.no   { background: var(--red); }
+  .conn-line.sys  { background: var(--muted); border-top: 1.5px dashed var(--muted); height: 0; }
+
+  .conn-arrow {
+    width: 0; height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--border);
+    flex-shrink: 0;
+  }
+  .conn-arrow.yes  { border-left-color: var(--green); }
+  .conn-arrow.no   { border-left-color: var(--red); }
+  .conn-arrow.sys  { border-left-color: var(--muted); }
+
+  .conn-label {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 500;
+    white-space: nowrap;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .conn-wrap {
+    position: relative;
+    display: flex; align-items: center;
+  }
+
+  /* ── Vertical connector (for branch flows) ─────────────────────── */
+  .flow-col {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 0;
+  }
+
+  .v-connector {
+    width: 1.5px;
+    min-height: 40px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .v-connector.yes  { background: var(--green); }
+  .v-connector.no   { background: var(--red); }
+
+  .v-arrow {
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 8px solid var(--border);
+  }
+  .v-arrow.yes  { border-top-color: var(--green); }
+  .v-arrow.no   { border-top-color: var(--red); }
+
+  /* ── Branch container (for YES/NO splits) ──────────────────────── */
+  .branch-container {
+    display: flex; gap: 32px; align-items: flex-start;
+    margin-top: 0;
+  }
+
+  .branch-arm {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 0;
+  }
+
+  .branch-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 600;
+    padding: 2px 8px; border-radius: 3px;
+    margin-bottom: 8px; text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .branch-label.yes { background: var(--green-bg); color: var(--green); }
+  .branch-label.no  { background: var(--red-bg); color: var(--red); }
+  .branch-label.sys { background: rgba(85,85,106,0.2); color: var(--muted); }
+
+  /* ── Annotation ────────────────────────────────────────────────── */
+  .anno-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+
+  .anno-box {
+    background: rgba(245,166,35,0.08);
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; color: var(--amber);
+    max-width: 200px; text-align: center;
+    line-height: 1.4;
+  }
+
+  /* ── Swim lane ─────────────────────────────────────────────────── */
+  .swim {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .swim-label {
+    width: 32px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); padding: 16px 0;
+    flex-shrink: 0;
+  }
+
+  .swim-body {
+    flex: 1; padding: 20px 24px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* ── Full-width flow map ───────────────────────────────────────── */
+  .flow-map {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 28px 24px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+
+  .flow-map-title {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .flow-map-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Step table ────────────────────────────────────────────────── */
+  .step-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  .step-table th {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted);
+    padding: 8px 12px; text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  .step-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(58,58,69,0.5);
+    vertical-align: top;
+    line-height: 1.4;
+  }
+
+  .step-table tr:last-child td { border-bottom: none; }
+
+  .step-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .step-num {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 600;
+    color: var(--muted); white-space: nowrap;
+  }
+
+  .step-actor {
+    white-space: nowrap;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+  }
+
+  .step-screen {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; color: var(--sub);
+    white-space: nowrap;
+  }
+
+  .step-action { color: var(--text); }
+
+  .step-result {
+    font-size: 11px; color: var(--sub);
+    font-family: 'Fira Code', monospace;
+  }
+
+  .step-error {
+    font-size: 11px; color: var(--red);
+    font-family: 'Fira Code', monospace;
+    margin-top: 3px;
+  }
+
+  /* Role pills */
+  .pill {
+    display: inline-block;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 600;
+    padding: 2px 7px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .pill.admin   { background: var(--green-bg); color: var(--green); }
+  .pill.member  { background: var(--blue-bg); color: var(--blue); }
+  .pill.grandma { background: var(--purple-bg); color: var(--purple); }
+  .pill.system  { background: rgba(85,85,106,0.2); color: var(--muted); }
+
+  /* ── Status label ──────────────────────────────────────────────── */
+  .status {
+    display: inline-block;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; padding: 2px 7px; border-radius: 3px;
+  }
+  .status.ok     { background: var(--green-bg); color: var(--green); }
+  .status.warn   { background: var(--amber-bg); color: var(--amber); }
+  .status.fail   { background: var(--red-bg); color: var(--red); }
+  .status.sys    { background: rgba(85,85,106,0.2); color: var(--muted); }
+
+  /* ── Spacer ────────────────────────────────────────────────────── */
+  .sp { height: 24px; }
+  .sp2 { height: 40px; }
+
+  /* ── Key metrics strip ─────────────────────────────────────────── */
+  .metrics-strip {
+    display: flex; gap: 16px;
+    margin-bottom: 32px; flex-wrap: wrap;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 18px;
+    flex: 1; min-width: 140px;
+  }
+
+  .metric-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-size: 22px; font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .metric-sub {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; color: var(--sub);
+    margin-top: 3px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="tb-logo">
+    <div class="tb-mark">FB</div>
+    FamilyBranch
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-breadcrumb">
+    User Flows <span style="color:var(--border);margin:0 4px">/</span>
+    <span>MVP v1.0</span>
+  </div>
+  <div class="tb-tools">
+    <div class="tb-zoom">75%</div>
+    <div class="tb-btn">⌘Z</div>
+    <div class="tb-btn">Export</div>
+    <div class="tb-btn share">Share</div>
+  </div>
+</div>
+
+<!-- Left panel -->
+<div class="left-panel">
+  <div class="lp-section">
+    <div class="lp-label">Flows</div>
+    <div class="lp-item active">
+      <div class="lp-dot" style="color:var(--green)"></div>
+      UF-01 Admin Onboarding
+      <div class="lp-count">9</div>
+    </div>
+    <div class="lp-item">
+      <div class="lp-dot" style="color:var(--blue)"></div>
+      UF-02 Member Claim
+      <div class="lp-count">6</div>
+    </div>
+    <div class="lp-item">
+      <div class="lp-dot" style="color:var(--purple)"></div>
+      UF-03 Unit Linking
+      <div class="lp-count">8</div>
+    </div>
+    <div class="lp-item">
+      <div class="lp-dot" style="color:var(--amber)"></div>
+      UF-04 Edit Profile
+      <div class="lp-count">4</div>
+    </div>
+    <div class="lp-item">
+      <div class="lp-dot" style="color:var(--red)"></div>
+      UF-05 Error States
+      <div class="lp-count">5</div>
+    </div>
+  </div>
+  <div class="lp-section">
+    <div class="lp-label">Pages</div>
+    <div class="lp-item">
+      <div class="lp-dot" style="color:var(--muted)"></div>
+      Wireframes
+    </div>
+    <div class="lp-item active">
+      <div class="lp-dot" style="color:var(--green)"></div>
+      User Flows
+    </div>
+    <div class="lp-item">
+      <div class="lp-dot" style="color:var(--muted)"></div>
+      Components
+    </div>
+  </div>
+  <div class="lp-section">
+    <div class="lp-label">Actors</div>
+    <div class="lp-item"><div class="lp-dot" style="color:var(--green)"></div> Admin (Mom)</div>
+    <div class="lp-item"><div class="lp-dot" style="color:var(--blue)"></div> Member</div>
+    <div class="lp-item"><div class="lp-dot" style="color:var(--purple)"></div> Grandma</div>
+    <div class="lp-item"><div class="lp-dot" style="color:var(--muted)"></div> System</div>
+  </div>
+</div>
+
+<!-- Right panel -->
+<div class="right-panel">
+  <div class="rp-section">
+    <div class="rp-label">Document Info</div>
+    <div class="rp-row"><div class="rp-key">Version</div><div class="rp-val">1.0</div></div>
+    <div class="rp-row"><div class="rp-key">Flows</div><div class="rp-val">5</div></div>
+    <div class="rp-row"><div class="rp-key">Steps</div><div class="rp-val">32</div></div>
+    <div class="rp-row"><div class="rp-key">Scope</div><div class="rp-val">MVP</div></div>
+  </div>
+  <div style="height:1px;background:var(--border);margin:4px 0 16px"></div>
+  <div class="rp-section">
+    <div class="rp-label">Node Legend</div>
+    <div class="legend-item">
+      <div class="legend-chip" style="background:var(--green-bg);border:1px solid var(--green)">
+        <span style="color:var(--green);font-family:'Fira Code',monospace;font-size:8px">START</span>
+      </div>
+      <div class="legend-text">Entry point</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-chip" style="background:var(--surface);border:1px solid var(--border)">
+        <span style="color:var(--sub);font-family:'Fira Code',monospace;font-size:8px">SCR</span>
+      </div>
+      <div class="legend-text">Screen / view</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-chip" style="background:var(--blue-bg);border:1px solid var(--blue)">
+        <span style="color:var(--blue);font-family:'Fira Code',monospace;font-size:8px">ACT</span>
+      </div>
+      <div class="legend-text">User action</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-chip" style="background:var(--amber-bg);border:1px solid var(--amber)">
+        <span style="color:var(--amber);font-family:'Fira Code',monospace;font-size:8px">DEC</span>
+      </div>
+      <div class="legend-text">Decision / branch</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-chip" style="background:rgba(85,85,106,0.2);border:1px dashed var(--muted)">
+        <span style="color:var(--muted);font-family:'Fira Code',monospace;font-size:8px">SYS</span>
+      </div>
+      <div class="legend-text">System action</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-chip" style="background:var(--purple-bg);border:1px solid var(--purple)">
+        <span style="color:var(--purple);font-family:'Fira Code',monospace;font-size:8px">END</span>
+      </div>
+      <div class="legend-text">Terminal state</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-chip" style="background:var(--red-bg);border:1px solid var(--red)">
+        <span style="color:var(--red);font-family:'Fira Code',monospace;font-size:8px">ERR</span>
+      </div>
+      <div class="legend-text">Error state</div>
+    </div>
+  </div>
+  <div style="height:1px;background:var(--border);margin:4px 0 16px"></div>
+  <div class="rp-section">
+    <div class="rp-label">Connector Legend</div>
+    <div class="legend-item">
+      <div style="width:32px;height:2px;background:var(--green)"></div>
+      <div class="legend-text">Yes / success</div>
+    </div>
+    <div class="legend-item">
+      <div style="width:32px;height:2px;background:var(--red)"></div>
+      <div class="legend-text">No / fail</div>
+    </div>
+    <div class="legend-item">
+      <div style="width:32px;height:0;border-top:2px dashed var(--muted)"></div>
+      <div class="legend-text">System trigger</div>
+    </div>
+    <div class="legend-item">
+      <div style="width:32px;height:2px;background:var(--border)"></div>
+      <div class="legend-text">Default path</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CANVAS ──────────────────────────────────────────────────── -->
+<div class="canvas">
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- UF-01: ADMIN ONBOARDING                                       -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="flow-section">
+  <div class="flow-section-header">
+    <div class="flow-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-dim)">UF-01</div>
+    <div class="flow-title">Admin Onboarding</div>
+    <div class="flow-rule"></div>
+    <div class="flow-desc">Actor: <span class="pill admin">Admin</span> · Entry: Marketing homepage · Exit: Dashboard with at least one member added</div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics-strip">
+    <div class="metric-card">
+      <div class="metric-label">Steps</div>
+      <div class="metric-value" style="color:var(--green)">9</div>
+      <div class="metric-sub">Happy path</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Screens</div>
+      <div class="metric-value" style="color:var(--text)">6</div>
+      <div class="metric-sub">F-01 through F-05</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">North Star</div>
+      <div class="metric-value" style="color:var(--amber)">1+</div>
+      <div class="metric-sub">Invite sent before exit</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Error branches</div>
+      <div class="metric-value" style="color:var(--red)">3</div>
+      <div class="metric-sub">Email dupe, weak pw, skip</div>
+    </div>
+  </div>
+
+  <!-- Flow diagram -->
+  <div class="flow-map">
+    <div class="flow-map-title">UF-01 · Happy Path Flow Diagram</div>
+    <div class="flow-row" style="align-items:center">
+
+      <div class="node-wrap">
+        <div class="node start">
+          <div class="node-screen">Entry</div>
+          <div class="node-title">Marketing<br>Homepage</div>
+          <div class="node-sub">F-01</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">tap CTA</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Create<br>Account</div>
+          <div class="node-sub">F-02 · Step 1/4</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">submit</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Your Profile</div>
+          <div class="node-sub">F-02 · Step 2/4</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">continue</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Name Your<br>Family</div>
+          <div class="node-sub">F-03 · Step 3/4</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">create</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Add Members</div>
+          <div class="node-sub">F-04 · Step 4/4</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">continue</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Send Invites</div>
+          <div class="node-sub">F-05</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">done</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node end">
+          <div class="node-screen">End</div>
+          <div class="node-title">Dashboard</div>
+          <div class="node-sub">F-06</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Step table -->
+  <div class="flow-map">
+    <div class="flow-map-title">UF-01 · Step-by-Step Reference</div>
+    <table class="step-table">
+      <thead>
+        <tr>
+          <th>Step</th>
+          <th>Actor</th>
+          <th>Screen</th>
+          <th>Action / Event</th>
+          <th>System Response</th>
+          <th>Error Path</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="step-num">01</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-01 Homepage</td>
+          <td class="step-action">Taps "Create Your Family Tree"</td>
+          <td class="step-result"><span class="status ok">Navigate</span> → F-02 Sign Up</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">02</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-02 Sign Up</td>
+          <td class="step-action">Enters first name, last name, email, password. Taps Continue.</td>
+          <td class="step-result"><span class="status sys">Validate</span> email format + password strength.<br><span class="status ok">Navigate</span> → Step 2 (Your Profile)</td>
+          <td class="step-error">Email already in use → show inline error, offer Sign In link.<br>Weak password → show strength hint, block submit.</td>
+        </tr>
+        <tr>
+          <td class="step-num">03</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-02 Step 2</td>
+          <td class="step-action">Adds photo (optional), phone, birthday. Taps Continue.</td>
+          <td class="step-result"><span class="status sys">Save</span> person record with claimed=true.<br><span class="status ok">Navigate</span> → Step 3 (Name Unit)</td>
+          <td class="step-error">Skip allowed. All fields optional at this step.</td>
+        </tr>
+        <tr>
+          <td class="step-num">04</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-03 Name Unit</td>
+          <td class="step-action">Types family unit name. Taps "Create My Family Tree".</td>
+          <td class="step-result"><span class="status sys">Create</span> family_units record.<br><span class="status ok">Navigate</span> → Step 4 (Add Members)</td>
+          <td class="step-error">Unit name blank → disable button, show required hint.</td>
+        </tr>
+        <tr>
+          <td class="step-num">05</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-04 Add Members</td>
+          <td class="step-action">Adds member name + relationship label. Taps "+ Add Member".</td>
+          <td class="step-result"><span class="status sys">Create</span> person record with claimed=false.<br>Member appears in list as Unclaimed.</td>
+          <td class="step-error">Repeatable. Admin can add N members. Skip allowed → proceeds with 0 additional members.</td>
+        </tr>
+        <tr>
+          <td class="step-num">06</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-04 Add Members</td>
+          <td class="step-action">Taps "Continue to Invites".</td>
+          <td class="step-result"><span class="status ok">Navigate</span> → F-05 Send Invites.<br>One invite card per unclaimed member generated.</td>
+          <td class="step-error">If zero members added, show confirmation prompt before proceeding.</td>
+        </tr>
+        <tr>
+          <td class="step-num">07</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-05 Send Invites</td>
+          <td class="step-action">Copies, texts, or emails invite link for each member.</td>
+          <td class="step-result"><span class="status sys">Generate</span> hashed invite token per person.<br>Token expires at T+30 days. Single-use.</td>
+          <td class="step-error">Share sheet fails → copy-to-clipboard fallback always visible.</td>
+        </tr>
+        <tr>
+          <td class="step-num">08</td>
+          <td class="step-actor"><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-05 Send Invites</td>
+          <td class="step-action">Taps "Go to My Dashboard".</td>
+          <td class="step-result"><span class="status ok">Navigate</span> → F-06 Dashboard.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">09</td>
+          <td class="step-actor"><span class="pill system">System</span></td>
+          <td class="step-screen">Background</td>
+          <td class="step-action">Admin account fully created.</td>
+          <td class="step-result"><span class="status sys">Send</span> email verification link to admin email.<br><span class="status sys">Log</span> unit creation event.</td>
+          <td class="step-error">Email delivery failure → retry queue, show banner on dashboard.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- UF-02: MEMBER CLAIM FLOW                                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="flow-section">
+  <div class="flow-section-header">
+    <div class="flow-badge" style="background:var(--blue-bg);color:var(--blue);border:1px solid rgba(75,158,255,0.4)">UF-02</div>
+    <div class="flow-title">Member Claim Flow</div>
+    <div class="flow-rule"></div>
+    <div class="flow-desc">Actor: <span class="pill member">Member</span> · Entry: Invite link (external) · Exit: Profile claimed, tree visible</div>
+  </div>
+
+  <div class="metrics-strip">
+    <div class="metric-card">
+      <div class="metric-label">Steps</div>
+      <div class="metric-value" style="color:var(--blue)">6</div>
+      <div class="metric-sub">Happy path</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">North Star</div>
+      <div class="metric-value" style="color:var(--green)">claimed=true</div>
+      <div class="metric-sub">Profile row updated</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Key metric</div>
+      <div class="metric-value" style="color:var(--amber)">60%</div>
+      <div class="metric-sub">Target accept rate</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Error branches</div>
+      <div class="metric-value" style="color:var(--red)">3</div>
+      <div class="metric-sub">Expired, used, email conflict</div>
+    </div>
+  </div>
+
+  <div class="flow-map">
+    <div class="flow-map-title">UF-02 · Happy Path Flow Diagram</div>
+    <div class="flow-row" style="align-items:center">
+
+      <div class="node-wrap">
+        <div class="node start">
+          <div class="node-screen">Entry</div>
+          <div class="node-title">Tap Invite<br>Link</div>
+          <div class="node-sub">SMS / Email / Share</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">validate token</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Claim<br>Landing</div>
+          <div class="node-sub">F-09a</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">claim profile</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node action-node">
+          <div class="node-screen">Action</div>
+          <div class="node-title">Create<br>Account</div>
+          <div class="node-sub">Or sign in</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">success</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Fill In<br>Profile</div>
+          <div class="node-sub">F-09b</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">save</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node system">
+          <div class="node-screen">System</div>
+          <div class="node-title">Mark<br>Claimed</div>
+          <div class="node-sub">claimed=true<br>notify admin</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node end">
+          <div class="node-screen">End</div>
+          <div class="node-title">Confirmed<br>+ Tree View</div>
+          <div class="node-sub">F-09c → F-07</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Decision branches -->
+  <div class="flow-map">
+    <div class="flow-map-title">UF-02 · Token Validation Decision</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+      <div class="node decision" style="width:200px;align-items:center;text-align:center">
+        <div class="node-screen" style="width:100%;text-align:center">Decision</div>
+        <div class="node-title">Is invite token<br>valid?</div>
+        <div class="node-sub" style="text-align:center">Not expired · Not used · Exists in DB</div>
+      </div>
+      <div style="display:flex;gap:80px;margin-top:0;align-items:flex-start">
+        <!-- YES -->
+        <div class="branch-arm">
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <div class="v-connector yes" style="height:24px"></div>
+            <div class="v-arrow yes"></div>
+          </div>
+          <div class="branch-label yes" style="margin-top:6px">Valid</div>
+          <div class="node screen-node" style="width:160px">
+            <div class="node-screen">Screen</div>
+            <div class="node-title">Claim Landing</div>
+            <div class="node-sub">F-09a · Show name + family</div>
+          </div>
+        </div>
+        <!-- EXPIRED -->
+        <div class="branch-arm">
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <div class="v-connector no" style="height:24px"></div>
+            <div class="v-arrow no"></div>
+          </div>
+          <div class="branch-label no" style="margin-top:6px">Expired / Used</div>
+          <div class="node error-node" style="width:160px">
+            <div class="node-screen">Error</div>
+            <div class="node-title">Link Expired</div>
+            <div class="node-sub">Show message + contact family admin</div>
+          </div>
+        </div>
+        <!-- NOT FOUND -->
+        <div class="branch-arm">
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <div class="v-connector no" style="height:24px"></div>
+            <div class="v-arrow no"></div>
+          </div>
+          <div class="branch-label no" style="margin-top:6px">Not Found</div>
+          <div class="node error-node" style="width:160px">
+            <div class="node-screen">Error</div>
+            <div class="node-title">Invalid Link</div>
+            <div class="node-sub">Generic error, offer homepage redirect</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-map">
+    <div class="flow-map-title">UF-02 · Step-by-Step Reference</div>
+    <table class="step-table">
+      <thead>
+        <tr><th>Step</th><th>Actor</th><th>Screen</th><th>Action / Event</th><th>System Response</th><th>Error Path</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="step-num">01</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">External</td>
+          <td class="step-action">Taps invite link received via SMS, email, or share sheet.</td>
+          <td class="step-result"><span class="status sys">Validate</span> token: check exists, not expired, not used.</td>
+          <td class="step-error">Token invalid → error screen, link to homepage.</td>
+        </tr>
+        <tr>
+          <td class="step-num">02</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">F-09a Claim</td>
+          <td class="step-action">Sees their name and family pre-populated. Taps "Claim My Profile".</td>
+          <td class="step-result">If already has account → show Sign In option.<br>If new → proceed to account creation.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">03</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">Auth</td>
+          <td class="step-action">Creates account (email + password) or signs in to existing account.</td>
+          <td class="step-result"><span class="status sys">Link</span> account to person record.<br><span class="status sys">Mark</span> invite_token as used.</td>
+          <td class="step-error">Email conflict: account exists with different person → offer to link or contact support.</td>
+        </tr>
+        <tr>
+          <td class="step-num">04</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">F-09b Profile</td>
+          <td class="step-action">Fills in any fields: phone, email, address, socials. All optional.</td>
+          <td class="step-result">Inline save on each field. No lost data if app closes.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">05</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">F-09b Profile</td>
+          <td class="step-action">Taps "Save My Profile".</td>
+          <td class="step-result"><span class="status sys">Set</span> claimed=true, claimed_at=NOW().<br><span class="status sys">Notify</span> admin (in-app + email).<br><span class="status ok">Navigate</span> → F-09c Confirmation.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">06</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">F-09c</td>
+          <td class="step-action">Taps "View My Family Tree".</td>
+          <td class="step-result"><span class="status ok">Navigate</span> → F-07 Tree View. Member sees full unit tree.</td>
+          <td class="step-error">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- UF-03: UNIT LINKING                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="flow-section">
+  <div class="flow-section-header">
+    <div class="flow-badge" style="background:var(--purple-bg);color:var(--purple);border:1px solid rgba(176,110,255,0.4)">UF-03</div>
+    <div class="flow-title">Unit Linking Flow</div>
+    <div class="flow-rule"></div>
+    <div class="flow-desc">Actors: <span class="pill admin">Admin</span> + <span class="pill grandma">Grandma</span> · Entry: Dashboard · Exit: Extended tree visible to both units</div>
+  </div>
+
+  <div class="metrics-strip">
+    <div class="metric-card">
+      <div class="metric-label">Steps</div>
+      <div class="metric-value" style="color:var(--purple)">8</div>
+      <div class="metric-sub">Across 2 actors</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Actors</div>
+      <div class="metric-value" style="color:var(--text)">2</div>
+      <div class="metric-sub">Admin + Grandma</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Key decision</div>
+      <div class="metric-value" style="color:var(--amber)">Approve?</div>
+      <div class="metric-sub">Parent admin gates entry</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Error branches</div>
+      <div class="metric-value" style="color:var(--red)">2</div>
+      <div class="metric-sub">Declined, duplicate request</div>
+    </div>
+  </div>
+
+  <!-- Two-actor flow -->
+  <div class="flow-map">
+    <div class="flow-map-title">UF-03 · Two-Actor Swim Lane</div>
+    <div style="display:flex;flex-direction:column;gap:0">
+
+      <!-- Admin lane -->
+      <div class="swim">
+        <div class="swim-label" style="color:var(--green)">Admin</div>
+        <div class="swim-body">
+          <div class="flow-row" style="align-items:center">
+            <div class="node-wrap">
+              <div class="node start">
+                <div class="node-screen">Entry</div>
+                <div class="node-title">Dashboard</div>
+                <div class="node-sub">F-06</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">tap Link CTA</div></div><div class="conn-arrow"></div></div>
+            <div class="node-wrap">
+              <div class="node screen-node">
+                <div class="node-screen">Screen</div>
+                <div class="node-title">Connect<br>Extended Family</div>
+                <div class="node-sub">F-10</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">search</div></div><div class="conn-arrow"></div></div>
+            <div class="node-wrap">
+              <div class="node action-node">
+                <div class="node-screen">Action</div>
+                <div class="node-title">Select Parent<br>Unit</div>
+                <div class="node-sub">Search by name</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">select connector</div></div><div class="conn-arrow"></div></div>
+            <div class="node-wrap">
+              <div class="node action-node">
+                <div class="node-screen">Action</div>
+                <div class="node-title">Select<br>Connector<br>Person</div>
+                <div class="node-sub">Shared member</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">send request</div></div><div class="conn-arrow"></div></div>
+            <div class="node-wrap">
+              <div class="node system">
+                <div class="node-screen">System</div>
+                <div class="node-title">Request<br>Sent</div>
+                <div class="node-sub">status=pending</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System lane -->
+      <div class="swim">
+        <div class="swim-label" style="color:var(--muted)">System</div>
+        <div class="swim-body">
+          <div class="flow-row" style="align-items:center">
+            <div class="node-wrap">
+              <div class="node system">
+                <div class="node-screen">System</div>
+                <div class="node-title">Create<br>Link Request</div>
+                <div class="node-sub">unit_link_requests<br>status=pending</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line conn-line sys" style="min-width:80px"></div><div class="conn-label" style="background:var(--surface);color:var(--muted)">push notification</div></div><div class="conn-arrow sys"></div></div>
+            <div class="node-wrap">
+              <div class="node system">
+                <div class="node-screen">System</div>
+                <div class="node-title">Notify<br>Parent Admin</div>
+                <div class="node-sub">In-app + email</div>
+              </div>
+            </div>
+            <div style="flex:1"></div>
+            <div class="node-wrap" style="margin-left:auto">
+              <div class="node system">
+                <div class="node-screen">System</div>
+                <div class="node-title">On Accept:<br>Update DB</div>
+                <div class="node-sub">parent_unit_id set<br>status=accepted<br>Create family_group</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grandma lane -->
+      <div class="swim">
+        <div class="swim-label" style="color:var(--purple)">Grandma</div>
+        <div class="swim-body">
+          <div class="flow-row" style="align-items:center">
+            <div class="node-wrap">
+              <div class="node screen-node">
+                <div class="node-screen">Screen</div>
+                <div class="node-title">Notification<br>Badge</div>
+                <div class="node-sub">F-12 · Red badge on bell</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">tap notif</div></div><div class="conn-arrow"></div></div>
+            <div class="node-wrap">
+              <div class="node screen-node">
+                <div class="node-screen">Screen</div>
+                <div class="node-title">Review<br>Request</div>
+                <div class="node-sub">F-12 · Preview family</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:50px"></div></div><div class="conn-arrow"></div></div>
+            <div class="node-wrap">
+              <div class="node decision">
+                <div class="node-screen">Decision</div>
+                <div class="node-title">Accept or<br>Decline?</div>
+              </div>
+            </div>
+            <div class="connector"><div class="conn-wrap"><div class="conn-line yes" style="min-width:50px"></div><div class="conn-label" style="background:var(--green-bg);color:var(--green)">accept</div></div><div class="conn-arrow yes"></div></div>
+            <div class="node-wrap">
+              <div class="node end">
+                <div class="node-screen">End</div>
+                <div class="node-title">Extended Tree<br>Assembled</div>
+                <div class="node-sub">F-11 · Both units see tree</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-map">
+    <div class="flow-map-title">UF-03 · Step-by-Step Reference</div>
+    <table class="step-table">
+      <thead>
+        <tr><th>Step</th><th>Actor</th><th>Screen</th><th>Action / Event</th><th>System Response</th><th>Error Path</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="step-num">01</td>
+          <td><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-06 Dashboard</td>
+          <td class="step-action">Taps "Link to a Parent Family" CTA.</td>
+          <td class="step-result"><span class="status ok">Navigate</span> → F-10 Connect Extended Family.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">02</td>
+          <td><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-10 Link</td>
+          <td class="step-action">Types parent family name in search field.</td>
+          <td class="step-result"><span class="status sys">Query</span> family_units by name. Return matches. Show unit name + member count.</td>
+          <td class="step-error">No results → suggest sharing a unit code instead.</td>
+        </tr>
+        <tr>
+          <td class="step-num">03</td>
+          <td><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-10 Link</td>
+          <td class="step-action">Selects the parent unit from results.</td>
+          <td class="step-result">Unit highlighted as selected. Step 2 unlocks (connector person selection).</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">04</td>
+          <td><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-10 Link</td>
+          <td class="step-action">Selects the connector person (the shared person who belongs to both units).</td>
+          <td class="step-result">Connector person highlighted. "Send Link Request" button activates.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">05</td>
+          <td><span class="pill admin">Admin</span></td>
+          <td class="step-screen">F-10 Link</td>
+          <td class="step-action">Taps "Send Link Request".</td>
+          <td class="step-result"><span class="status sys">Insert</span> unit_link_requests row with status=pending.<br><span class="status sys">Notify</span> parent unit admin via in-app + email.<br>Show confirmation banner: "Request sent. Waiting for approval."</td>
+          <td class="step-error">Duplicate pending request → block with message "A request is already pending."</td>
+        </tr>
+        <tr>
+          <td class="step-num">06</td>
+          <td><span class="pill grandma">Grandma</span></td>
+          <td class="step-screen">F-12</td>
+          <td class="step-action">Sees notification badge. Taps bell icon. Reviews requesting family and connector person.</td>
+          <td class="step-result">Shows requesting unit name, member list preview, and connector person with relationship label.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">07a</td>
+          <td><span class="pill grandma">Grandma</span></td>
+          <td class="step-screen">F-12</td>
+          <td class="step-action">Taps "Accept Request".</td>
+          <td class="step-result"><span class="status sys">Update</span> unit_link_requests status=accepted.<br><span class="status sys">Update</span> family_units.parent_unit_id for child unit.<br><span class="status sys">Create</span> family_groups row if first link.<br><span class="status ok">Navigate</span> → F-11 Extended Tree View.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">07b</td>
+          <td><span class="pill grandma">Grandma</span></td>
+          <td class="step-screen">F-12</td>
+          <td class="step-action">Taps "Decline".</td>
+          <td class="step-result"><span class="status sys">Update</span> status=declined.<br><span class="status sys">Notify</span> child admin: request was declined.<br>Child admin may try again or contact family member directly.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">08</td>
+          <td><span class="pill system">System</span></td>
+          <td class="step-screen">Background</td>
+          <td class="step-action">On acceptance: both units can see the extended family tree.</td>
+          <td class="step-result">Child admin notified: "The Granger Family accepted your request!"<br>Both units see each other in F-11 Extended Tree view.</td>
+          <td class="step-error">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- UF-04: EDIT PROFILE                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="flow-section">
+  <div class="flow-section-header">
+    <div class="flow-badge" style="background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,166,35,0.4)">UF-04</div>
+    <div class="flow-title">Edit Own Profile</div>
+    <div class="flow-rule"></div>
+    <div class="flow-desc">Actor: <span class="pill member">Member</span> or <span class="pill admin">Admin</span> · Entry: Any screen · Exit: Updated profile visible to family</div>
+  </div>
+
+  <div class="flow-map">
+    <div class="flow-map-title">UF-04 · Happy Path Flow Diagram</div>
+    <div class="flow-row" style="align-items:center">
+
+      <div class="node-wrap">
+        <div class="node start">
+          <div class="node-screen">Entry</div>
+          <div class="node-title">Profile Tab<br>or Tree Node</div>
+          <div class="node-sub">Bottom nav → Profile</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">tap Edit</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node screen-node">
+          <div class="node-screen">Screen</div>
+          <div class="node-title">Edit Profile</div>
+          <div class="node-sub">F-12 · All fields editable</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">make changes</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node action-node">
+          <div class="node-screen">Action</div>
+          <div class="node-title">Tap Save</div>
+          <div class="node-sub">Nav bar Save button</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div><div class="conn-label" style="background:var(--surface);color:var(--sub)">validate</div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node system">
+          <div class="node-screen">System</div>
+          <div class="node-title">Update<br>persons row</div>
+          <div class="node-sub">updated_at = NOW()</div>
+        </div>
+      </div>
+
+      <div class="connector"><div class="conn-wrap"><div class="conn-line" style="min-width:60px"></div></div><div class="conn-arrow"></div></div>
+
+      <div class="node-wrap">
+        <div class="node end">
+          <div class="node-screen">End</div>
+          <div class="node-title">Profile<br>Updated ✓</div>
+          <div class="node-sub">Success toast · Return</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-map">
+    <div class="flow-map-title">UF-04 · Step-by-Step Reference</div>
+    <table class="step-table">
+      <thead>
+        <tr><th>Step</th><th>Actor</th><th>Screen</th><th>Action / Event</th><th>System Response</th><th>Error Path</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="step-num">01</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">Any</td>
+          <td class="step-action">Navigates to Profile tab via bottom nav, or taps own node in tree view.</td>
+          <td class="step-result">Shows own profile with "Edit" button in nav bar.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">02</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">Profile</td>
+          <td class="step-action">Taps Edit. All fields become editable. Name and relationship_label are locked (admin-only).</td>
+          <td class="step-result">Input fields activate. Save button appears in nav bar.</td>
+          <td class="step-error">—</td>
+        </tr>
+        <tr>
+          <td class="step-num">03</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">Edit Profile</td>
+          <td class="step-action">Updates any fields: phone, email, address, birthday, social handles. Any combination. All optional.</td>
+          <td class="step-result">Fields update locally. No save yet.</td>
+          <td class="step-error">Email format invalid → inline error on field, block save.</td>
+        </tr>
+        <tr>
+          <td class="step-num">04</td>
+          <td><span class="pill member">Member</span></td>
+          <td class="step-screen">Edit Profile</td>
+          <td class="step-action">Taps "Save" in nav bar.</td>
+          <td class="step-result"><span class="status sys">PATCH</span> persons record. updated_at = NOW().<br>Show success toast: "Profile updated."<br>Return to profile view with new values visible.</td>
+          <td class="step-error">Network error → retry prompt. Changes held in local state, not lost.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- UF-05: ERROR STATES                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="flow-section">
+  <div class="flow-section-header">
+    <div class="flow-badge" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(255,87,87,0.4)">UF-05</div>
+    <div class="flow-title">Error States Reference</div>
+    <div class="flow-rule"></div>
+    <div class="flow-desc">All error conditions across UF-01–04. Every error must have a recovery path. No dead ends.</div>
+  </div>
+
+  <div class="flow-map">
+    <div class="flow-map-title">UF-05 · Error State Catalogue</div>
+    <table class="step-table">
+      <thead>
+        <tr><th>Error ID</th><th>Flow</th><th>Trigger</th><th>Message to User</th><th>Recovery Path</th><th>Severity</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="step-num">E-01</td>
+          <td class="step-screen">UF-01 Step 2</td>
+          <td class="step-action">Email already registered</td>
+          <td class="step-result">"An account with this email already exists."</td>
+          <td class="step-error">Inline error under email field. Show "Sign In instead" link.</td>
+          <td><span class="status warn">Medium</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-02</td>
+          <td class="step-screen">UF-01 Step 2</td>
+          <td class="step-action">Password too weak</td>
+          <td class="step-result">"Password must be at least 8 characters."</td>
+          <td class="step-error">Inline strength indicator under field. Block submit until met.</td>
+          <td><span class="status warn">Low</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-03</td>
+          <td class="step-screen">UF-01 Step 4</td>
+          <td class="step-action">No members added</td>
+          <td class="step-result">"You haven't added any family members yet. Continue anyway?"</td>
+          <td class="step-error">Confirmation modal. Yes → proceed. No → return to add members.</td>
+          <td><span class="status warn">Low</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-04</td>
+          <td class="step-screen">UF-02 Step 1</td>
+          <td class="step-action">Invite token expired</td>
+          <td class="step-result">"This invite link has expired. Links are valid for 30 days."</td>
+          <td class="step-error">Show family admin contact suggestion. No further action possible on this link.</td>
+          <td><span class="status fail">High</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-05</td>
+          <td class="step-screen">UF-02 Step 1</td>
+          <td class="step-action">Invite token already used</td>
+          <td class="step-result">"This invite link has already been used."</td>
+          <td class="step-error">If user has an account, offer Sign In. Otherwise contact family admin.</td>
+          <td><span class="status fail">High</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-06</td>
+          <td class="step-screen">UF-02 Step 3</td>
+          <td class="step-action">Email already linked to different person record</td>
+          <td class="step-result">"This email is already linked to a different profile."</td>
+          <td class="step-error">Offer to sign in to existing account and re-link, or use different email. Flag for manual review if needed.</td>
+          <td><span class="status fail">High</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-07</td>
+          <td class="step-screen">UF-03 Step 2</td>
+          <td class="step-action">Parent family not found in search</td>
+          <td class="step-result">"No family found with that name."</td>
+          <td class="step-error">Suggest: "Ask your family admin to share their unit code directly."</td>
+          <td><span class="status warn">Medium</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-08</td>
+          <td class="step-screen">UF-03 Step 5</td>
+          <td class="step-action">Duplicate pending link request</td>
+          <td class="step-result">"You already have a pending request to this family."</td>
+          <td class="step-error">Show current request status and date sent. Offer to cancel and resend.</td>
+          <td><span class="status warn">Low</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-09</td>
+          <td class="step-screen">UF-04 Step 4</td>
+          <td class="step-action">Network error on save</td>
+          <td class="step-result">"Could not save. Please check your connection and try again."</td>
+          <td class="step-error">Retry button. Keep changes in local state. Do not lose edits.</td>
+          <td><span class="status warn">Medium</span></td>
+        </tr>
+        <tr>
+          <td class="step-num">E-10</td>
+          <td class="step-screen">All flows</td>
+          <td class="step-action">Session expired mid-flow</td>
+          <td class="step-result">"Your session has expired. Please sign in again."</td>
+          <td class="step-error">Redirect to sign-in. Preserve deep-link return URL so user lands back where they were.</td>
+          <td><span class="status warn">Medium</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center;padding:24px 0;border-top:1px solid var(--border);margin-top:16px">
+  <div style="font-family:'Fira Code',monospace;font-size:11px;color:var(--muted)">
+    FamilyBranch · User Flows v1.0 · 5 Flows · 32 Steps · MVP Scope Only
+  </div>
+</div>
+
+</div><!-- end canvas -->
+</body>
+</html>

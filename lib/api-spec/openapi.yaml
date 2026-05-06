@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: FamilyBranch API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: persons
+    description: Person profile operations
+  - name: family-units
+    description: Family unit operations
+  - name: members
+    description: Member management within a unit
+  - name: invites
+    description: Invite link operations
+  - name: link-requests
+    description: Unit linking operations
+  - name: family-groups
+    description: Extended family group operations
+  - name: summary
+    description: Summary and dashboard data
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +40,1002 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Auth ───────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out current session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get the currently authenticated person
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonWithUnit"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── Persons ────────────────────────────────────────────────────
+  /persons/{personId}:
+    get:
+      operationId: getPerson
+      tags: [persons]
+      summary: Get a person profile
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: Person profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updatePerson
+      tags: [persons]
+      summary: Update a person's own profile
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePersonBody"
+      responses:
+        "200":
+          description: Updated person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deletePerson
+      tags: [persons]
+      summary: Remove a person from the unit (admin) or delete own profile (member)
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── Family Units ────────────────────────────────────────────────
+  /family-units:
+    post:
+      operationId: createFamilyUnit
+      tags: [family-units]
+      summary: Create a new family unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFamilyUnitBody"
+      responses:
+        "201":
+          description: Family unit created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyUnit"
+
+  /family-units/search:
+    get:
+      operationId: searchFamilyUnits
+      tags: [family-units]
+      summary: Search family units by name or unit code
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Matching units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FamilyUnitSummary"
+
+  /family-units/{unitId}:
+    get:
+      operationId: getFamilyUnit
+      tags: [family-units]
+      summary: Get a family unit with its members
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Family unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyUnitWithMembers"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateFamilyUnit
+      tags: [family-units]
+      summary: Update family unit name or details (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFamilyUnitBody"
+      responses:
+        "200":
+          description: Updated unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyUnit"
+
+  # ─── Members ─────────────────────────────────────────────────────
+  /family-units/{unitId}/members:
+    get:
+      operationId: listMembers
+      tags: [members]
+      summary: List all members of a family unit
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Members list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+
+    post:
+      operationId: addMember
+      tags: [members]
+      summary: Add a placeholder member to the unit (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMemberBody"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+
+  # ─── Invites ─────────────────────────────────────────────────────
+  /family-units/{unitId}/members/{personId}/invite:
+    post:
+      operationId: generateInvite
+      tags: [invites]
+      summary: Generate or regenerate an invite link for a member (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: Invite link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResponse"
+
+  /invites/{token}:
+    get:
+      operationId: getInvite
+      tags: [invites]
+      summary: Look up an invite by token (public — no auth required)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invite details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteDetails"
+        "404":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invites/{token}/claim:
+    post:
+      operationId: claimProfile
+      tags: [invites]
+      summary: Claim a profile via invite token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimProfileBody"
+      responses:
+        "200":
+          description: Profile claimed and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── Link Requests ────────────────────────────────────────────────
+  /family-units/{unitId}/link-requests:
+    post:
+      operationId: createLinkRequest
+      tags: [link-requests]
+      summary: Send a link request to a parent unit (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkRequestBody"
+      responses:
+        "201":
+          description: Link request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkRequest"
+
+    get:
+      operationId: listLinkRequests
+      tags: [link-requests]
+      summary: List pending link requests for a unit (incoming and outgoing)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Link requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkRequestsResponse"
+
+  /link-requests/{requestId}/accept:
+    post:
+      operationId: acceptLinkRequest
+      tags: [link-requests]
+      summary: Accept a link request (parent unit admin)
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Link accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkRequest"
+
+  /link-requests/{requestId}/decline:
+    post:
+      operationId: declineLinkRequest
+      tags: [link-requests]
+      summary: Decline a link request (parent unit admin)
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Link declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkRequest"
+
+  # ─── Family Groups ────────────────────────────────────────────────
+  /family-units/{unitId}/tree:
+    get:
+      operationId: getFamilyTree
+      tags: [family-groups]
+      summary: Get the full family tree for a unit (unit + all linked units)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Family tree data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyTree"
+
+  # ─── Summary / Dashboard ─────────────────────────────────────────
+  /family-units/{unitId}/summary:
+    get:
+      operationId: getUnitSummary
+      tags: [summary]
+      summary: Get dashboard summary stats for a unit
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnitSummary"
+
+  /family-units/{unitId}/birthdays:
+    get:
+      operationId: getUpcomingBirthdays
+      tags: [summary]
+      summary: Get upcoming birthdays in the unit and linked units
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Upcoming birthdays
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BirthdayEntry"
+
 components:
+  parameters:
+    personId:
+      name: personId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    unitId:
+      name: unitId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    # ─── Auth ──────────────────────────────────────────────────────
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        firstName:
+          type: string
+        lastName:
+          type: string
+        unitName:
+          type: string
+          description: Name of the family unit to create on registration
+        relationshipLabel:
+          type: string
+          description: The admin's own relationship label (e.g. Mom)
+      required: [email, password, firstName, lastName, unitName, relationshipLabel]
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        person:
+          $ref: "#/components/schemas/PersonWithUnit"
+        token:
+          type: string
+          description: JWT session token
+      required: [person, token]
+
+    # ─── Person ────────────────────────────────────────────────────
+    Person:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        photoUrl:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        addressLine1:
+          type: string
+          nullable: true
+        addressCity:
+          type: string
+          nullable: true
+        addressState:
+          type: string
+          nullable: true
+        addressZip:
+          type: string
+          nullable: true
+        addressCountry:
+          type: string
+          nullable: true
+        birthday:
+          type: string
+          nullable: true
+        showBirthYear:
+          type: boolean
+        instagram:
+          type: string
+          nullable: true
+        facebook:
+          type: string
+          nullable: true
+        tiktok:
+          type: string
+          nullable: true
+        linkedin:
+          type: string
+          nullable: true
+        otherSocial:
+          type: string
+          nullable: true
+        relationshipLabel:
+          type: string
+        familyUnitId:
+          type: string
+          format: uuid
+        isAdmin:
+          type: boolean
+        claimed:
+          type: boolean
+        claimedAt:
+          type: string
+          format: date-time
+          nullable: true
+        inviteExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - firstName
+        - lastName
+        - relationshipLabel
+        - familyUnitId
+        - isAdmin
+        - claimed
+        - showBirthYear
+        - createdAt
+        - updatedAt
+
+    PersonWithUnit:
+      allOf:
+        - $ref: "#/components/schemas/Person"
+        - type: object
+          properties:
+            familyUnit:
+              $ref: "#/components/schemas/FamilyUnit"
+          required: [familyUnit]
+
+    UpdatePersonBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        photoUrl:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        addressLine1:
+          type: string
+          nullable: true
+        addressCity:
+          type: string
+          nullable: true
+        addressState:
+          type: string
+          nullable: true
+        addressZip:
+          type: string
+          nullable: true
+        addressCountry:
+          type: string
+          nullable: true
+        birthday:
+          type: string
+          nullable: true
+        showBirthYear:
+          type: boolean
+        instagram:
+          type: string
+          nullable: true
+        facebook:
+          type: string
+          nullable: true
+        tiktok:
+          type: string
+          nullable: true
+        linkedin:
+          type: string
+          nullable: true
+        otherSocial:
+          type: string
+          nullable: true
+        relationshipLabel:
+          type: string
+
+    # ─── Family Unit ───────────────────────────────────────────────
+    FamilyUnit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        unitName:
+          type: string
+        unitCode:
+          type: string
+        parentUnitId:
+          type: string
+          format: uuid
+          nullable: true
+        parentLinkStatus:
+          type: string
+          enum: [none, pending, accepted]
+        parentLinkedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        memberCount:
+          type: integer
+        claimedCount:
+          type: integer
+      required:
+        - id
+        - unitName
+        - unitCode
+        - parentLinkStatus
+        - createdAt
+        - memberCount
+        - claimedCount
+
+    FamilyUnitSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        unitName:
+          type: string
+        unitCode:
+          type: string
+        memberCount:
+          type: integer
+      required: [id, unitName, unitCode, memberCount]
+
+    FamilyUnitWithMembers:
+      allOf:
+        - $ref: "#/components/schemas/FamilyUnit"
+        - type: object
+          properties:
+            members:
+              type: array
+              items:
+                $ref: "#/components/schemas/Person"
+          required: [members]
+
+    CreateFamilyUnitBody:
+      type: object
+      properties:
+        unitName:
+          type: string
+      required: [unitName]
+
+    UpdateFamilyUnitBody:
+      type: object
+      properties:
+        unitName:
+          type: string
+
+    # ─── Members ───────────────────────────────────────────────────
+    AddMemberBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        relationshipLabel:
+          type: string
+      required: [firstName, lastName, relationshipLabel]
+
+    # ─── Invites ───────────────────────────────────────────────────
+    InviteResponse:
+      type: object
+      properties:
+        inviteToken:
+          type: string
+        inviteUrl:
+          type: string
+        inviteExpiresAt:
+          type: string
+          format: date-time
+      required: [inviteToken, inviteUrl, inviteExpiresAt]
+
+    InviteDetails:
+      type: object
+      properties:
+        personId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        relationshipLabel:
+          type: string
+        unitName:
+          type: string
+        inviteExpiresAt:
+          type: string
+          format: date-time
+      required: [personId, firstName, lastName, relationshipLabel, unitName, inviteExpiresAt]
+
+    ClaimProfileBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+      required: [email, password]
+
+    # ─── Link Requests ─────────────────────────────────────────────
+    CreateLinkRequestBody:
+      type: object
+      properties:
+        targetUnitId:
+          type: string
+          format: uuid
+        connectorPersonId:
+          type: string
+          format: uuid
+      required: [targetUnitId, connectorPersonId]
+
+    LinkRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        requestingUnitId:
+          type: string
+          format: uuid
+        requestingUnitName:
+          type: string
+        targetUnitId:
+          type: string
+          format: uuid
+        targetUnitName:
+          type: string
+        connectorPersonId:
+          type: string
+          format: uuid
+        connectorPersonName:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, declined]
+        createdAt:
+          type: string
+          format: date-time
+        respondedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - requestingUnitId
+        - requestingUnitName
+        - targetUnitId
+        - targetUnitName
+        - connectorPersonId
+        - connectorPersonName
+        - status
+        - createdAt
+
+    LinkRequestsResponse:
+      type: object
+      properties:
+        incoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkRequest"
+        outgoing:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkRequest"
+      required: [incoming, outgoing]
+
+    # ─── Family Tree ───────────────────────────────────────────────
+    FamilyTreeNode:
+      type: object
+      properties:
+        unitId:
+          type: string
+          format: uuid
+        unitName:
+          type: string
+        parentUnitId:
+          type: string
+          format: uuid
+          nullable: true
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/Person"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/FamilyTreeNode"
+      required: [unitId, unitName, members, children]
+
+    FamilyTree:
+      type: object
+      properties:
+        rootUnit:
+          $ref: "#/components/schemas/FamilyTreeNode"
+        totalUnits:
+          type: integer
+        totalMembers:
+          type: integer
+      required: [rootUnit, totalUnits, totalMembers]
+
+    # ─── Summary ───────────────────────────────────────────────────
+    UnitSummary:
+      type: object
+      properties:
+        unitId:
+          type: string
+          format: uuid
+        unitName:
+          type: string
+        totalMembers:
+          type: integer
+        claimedMembers:
+          type: integer
+        unclaimedMembers:
+          type: integer
+        claimRate:
+          type: number
+          description: Percentage of members who have claimed their profile (0–100)
+        linkedUnits:
+          type: integer
+        pendingInvites:
+          type: integer
+        pendingLinkRequests:
+          type: integer
+      required:
+        - unitId
+        - unitName
+        - totalMembers
+        - claimedMembers
+        - unclaimedMembers
+        - claimRate
+        - linkedUnits
+        - pendingInvites
+        - pendingLinkRequests
+
+    BirthdayEntry:
+      type: object
+      properties:
+        personId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        relationshipLabel:
+          type: string
+        birthday:
+          type: string
+        unitName:
+          type: string
+        daysUntil:
+          type: integer
+          description: Days until their next birthday
+      required:
+        - personId
+        - firstName
+        - lastName
+        - relationshipLabel
+        - birthday
+        - unitName
+        - daysUntil

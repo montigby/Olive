@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FamilyBranch — Design Guidelines</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:     #FAF7F2;
+    --warm-white:#FFFFFF;
+    --sage:      #4A7C59;
+    --sage-mid:  #6B9E7A;
+    --sage-light:#C8DDD0;
+    --sage-pale: #EEF5F1;
+    --dusty-rose:#C4826A;
+    --rose-light:#F5E8E3;
+    --rose-pale: #FDF5F2;
+    --gold:      #B5924C;
+    --gold-light:#F5EDD9;
+    --charcoal:  #2D2D2D;
+    --warm-gray: #6B6560;
+    --mid-gray:  #9B9590;
+    --light-gray:#E8E4DE;
+    --border:    #DDD9D3;
+
+    --page-max: 960px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--charcoal);
+    line-height: 1.6;
+  }
+
+  /* ── Navigation ─────────────────────────────────────────────── */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 56px;
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 40px;
+    z-index: 200;
+    gap: 32px;
+  }
+
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; font-weight: 600;
+    color: var(--sage);
+    letter-spacing: 0.02em;
+    margin-right: 8px;
+  }
+
+  .nav-sep { width: 1px; height: 20px; background: var(--border); }
+
+  .nav-title {
+    font-size: 12px; font-weight: 500;
+    color: var(--mid-gray);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .nav-links {
+    margin-left: auto;
+    display: flex; gap: 24px;
+  }
+
+  .nav-link {
+    font-size: 12px; color: var(--mid-gray);
+    text-decoration: none; font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+  }
+  .nav-link:hover { color: var(--sage); }
+
+  .nav-badge {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    background: var(--sage-pale);
+    color: var(--sage);
+    border: 1px solid var(--sage-light);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-weight: 500;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  .page {
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 96px 40px 80px;
+  }
+
+  /* ── Cover ──────────────────────────────────────────────────── */
+  .cover {
+    padding: 80px 0 64px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 64px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cover-eyebrow {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--sage);
+    text-transform: uppercase; letter-spacing: 0.14em;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+
+  .cover-eyebrow::before {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--sage);
+  }
+
+  .cover-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 56px; font-weight: 300;
+    line-height: 1.1;
+    color: var(--charcoal);
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+
+  .cover-title em {
+    font-style: italic;
+    color: var(--sage);
+  }
+
+  .cover-sub {
+    font-size: 16px; font-weight: 300;
+    color: var(--warm-gray);
+    margin-bottom: 40px;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  .cover-meta {
+    display: flex; gap: 32px; flex-wrap: wrap;
+  }
+
+  .cover-meta-item {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+
+  .cover-meta-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--mid-gray);
+    text-transform: uppercase; letter-spacing: 0.12em;
+  }
+
+  .cover-meta-value {
+    font-size: 13px; font-weight: 500;
+    color: var(--charcoal);
+  }
+
+  /* ── Section ────────────────────────────────────────────────── */
+  .section {
+    margin-bottom: 72px;
+    scroll-margin-top: 80px;
+  }
+
+  .section-eyebrow {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--sage);
+    text-transform: uppercase; letter-spacing: 0.14em;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .section-eyebrow::before {
+    content: '';
+    width: 16px; height: 1px;
+    background: var(--sage);
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 34px; font-weight: 400;
+    color: var(--charcoal);
+    line-height: 1.15;
+    margin-bottom: 8px;
+    letter-spacing: -0.005em;
+  }
+
+  .section-desc {
+    font-size: 14px; color: var(--warm-gray);
+    max-width: 640px; margin-bottom: 32px;
+    line-height: 1.7;
+  }
+
+  .section-rule {
+    height: 1px; background: var(--border);
+    margin-bottom: 32px;
+  }
+
+  /* ── Subsection ─────────────────────────────────────────────── */
+  .subsection {
+    margin-bottom: 40px;
+  }
+
+  .subsection-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; font-weight: 500;
+    color: var(--charcoal);
+    margin-bottom: 12px;
+    letter-spacing: 0.01em;
+  }
+
+  .subsection-body {
+    font-size: 14px; color: var(--warm-gray);
+    line-height: 1.75; max-width: 700px;
+  }
+
+  /* ── Callout box ────────────────────────────────────────────── */
+  .callout {
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+
+  .callout.sage {
+    background: var(--sage-pale);
+    border-left: 3px solid var(--sage);
+  }
+
+  .callout.rose {
+    background: var(--rose-pale);
+    border-left: 3px solid var(--dusty-rose);
+  }
+
+  .callout.gold {
+    background: var(--gold-light);
+    border-left: 3px solid var(--gold);
+  }
+
+  .callout.rule {
+    background: #FDF0F0;
+    border-left: 3px solid #C0392B;
+  }
+
+  .callout-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 6px;
+  }
+
+  .callout.sage .callout-label  { color: var(--sage); }
+  .callout.rose .callout-label  { color: var(--dusty-rose); }
+  .callout.gold .callout-label  { color: var(--gold); }
+  .callout.rule .callout-label  { color: #C0392B; }
+
+  .callout-body {
+    font-size: 14px; line-height: 1.65;
+    color: var(--charcoal);
+  }
+
+  /* ── Color palette ──────────────────────────────────────────── */
+  .palette-row {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin: 20px 0;
+  }
+
+  .swatch {
+    display: flex; flex-direction: column;
+    gap: 8px;
+  }
+
+  .swatch-chip {
+    width: 80px; height: 80px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.06);
+    position: relative;
+  }
+
+  .swatch-name {
+    font-size: 11px; font-weight: 500;
+    color: var(--charcoal);
+    max-width: 80px;
+  }
+
+  .swatch-hex {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; color: var(--mid-gray);
+  }
+
+  .swatch-role {
+    font-size: 10px; color: var(--warm-gray);
+    max-width: 80px; line-height: 1.3;
+  }
+
+  /* ── Type specimen ──────────────────────────────────────────── */
+  .type-specimen {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin: 16px 0;
+  }
+
+  .type-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--mid-gray);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 10px;
+    display: flex; gap: 16px;
+  }
+
+  .type-label span { color: var(--charcoal); font-weight: 500; }
+
+  /* ── Comparison table ───────────────────────────────────────── */
+  .compare {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; margin: 20px 0;
+  }
+
+  .compare-card {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .compare-header {
+    padding: 12px 16px;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+
+  .compare-header.do   { background: var(--sage-pale);  color: var(--sage); }
+  .compare-header.dont { background: var(--rose-pale);   color: var(--dusty-rose); }
+
+  .compare-body {
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  .compare-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13px; color: var(--charcoal);
+    line-height: 1.5;
+  }
+
+  .compare-icon {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    flex-shrink: 0; margin-top: 1px;
+  }
+
+  .compare-icon.do   { background: var(--sage-pale); color: var(--sage); }
+  .compare-icon.dont { background: var(--rose-pale); color: var(--dusty-rose); }
+
+  /* ── Spec table ─────────────────────────────────────────────── */
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 16px 0;
+  }
+
+  .spec-table th {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--mid-gray);
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--cream);
+  }
+
+  .spec-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--light-gray);
+    vertical-align: top;
+    line-height: 1.5;
+    color: var(--charcoal);
+  }
+
+  .spec-table tr:last-child td { border-bottom: none; }
+  .spec-table tr:hover td { background: var(--sage-pale); }
+
+  .spec-key {
+    font-family: 'Fira Code', monospace;
+    font-size: 12px; color: var(--warm-gray);
+    white-space: nowrap;
+  }
+
+  .spec-val {
+    font-weight: 500;
+  }
+
+  .spec-note { font-size: 12px; color: var(--warm-gray); }
+
+  /* ── UI mockup strip ────────────────────────────────────────── */
+  .mockup-row {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    margin: 24px 0;
+  }
+
+  .mockup-card {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    flex: 1; min-width: 200px;
+  }
+
+  .mockup-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--mid-gray);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 14px;
+  }
+
+  /* ── Button specimens ───────────────────────────────────────── */
+  .btn-spec {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    font-weight: 500;
+    cursor: default;
+    margin: 4px 0;
+  }
+
+  .btn-spec.primary-btn {
+    background: var(--sage);
+    color: white;
+    padding: 14px 24px;
+    font-size: 16px;
+    width: 100%;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-spec.secondary-btn {
+    background: transparent;
+    color: var(--sage);
+    border: 2px solid var(--sage-light);
+    padding: 13px 24px;
+    font-size: 16px;
+    width: 100%;
+  }
+
+  .btn-spec.ghost-btn {
+    background: var(--sage-pale);
+    color: var(--sage);
+    padding: 12px 20px;
+    font-size: 15px;
+    width: 100%;
+  }
+
+  /* ── Input specimens ─────────────────────────────────────────── */
+  .input-spec {
+    background: var(--cream);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 16px;
+    color: var(--mid-gray);
+    width: 100%;
+    margin: 4px 0;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .input-spec.focused {
+    border-color: var(--sage);
+    background: white;
+    color: var(--charcoal);
+  }
+
+  .input-spec.error-input {
+    border-color: var(--dusty-rose);
+    background: var(--rose-pale);
+  }
+
+  .input-label {
+    font-size: 14px; font-weight: 500;
+    color: var(--charcoal);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .input-hint {
+    font-size: 13px; color: var(--warm-gray);
+    margin-top: 5px;
+  }
+
+  .input-error-msg {
+    font-size: 13px; color: var(--dusty-rose);
+    margin-top: 5px;
+  }
+
+  /* ── Icon row ───────────────────────────────────────────────── */
+  .icon-row {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    margin: 16px 0; align-items: flex-start;
+  }
+
+  .icon-spec {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+    min-width: 60px;
+  }
+
+  .icon-box {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    border: 1px solid var(--border);
+  }
+
+  .icon-name {
+    font-size: 11px; color: var(--warm-gray);
+    text-align: center; line-height: 1.3;
+    font-family: 'Fira Code', monospace;
+  }
+
+  /* ── Spacing specimen ───────────────────────────────────────── */
+  .spacing-row {
+    display: flex; gap: 20px; align-items: flex-end;
+    margin: 16px 0; flex-wrap: wrap;
+  }
+
+  .spacing-block {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+  }
+
+  .spacing-vis {
+    background: var(--sage-light);
+    border-radius: 4px;
+    width: 40px;
+  }
+
+  .spacing-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; color: var(--warm-gray);
+    text-align: center;
+  }
+
+  /* ── Print preview ──────────────────────────────────────────── */
+  .print-preview {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 20px 0;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    position: relative;
+  }
+
+  .print-preview::before {
+    content: 'PRINT DIRECTORY PREVIEW';
+    position: absolute; top: 12px; right: 16px;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--mid-gray);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Pill tags ──────────────────────────────────────────────── */
+  .tag {
+    display: inline-block;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 500;
+    padding: 3px 9px; border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  .tag.required { background: var(--rose-pale); color: var(--dusty-rose); }
+  .tag.optional { background: var(--sage-pale); color: var(--sage); }
+  .tag.critical { background: #FDF0F0; color: #C0392B; }
+  .tag.mvp      { background: var(--gold-light); color: var(--gold); }
+
+  /* ── Quote ──────────────────────────────────────────────────── */
+  .insight-quote {
+    border-left: 3px solid var(--dusty-rose);
+    padding: 16px 24px;
+    margin: 20px 0;
+    background: var(--rose-pale);
+    border-radius: 0 8px 8px 0;
+  }
+
+  .insight-quote p {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; font-weight: 400;
+    font-style: italic;
+    color: var(--charcoal);
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+
+  .insight-quote cite {
+    font-size: 12px; color: var(--warm-gray);
+    font-style: normal;
+    font-family: 'Fira Code', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Toc sidebar ─────────────────────────────────────────────── */
+  .toc-strip {
+    position: fixed; top: 56px; right: 0; bottom: 0;
+    width: 200px; background: var(--warm-white);
+    border-left: 1px solid var(--border);
+    padding: 24px 16px; overflow-y: auto;
+    z-index: 100;
+    display: none;
+  }
+
+  @media (min-width: 1200px) { .toc-strip { display: block; } }
+
+  .toc-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: var(--mid-gray);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 14px;
+  }
+
+  .toc-item {
+    display: block;
+    font-size: 12px; color: var(--warm-gray);
+    text-decoration: none;
+    padding: 5px 0;
+    border-left: 2px solid transparent;
+    padding-left: 10px;
+    transition: all 0.15s;
+    line-height: 1.4;
+  }
+  .toc-item:hover { color: var(--sage); border-left-color: var(--sage-light); }
+  .toc-item.sub { font-size: 11px; padding-left: 20px; color: var(--mid-gray); }
+
+  /* Decorative orn */
+  .orn {
+    display: inline-block;
+    color: var(--sage-mid);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    margin: 0 6px;
+    opacity: 0.5;
+  }
+
+  hr.soft {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  /* ── Number list ─────────────────────────────────────────────── */
+  ol.styled {
+    padding-left: 0;
+    list-style: none;
+    counter-reset: styled-list;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  ol.styled li {
+    counter-increment: styled-list;
+    display: flex; align-items: flex-start; gap: 14px;
+    font-size: 14px; color: var(--charcoal); line-height: 1.6;
+  }
+
+  ol.styled li::before {
+    content: counter(styled-list);
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--sage-pale);
+    color: var(--sage);
+    font-family: 'Fira Code', monospace;
+    font-size: 11px; font-weight: 600;
+    flex-shrink: 0; margin-top: 1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar TOC -->
+<div class="toc-strip">
+  <div class="toc-label">Contents</div>
+  <a class="toc-item" href="#audience">01 · Audience</a>
+  <a class="toc-item" href="#principles">02 · Principles</a>
+  <a class="toc-item" href="#color">03 · Color</a>
+  <a class="toc-item sub" href="#color-palette">Palette</a>
+  <a class="toc-item sub" href="#color-usage">Usage Rules</a>
+  <a class="toc-item" href="#typography">04 · Typography</a>
+  <a class="toc-item sub" href="#type-scale">Type Scale</a>
+  <a class="toc-item sub" href="#type-rules">Rules</a>
+  <a class="toc-item" href="#spacing">05 · Spacing</a>
+  <a class="toc-item" href="#components">06 · Components</a>
+  <a class="toc-item sub" href="#buttons">Buttons</a>
+  <a class="toc-item sub" href="#inputs">Form Inputs</a>
+  <a class="toc-item sub" href="#icons">Icons</a>
+  <a class="toc-item" href="#language">07 · Language</a>
+  <a class="toc-item" href="#accessibility">08 · Accessibility</a>
+  <a class="toc-item" href="#print">09 · Print Directory</a>
+  <a class="toc-item" href="#antipatterns">10 · Anti-Patterns</a>
+</div>
+
+<!-- Nav -->
+<div class="nav">
+  <div class="nav-logo">FamilyBranch</div>
+  <div class="nav-sep"></div>
+  <div class="nav-title">Design Guidelines</div>
+  <div class="nav-links">
+    <div class="nav-badge">v1.0 · MVP</div>
+  </div>
+</div>
+
+<!-- Page -->
+<div class="page">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="cover-eyebrow">Design Guidelines · v1.0</div>
+    <div class="cover-title">Designed for the<br>women who hold<br><em>families together.</em></div>
+    <div class="cover-sub">This document defines how FamilyBranch looks, feels, and speaks. Every decision is made with one person in mind: a mom or grandmother who has never thought of herself as a tech person, but cares deeply about keeping her family connected.</div>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Primary Audience</div>
+        <div class="cover-meta-value">Women 40–75</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Secondary Audience</div>
+        <div class="cover-meta-value">Family Members 18+</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Aesthetic Direction</div>
+        <div class="cover-meta-value">Warm · Refined · Trustworthy</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Scope</div>
+        <div class="cover-meta-value">MVP · Mobile First</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 01. AUDIENCE ─────────────────────────────────────────── -->
+  <div class="section" id="audience">
+    <div class="section-eyebrow">01</div>
+    <div class="section-title">Know Your User</div>
+    <div class="section-desc">Before any design decision, understand who you are designing for. Not a persona. A real person.</div>
+    <div class="section-rule"></div>
+
+    <div class="insight-quote">
+      <p>"She is not afraid of her phone. She is afraid of breaking something, looking stupid, or losing the progress she made."</p>
+      <cite>Design Principle · FamilyBranch</cite>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">The Primary User: Mom (40–65)</div>
+      <div class="subsection-body">She runs a group chat, uses Facebook to see photos of grandkids, and takes screenshots of things she doesn't want to forget. She is the family organizer. She is the one who will set up FamilyBranch, invite everyone, and keep it going. She needs to feel competent. She needs to feel like she is doing something good for her family. She does not need to feel like she is operating software.</div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">The Secondary User: Grandma (60–80)</div>
+      <div class="subsection-body">She was invited by her daughter. She does not entirely understand what she signed up for. She will use the app on a phone with large text settings enabled. She will tap things slowly and deliberately. She needs the interface to be patient and forgiving. She should never encounter a screen that makes her feel like she made a mistake. Every action she takes should feel rewarded.</div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">The Tertiary User: Family Members (18–50)</div>
+      <div class="subsection-body">They received an invite link. They are mildly skeptical. They will claim their profile because mom or grandma asked them to. The experience must be fast, frictionless, and not embarrassing to use. They should not feel like they joined a genealogy website.</div>
+    </div>
+
+    <div class="callout sage">
+      <div class="callout-label">Design Reminder</div>
+      <div class="callout-body">The senior user is not the edge case. She is the core user. Design for her first. The younger user will adapt. The older user will abandon.</div>
+    </div>
+  </div>
+
+  <!-- ── 02. PRINCIPLES ─────────────────────────────────────────── -->
+  <div class="section" id="principles">
+    <div class="section-eyebrow">02</div>
+    <div class="section-title">Design Principles</div>
+    <div class="section-desc">Six principles that govern every decision. When in doubt, return to these.</div>
+    <div class="section-rule"></div>
+
+    <div class="subsection">
+      <ol class="styled">
+        <li><strong>Warmth over efficiency.</strong> The product is about family. It should feel like a kitchen table conversation, not a dashboard. Every screen should feel welcoming. Cold, clinical UI belongs in enterprise software. Not here.</li>
+        <li><strong>One thing at a time.</strong> Never ask the user to do two things at once. One question per screen during onboarding. One primary action per view. Cognitive load is the enemy. Especially for seniors.</li>
+        <li><strong>Generous targets.</strong> Every tappable element is large enough to hit without squinting or precision. Minimum 48px tap target on every interactive element. Buttons span full width wherever possible.</li>
+        <li><strong>Error forgiveness.</strong> Nothing is permanent without explicit confirmation. Mistakes are easy to undo. The user should never feel afraid to tap something. Fear kills engagement.</li>
+        <li><strong>Progress is visible.</strong> The user always knows where she is, how far she has come, and what comes next. Progress indicators, completion states, and confirmation moments make her feel successful.</li>
+        <li><strong>Language before interface.</strong> When in doubt, say it plainly. A well-worded prompt beats a clever UI pattern every time. Write like a warm, patient friend. Not like an app.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ── 03. COLOR ──────────────────────────────────────────────── -->
+  <div class="section" id="color">
+    <div class="section-eyebrow">03</div>
+    <div class="section-title">Color System</div>
+    <div class="section-desc">The palette is warm, natural, and grounded. Sage green as the primary, offset by warm cream backgrounds, a soft dusty rose for warmth and celebration moments, and restrained gold for premium signals.</div>
+    <div class="section-rule"></div>
+
+    <div class="subsection" id="color-palette">
+      <div class="subsection-title">Primary Palette</div>
+
+      <div class="palette-row">
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#4A7C59"></div>
+          <div class="swatch-name">Sage</div>
+          <div class="swatch-hex">#4A7C59</div>
+          <div class="swatch-role">Primary actions, links, brand identity</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#C8DDD0"></div>
+          <div class="swatch-name">Sage Light</div>
+          <div class="swatch-hex">#C8DDD0</div>
+          <div class="swatch-role">Secondary borders, decorative elements</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#EEF5F1"></div>
+          <div class="swatch-name">Sage Pale</div>
+          <div class="swatch-hex">#EEF5F1</div>
+          <div class="swatch-role">Claimed state backgrounds, highlights</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#FAF7F2;border:1px solid #E8E4DE"></div>
+          <div class="swatch-name">Warm Cream</div>
+          <div class="swatch-hex">#FAF7F2</div>
+          <div class="swatch-role">App background, screen fill</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#FFFFFF;border:1px solid #E8E4DE"></div>
+          <div class="swatch-name">White</div>
+          <div class="swatch-hex">#FFFFFF</div>
+          <div class="swatch-role">Cards, inputs, elevated surfaces</div>
+        </div>
+      </div>
+
+      <div class="palette-row">
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#C4826A"></div>
+          <div class="swatch-name">Dusty Rose</div>
+          <div class="swatch-hex">#C4826A</div>
+          <div class="swatch-role">Celebration moments, confirmation screens</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#F5E8E3"></div>
+          <div class="swatch-name">Rose Light</div>
+          <div class="swatch-hex">#F5E8E3</div>
+          <div class="swatch-role">Warm accents, birthday highlights</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#B5924C"></div>
+          <div class="swatch-name">Warm Gold</div>
+          <div class="swatch-hex">#B5924C</div>
+          <div class="swatch-role">Premium signals, print product CTA</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#2D2D2D"></div>
+          <div class="swatch-name">Charcoal</div>
+          <div class="swatch-hex">#2D2D2D</div>
+          <div class="swatch-role">Headings, primary body text</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#6B6560"></div>
+          <div class="swatch-name">Warm Gray</div>
+          <div class="swatch-hex">#6B6560</div>
+          <div class="swatch-role">Secondary text, captions, labels</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection" id="color-usage">
+      <div class="subsection-title">Color Usage Rules</div>
+
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Context</th>
+            <th>Color</th>
+            <th>Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="spec-key">Primary button</td>
+            <td class="spec-val">Sage #4A7C59 · White text</td>
+            <td class="spec-note">Only one primary button visible per screen at any time</td>
+            <td><span class="tag required">Required</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">Secondary button</td>
+            <td class="spec-val">Transparent · Sage border · Sage text</td>
+            <td class="spec-note">Used for skip and alternate actions only</td>
+            <td><span class="tag optional">Optional</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">App background</td>
+            <td class="spec-val">Warm Cream #FAF7F2</td>
+            <td class="spec-note">Never pure white (#FFFFFF) as screen background. Too harsh for seniors.</td>
+            <td><span class="tag required">Required</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">Cards and inputs</td>
+            <td class="spec-val">White #FFFFFF</td>
+            <td class="spec-note">Elevation via color contrast, not heavy shadows</td>
+            <td><span class="tag required">Required</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">Claimed status</td>
+            <td class="spec-val">Sage Pale bg · Sage border · Sage text</td>
+            <td class="spec-note">Consistent with primary brand. Claimed = good. Green = good.</td>
+            <td><span class="tag required">Required</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">Unclaimed / pending</td>
+            <td class="spec-val">Warm amber tones · Never red</td>
+            <td class="spec-note">Red reads as error. Pending is neutral, not bad. Use amber.</td>
+            <td><span class="tag required">Required</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">Errors</td>
+            <td class="spec-val">Dusty Rose #C4826A · Rose Pale bg</td>
+            <td class="spec-note">Softer than standard red. Less alarming. Still clearly indicates a problem.</td>
+            <td><span class="tag required">Required</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">Celebration screens</td>
+            <td class="spec-val">Dusty Rose as accent · Cream bg</td>
+            <td class="spec-note">Claimed confirmation, link accepted, profile complete moments</td>
+            <td><span class="tag optional">Optional</span></td>
+          </tr>
+          <tr>
+            <td class="spec-key">Print directory CTA</td>
+            <td class="spec-val">Warm Gold #B5924C</td>
+            <td class="spec-note">The only use of gold. Signals premium, physical, special.</td>
+            <td><span class="tag mvp">Post-MVP</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout rule">
+        <div class="callout-label">Hard Rule</div>
+        <div class="callout-body">Never use pure red (#FF0000 or similar) as an error color. It is alarming to seniors and reads as failure. Use Dusty Rose (#C4826A) instead. The problem is still communicated. The emotional register is warmer and less catastrophic.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 04. TYPOGRAPHY ─────────────────────────────────────────── -->
+  <div class="section" id="typography">
+    <div class="section-eyebrow">04</div>
+    <div class="section-title">Typography</div>
+    <div class="section-desc">Two typefaces. One does the emotional work. One does the functional work. They never compete.</div>
+    <div class="section-rule"></div>
+
+    <div class="subsection" id="type-scale">
+      <div class="subsection-title">Typeface Pairing</div>
+
+      <div class="type-specimen">
+        <div class="type-label">Display · <span>Cormorant Garamond</span> · Headings, brand name, celebration moments</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:300;color:#2D2D2D;line-height:1.1;letter-spacing:-0.01em">The Anderson Family</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;font-style:italic;color:#4A7C59;margin-top:8px">Your family is waiting for you.</div>
+      </div>
+
+      <div class="type-specimen">
+        <div class="type-label">Body · <span>DM Sans</span> · All functional text, labels, buttons, inputs</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:16px;font-weight:400;color:#2D2D2D;line-height:1.6">Miranda has added you to The Anderson Family. Tap below to claim your profile and see the full family tree.</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:#4A7C59;margin-top:10px">Claim My Profile →</div>
+      </div>
+
+      <div class="subsection-title" style="margin-top:28px" id="type-rules">Type Scale</div>
+
+      <table class="spec-table">
+        <thead>
+          <tr><th>Role</th><th>Font</th><th>Size</th><th>Weight</th><th>Usage</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="spec-key">Display</td>
+            <td>Cormorant Garamond</td>
+            <td class="spec-val">32–48px</td>
+            <td>300–400</td>
+            <td class="spec-note">Screen titles on marketing, onboarding hero moments</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Heading 1</td>
+            <td>Cormorant Garamond</td>
+            <td class="spec-val">26px</td>
+            <td>500</td>
+            <td class="spec-note">Section titles within screens</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Heading 2</td>
+            <td>DM Sans</td>
+            <td class="spec-val">20px</td>
+            <td>600</td>
+            <td class="spec-note">Card titles, member names in profile view</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Body Large</td>
+            <td>DM Sans</td>
+            <td class="spec-val">16px</td>
+            <td>400</td>
+            <td class="spec-note">Primary body text, instruction text, descriptions</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Body</td>
+            <td>DM Sans</td>
+            <td class="spec-val">15px</td>
+            <td>400</td>
+            <td class="spec-note">Secondary body text, form field values</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Label</td>
+            <td>DM Sans</td>
+            <td class="spec-val">13px</td>
+            <td>500</td>
+            <td class="spec-note">Field labels, captions, relationship labels</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Caption</td>
+            <td>DM Sans</td>
+            <td class="spec-val">12px</td>
+            <td>400</td>
+            <td class="spec-note">Helper text under inputs, expiry notices. Never below 12px.</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Button</td>
+            <td>DM Sans</td>
+            <td class="spec-val">16px</td>
+            <td>500–600</td>
+            <td class="spec-note">All buttons. Never smaller. Seniors must be able to read button labels clearly.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout rule">
+        <div class="callout-label">Hard Rule · Minimum Sizes</div>
+        <div class="callout-body">Body text minimum: 15px. Caption text minimum: 12px. Button text minimum: 16px. No exceptions. Many of our users have their system font size set to Large or Extra Large. The app must not fight that setting. Use relative units (rem) wherever possible so system font size preferences are respected.</div>
+      </div>
+
+      <div class="callout rose">
+        <div class="callout-label">Why Cormorant Garamond</div>
+        <div class="callout-body">Serif display fonts read as trustworthy, personal, and warm to women in our target demographic. They feel like a letter, not a notification. Cormorant specifically has a graceful, feminine quality without being frilly or dated. It signals that this is not another tech product. It is something made with care.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 05. SPACING ────────────────────────────────────────────── -->
+  <div class="section" id="spacing">
+    <div class="section-eyebrow">05</div>
+    <div class="section-title">Spacing & Layout</div>
+    <div class="section-desc">Generous spacing is not wasted space. It is a gift to the user. It reduces cognitive load, increases readability, and makes the interface feel calm and trustworthy. Do not compress.</div>
+    <div class="section-rule"></div>
+
+    <div class="subsection">
+      <div class="subsection-title">Spacing Scale (8px base)</div>
+      <div class="spacing-row">
+        <div class="spacing-block"><div class="spacing-vis" style="height:4px"></div><div class="spacing-label">4px<br>xs</div></div>
+        <div class="spacing-block"><div class="spacing-vis" style="height:8px"></div><div class="spacing-label">8px<br>sm</div></div>
+        <div class="spacing-block"><div class="spacing-vis" style="height:12px"></div><div class="spacing-label">12px<br>sm+</div></div>
+        <div class="spacing-block"><div class="spacing-vis" style="height:16px"></div><div class="spacing-label">16px<br>md</div></div>
+        <div class="spacing-block"><div class="spacing-vis" style="height:24px"></div><div class="spacing-label">24px<br>lg</div></div>
+        <div class="spacing-block"><div class="spacing-vis" style="height:32px"></div><div class="spacing-label">32px<br>xl</div></div>
+        <div class="spacing-block"><div class="spacing-vis" style="height:48px"></div><div class="spacing-label">48px<br>2xl</div></div>
+        <div class="spacing-block"><div class="spacing-vis" style="height:64px"></div><div class="spacing-label">64px<br>3xl</div></div>
+      </div>
+    </div>
+
+    <table class="spec-table">
+      <thead>
+        <tr><th>Element</th><th>Spec</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="spec-key">Screen horizontal padding</td>
+          <td class="spec-val">16px minimum</td>
+          <td class="spec-note">Content never touches screen edge. Min 16px each side on phone.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Between stacked cards</td>
+          <td class="spec-val">12px</td>
+          <td class="spec-note">Cards must breathe. No stacking without a gap.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Card internal padding</td>
+          <td class="spec-val">16px top/bottom · 16px sides</td>
+          <td class="spec-note">Content within cards feels roomy, not cramped.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Between form fields</td>
+          <td class="spec-val">16px</td>
+          <td class="spec-note">Each field is clearly its own element. Never merge visually.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Label to input gap</td>
+          <td class="spec-val">6px</td>
+          <td class="spec-note">Label and input are clearly paired but not merged.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Minimum tap target</td>
+          <td class="spec-val">48 × 48px</td>
+          <td class="spec-note">Apple HIG and WCAG requirement. Non-negotiable for seniors.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Bottom nav height</td>
+          <td class="spec-val">64px minimum</td>
+          <td class="spec-note">Larger than standard. Generous for arthritic or imprecise tapping.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Section spacing on long screens</td>
+          <td class="spec-val">32px between sections</td>
+          <td class="spec-note">Sections must feel clearly separated. Don't rely on color alone to group.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 06. COMPONENTS ─────────────────────────────────────────── -->
+  <div class="section" id="components">
+    <div class="section-eyebrow">06</div>
+    <div class="section-title">Component Specifications</div>
+    <div class="section-desc">Every component is designed for the senior user first. Generous sizing, warm colors, clear state differentiation.</div>
+    <div class="section-rule"></div>
+
+    <div class="subsection" id="buttons">
+      <div class="subsection-title">Buttons</div>
+      <div class="subsection-body" style="margin-bottom:16px">Three button types. Only one primary visible per screen at any time. Full-width wherever the layout allows. Never use icon-only buttons for primary actions.</div>
+
+      <div class="mockup-row">
+        <div class="mockup-card">
+          <div class="mockup-label">Primary Button</div>
+          <div class="btn-spec primary-btn">Create My Family Tree</div>
+          <div style="margin-top:12px;font-size:12px;color:var(--warm-gray);line-height:1.6">
+            Height: 52px minimum<br>
+            Font: DM Sans 16px 500<br>
+            Background: Sage #4A7C59<br>
+            Text: White #FFFFFF<br>
+            Border radius: 12px<br>
+            Full width: always
+          </div>
+        </div>
+        <div class="mockup-card">
+          <div class="mockup-label">Secondary Button</div>
+          <div class="btn-spec secondary-btn">Sign In Instead</div>
+          <div style="margin-top:12px;font-size:12px;color:var(--warm-gray);line-height:1.6">
+            Height: 52px minimum<br>
+            Font: DM Sans 16px 500<br>
+            Background: Transparent<br>
+            Border: 2px Sage Light<br>
+            Text: Sage #4A7C59<br>
+            Full width: preferred
+          </div>
+        </div>
+        <div class="mockup-card">
+          <div class="mockup-label">Ghost / Subtle Button</div>
+          <div class="btn-spec ghost-btn">+ Add Another Member</div>
+          <div style="margin-top:12px;font-size:12px;color:var(--warm-gray);line-height:1.6">
+            Height: 48px minimum<br>
+            Font: DM Sans 15px 500<br>
+            Background: Sage Pale<br>
+            Text: Sage #4A7C59<br>
+            Used for: repeating actions
+          </div>
+        </div>
+      </div>
+
+      <div class="callout rule">
+        <div class="callout-label">Hard Rule · Button Labels</div>
+        <div class="callout-body">Button labels must be plain, action-oriented, and specific. Never use "Submit", "OK", "Next", or "Continue" alone. Always say what happens: "Create My Family Tree", "Send Invite to Spencer", "Save My Profile". The user should know exactly what will happen before she taps.</div>
+      </div>
+    </div>
+
+    <hr class="soft">
+
+    <div class="subsection" id="inputs">
+      <div class="subsection-title">Form Inputs</div>
+      <div class="subsection-body" style="margin-bottom:16px">Inputs are large, clearly labeled, and forgiving. The focused state is obvious. Errors never feel like failure.</div>
+
+      <div class="mockup-row">
+        <div class="mockup-card">
+          <div class="mockup-label">Default State</div>
+          <label class="input-label">Mobile Phone</label>
+          <input class="input-spec" placeholder="(801) 555-0100" readonly>
+          <div class="input-hint">We'll never share this with anyone outside your family.</div>
+        </div>
+        <div class="mockup-card">
+          <div class="mockup-label">Focused State</div>
+          <label class="input-label">Mobile Phone</label>
+          <input class="input-spec focused" value="(801) 555-0192" readonly>
+          <div class="input-hint">We'll never share this with anyone outside your family.</div>
+        </div>
+        <div class="mockup-card">
+          <div class="mockup-label">Error State</div>
+          <label class="input-label">Email Address</label>
+          <input class="input-spec error-input" value="miranda@" readonly>
+          <div class="input-error-msg">Please enter a complete email address.</div>
+        </div>
+      </div>
+
+      <table class="spec-table" style="margin-top:20px">
+        <thead>
+          <tr><th>Property</th><th>Value</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="spec-key">Height</td>
+            <td class="spec-val">52px minimum</td>
+            <td class="spec-note">Large target. Comfortable for seniors with limited dexterity.</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Font size</td>
+            <td class="spec-val">16px</td>
+            <td class="spec-note">Prevents iOS auto-zoom on focus. Required.</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Border default</td>
+            <td class="spec-val">2px solid #DDD9D3</td>
+            <td class="spec-note">Thick enough to be clearly visible on cream background.</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Border focused</td>
+            <td class="spec-val">2px solid #4A7C59</td>
+            <td class="spec-note">Clear active state. The user always knows which field is active.</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Border error</td>
+            <td class="spec-val">2px solid #C4826A</td>
+            <td class="spec-note">Dusty rose, not red. Problem signal without alarm.</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Placeholder text</td>
+            <td class="spec-val">Warm Gray · Example format</td>
+            <td class="spec-note">Placeholder shows format only, e.g. "(801) 555-0100". Not instructions.</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Keyboard type</td>
+            <td class="spec-val">Contextual per field</td>
+            <td class="spec-note">Phone → tel. Email → email. Never show full keyboard for phone fields.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr class="soft">
+
+    <div class="subsection" id="icons">
+      <div class="subsection-title">Icons</div>
+      <div class="subsection-body" style="margin-bottom:16px">Icons must be universally legible. No clever metaphors. No icon-only buttons for anything important. Every icon in a primary context must have a text label alongside it.</div>
+
+      <div class="icon-row">
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">🏠</div>
+          <div class="icon-name">Home</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">🌿</div>
+          <div class="icon-name">Tree</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">📋</div>
+          <div class="icon-name">Directory</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">👤</div>
+          <div class="icon-name">My Profile</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">⚙️</div>
+          <div class="icon-name">Settings</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">✅</div>
+          <div class="icon-name">Claimed</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:#FFF8F0;border-color:#FFD9B0">⏳</div>
+          <div class="icon-name">Pending</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">📤</div>
+          <div class="icon-name">Share / Invite</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--rose-pale);border-color:#F0C4B8">🎂</div>
+          <div class="icon-name">Birthday</div>
+        </div>
+        <div class="icon-spec">
+          <div class="icon-box" style="background:var(--sage-pale);border-color:var(--sage-light)">🔗</div>
+          <div class="icon-name">Link Family</div>
+        </div>
+      </div>
+
+      <div class="callout sage">
+        <div class="callout-label">Icon guidance</div>
+        <div class="callout-body">Use emoji or flat outline icons from a single family (Phosphor or Heroicons recommended). Icon size in bottom navigation: 24px minimum. Icon size in cards and inline contexts: 20px minimum. Never rely on an icon alone to communicate something important to the user.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 07. LANGUAGE ───────────────────────────────────────────── -->
+  <div class="section" id="language">
+    <div class="section-eyebrow">07</div>
+    <div class="section-title">Voice & Language</div>
+    <div class="section-desc">The words matter as much as the visual design. For this audience, language is design.</div>
+    <div class="section-rule"></div>
+
+    <div class="subsection">
+      <div class="subsection-title">Tone of Voice</div>
+      <div class="subsection-body">Write like a warm, patient daughter who works in tech. Knowledgeable but never condescending. Encouraging without being saccharine. Clear without being blunt. The product should feel like it is on the user's side.</div>
+    </div>
+
+    <div class="compare">
+      <div class="compare-card">
+        <div class="compare-header do">✓ Write Like This</div>
+        <div class="compare-body">
+          <div class="compare-item"><div class="compare-icon do">✓</div>"Your family is waiting for you."</div>
+          <div class="compare-item"><div class="compare-icon do">✓</div>"You're in the family. Miranda can see your info now."</div>
+          <div class="compare-item"><div class="compare-icon do">✓</div>"Please enter a complete email address."</div>
+          <div class="compare-item"><div class="compare-icon do">✓</div>"Only your family can see this. No ads, ever."</div>
+          <div class="compare-item"><div class="compare-icon do">✓</div>"Add as much or as little as you'd like."</div>
+          <div class="compare-item"><div class="compare-icon do">✓</div>"Spencer updated his phone number."</div>
+          <div class="compare-item"><div class="compare-icon do">✓</div>"Send this link to Spencer so he can add his own info."</div>
+        </div>
+      </div>
+      <div class="compare-card">
+        <div class="compare-header dont">✗ Never Write Like This</div>
+        <div class="compare-body">
+          <div class="compare-item"><div class="compare-icon dont">✗</div>"Onboard your family members."</div>
+          <div class="compare-item"><div class="compare-icon dont">✗</div>"Profile successfully created. UID: a7b3c..."</div>
+          <div class="compare-item"><div class="compare-icon dont">✗</div>"Invalid email format. Please try again."</div>
+          <div class="compare-item"><div class="compare-icon dont">✗</div>"Your data is stored securely using AES-256 encryption."</div>
+          <div class="compare-item"><div class="compare-icon dont">✗</div>"All fields are optional."</div>
+          <div class="compare-item"><div class="compare-icon dont">✗</div>"Node updated."</div>
+          <div class="compare-item"><div class="compare-icon dont">✗</div>"Generate invite link for user ID 4421."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection" style="margin-top:32px">
+      <div class="subsection-title">Key Copy Rules</div>
+      <table class="spec-table">
+        <thead>
+          <tr><th>Context</th><th>Rule</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="spec-key">Screen titles</td>
+            <td>Short. Conversational. No verbs ending in -ing.</td>
+            <td class="spec-note">"Your Family" not "Managing Your Family Members"</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Error messages</td>
+            <td>Say what happened and what to do. Never blame the user.</td>
+            <td class="spec-note">"This link has expired. Ask Miranda to send you a new one."</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Empty states</td>
+            <td>Encouraging, not cold. Tell the user what to do next.</td>
+            <td class="spec-note">"No members yet. Tap + Add to invite your first family member."</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Success messages</td>
+            <td>Celebratory but brief. Acknowledge the action.</td>
+            <td class="spec-note">"Profile saved!" or "You're in the family."</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Placeholder text</td>
+            <td>Show format only. Never put instructions in placeholders.</td>
+            <td class="spec-note">"(801) 555-0100" not "Enter your phone number here"</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Privacy language</td>
+            <td>Be specific and simple. Name who can and cannot see the information.</td>
+            <td class="spec-note">"Only your family can see this. We never share it." not "Your data is private."</td>
+          </tr>
+          <tr>
+            <td class="spec-key">Tech terms to avoid</td>
+            <td>Never use: sync, onboard, node, user, admin, configure, authenticate.</td>
+            <td class="spec-note">Instead: update, join, family member, person in charge, set up, sign in.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 08. ACCESSIBILITY ──────────────────────────────────────── -->
+  <div class="section" id="accessibility">
+    <div class="section-eyebrow">08</div>
+    <div class="section-title">Accessibility</div>
+    <div class="section-desc">Accessibility for this product is not a compliance checkbox. It is the product. Our senior users depend on it.</div>
+    <div class="section-rule"></div>
+
+    <table class="spec-table">
+      <thead>
+        <tr><th>Requirement</th><th>Standard</th><th>FamilyBranch Spec</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="spec-key">Text contrast</td>
+          <td>WCAG AA 4.5:1</td>
+          <td class="spec-val">Target 7:1 (AAA) for all body text</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">Minimum font size</td>
+          <td>WCAG: no minimum</td>
+          <td class="spec-val">15px body · 12px caption · Hard floor</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">Tap target size</td>
+          <td>Apple HIG: 44px · WCAG: 44px</td>
+          <td class="spec-val">48px minimum on all interactive elements</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">System font scaling</td>
+          <td>iOS Dynamic Type</td>
+          <td class="spec-val">All text in rem units. Must not break layout at Large and Extra Large font settings.</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">Color not sole indicator</td>
+          <td>WCAG 1.4.1</td>
+          <td class="spec-val">Claimed vs. unclaimed is always differentiated by label text AND color, never color alone.</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">Error identification</td>
+          <td>WCAG 3.3.1</td>
+          <td class="spec-val">Errors identified in text, not color only. Error message appears inline under the affected field.</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">VoiceOver / TalkBack</td>
+          <td>iOS / Android screen readers</td>
+          <td class="spec-val">All interactive elements have descriptive accessibility labels. Images have alt text.</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">Focus indicators</td>
+          <td>WCAG 2.4.7</td>
+          <td class="spec-val">Visible focus ring on all focusable elements. 2px solid Sage on all inputs.</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+        <tr>
+          <td class="spec-key">Reduce motion</td>
+          <td>prefers-reduced-motion</td>
+          <td class="spec-val">Respect system preference. Any animations are disabled when reduced motion is enabled.</td>
+          <td><span class="tag required">Required</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout gold">
+      <div class="callout-label">Senior-Specific Considerations</div>
+      <div class="callout-body">Many women in our 60–80 demographic have mild cataracts, reduced contrast sensitivity, or early macular degeneration. Design for this. High contrast text, generous white space, and large clear targets are not accommodations. They are good design decisions that benefit every user. Test the app with the iOS accessibility large text setting enabled before every release.</div>
+    </div>
+  </div>
+
+  <!-- ── 09. PRINT DIRECTORY ────────────────────────────────────── -->
+  <div class="section" id="print">
+    <div class="section-eyebrow">09</div>
+    <div class="section-title">Print Directory Design</div>
+    <div class="section-desc">The printed family directory is the hero product for the grandma segment. It must be beautiful enough to sit on the coffee table and functional enough to actually be useful. It is not a printout. It is an heirloom.</div>
+    <div class="section-rule"></div>
+
+    <div class="print-preview">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid-gray);margin-bottom:6px">The Anderson Extended Family</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--charcoal);line-height:1.1">Family<br><em style="color:var(--sage)">Directory</em></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--warm-gray);font-style:italic">2025 Edition</div>
+          <div style="width:40px;height:2px;background:var(--sage);margin:8px 0 0 auto;border-radius:2px"></div>
+        </div>
+      </div>
+      <!-- Sample member card -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div style="background:var(--cream);border-radius:8px;padding:16px;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="width:48px;height:48px;border-radius:50%;background:var(--sage-light);border:2px solid var(--sage);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--sage);font-weight:500">M</div>
+            <div>
+              <div style="font-size:15px;font-weight:600;color:var(--charcoal)">Miranda Anderson</div>
+              <div style="font-size:11px;color:var(--sage);font-family:'Cormorant Garamond',serif;font-style:italic">Mom · The Anderson Family</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--warm-gray);line-height:1.8">
+            📞 (801) 555-0192<br>
+            ✉ miranda@email.com<br>
+            📍 Sugarhouse, Salt Lake City<br>
+            🎂 March 15
+          </div>
+        </div>
+        <div style="background:var(--cream);border-radius:8px;padding:16px;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="width:48px;height:48px;border-radius:50%;background:var(--sage-light);border:2px solid var(--sage);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--sage);font-weight:500">S</div>
+            <div>
+              <div style="font-size:15px;font-weight:600;color:var(--charcoal)">Spencer Anderson</div>
+              <div style="font-size:11px;color:var(--sage);font-family:'Cormorant Garamond',serif;font-style:italic">Dad · The Anderson Family</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--warm-gray);line-height:1.8">
+            📞 (801) 555-0108<br>
+            ✉ spencer@email.com<br>
+            📍 Sugarhouse, Salt Lake City<br>
+            🎂 November 3
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="spec-table">
+      <thead>
+        <tr><th>Print Element</th><th>Specification</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="spec-key">Format</td>
+          <td>Softcover or hardcover, 7" × 9". Portrait orientation. 20–60 pages depending on family size.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Cover</td>
+          <td>Family name in Cormorant Garamond. Year edition. Family tree silhouette or photo mosaic. Sage green or cream as cover color.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Interior typeface</td>
+          <td>Cormorant Garamond for names and headings. DM Sans for contact fields. Minimum 12pt body text in print.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Member card layout</td>
+          <td>Two columns on standard pages. One column for members with many social links. Photo circle, name, relationship, all filled-in contact fields. Empty fields omitted entirely.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Tree visualization page</td>
+          <td>Full-page family tree spread. Names and photos in nodes. Extended family shown with unit groupings. Printed in sage green and charcoal.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Print partner</td>
+          <td>Artifact Uprising or Blurb. High-quality paper. Not print-on-demand commodity quality.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Annual update model</td>
+          <td>Data pulls live from the app at time of order. Year on cover changes. Families reorder as info changes. Target: annual repurchase.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 10. ANTI-PATTERNS ──────────────────────────────────────── -->
+  <div class="section" id="antipatterns">
+    <div class="section-eyebrow">10</div>
+    <div class="section-title">Anti-Patterns</div>
+    <div class="section-desc">Things that commonly appear in consumer apps and must never appear in FamilyBranch. This list is a standing veto for any feature proposal.</div>
+    <div class="section-rule"></div>
+
+    <table class="spec-table">
+      <thead>
+        <tr><th>Anti-Pattern</th><th>Why It Fails Our Audience</th><th>What To Do Instead</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="spec-key">Dark mode as default</td>
+          <td>Seniors find dark interfaces harder to read. Text-on-dark-bg reduces legibility for reduced contrast sensitivity.</td>
+          <td>Light mode only at MVP. If dark mode is added later, it must be opt-in and never the default.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Swipe-only navigation</td>
+          <td>Swipe gestures are not discoverable and require motor precision. Seniors often trigger them accidentally or miss them entirely.</td>
+          <td>All primary actions have visible tap targets. Swipe can be an enhancement, never the only method.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Icon-only bottom nav</td>
+          <td>Icons without labels require memorization. The senior user does not want to memorize what a leaf icon means.</td>
+          <td>Every bottom nav item has an icon AND a text label. Always.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Auto-dismissing toasts</td>
+          <td>Success and error messages that disappear after 2 seconds are missed by slower readers.</td>
+          <td>Toasts persist for at least 4 seconds. Critical errors stay until dismissed manually.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Infinite scroll</td>
+          <td>Disorienting. The user loses her place. No clear sense of progress or completion.</td>
+          <td>Paginated lists or clearly bounded scrollable sections with visible end states.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Hamburger menus</td>
+          <td>Not discoverable. Seniors often do not know what the three-line icon means or that it contains navigation.</td>
+          <td>All primary navigation in the bottom tab bar. Settings accessible from a clearly labeled icon in the app nav.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Micro-copy that assumes tech literacy</td>
+          <td>"Sync your contacts", "Link your account", "Configure your settings" assumes vocabulary our user does not share.</td>
+          <td>Plain language always. "Update your info", "Connect to your family", "Change your preferences".</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Skipping confirmation on destructive actions</td>
+          <td>Seniors are more likely to tap something accidentally. Permanent actions without confirmation create anxiety about using the app at all.</td>
+          <td>Any action that deletes data or removes a member requires a plain-language confirmation dialog with cancel as the default.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Social pressure patterns</td>
+          <td>"3 people are viewing this profile right now" style patterns create anxiety, not engagement.</td>
+          <td>FamilyBranch is private and calm. No notification counts, urgency language, or social proof pressure.</td>
+        </tr>
+        <tr>
+          <td class="spec-key">Gamification</td>
+          <td>Streaks, badges, and points feel juvenile and out of place in a product about family relationships.</td>
+          <td>Progress is communicated through meaningful completion states, not abstract scores.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout rose">
+      <div class="callout-label">The Grandma Test</div>
+      <div class="callout-body">Before shipping any screen, ask: could my grandmother use this without help? If the honest answer is no, the screen is not ready. This is not a hypothetical. Test with real women in the 60–75 age range before launch. What you discover will be humbling and essential.</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:40px 0 0;border-top:1px solid var(--border);margin-top:24px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:var(--mid-gray)">
+      "Design is not just what it looks like. Design is how it works." <span class="orn">✦</span> Adapted for the women who hold families together.
+    </div>
+    <div style="font-family:'Fira Code',monospace;font-size:10px;color:var(--mid-gray);margin-top:12px;letter-spacing:0.08em">
+      FamilyBranch Design Guidelines · v1.0 · MVP Scope
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

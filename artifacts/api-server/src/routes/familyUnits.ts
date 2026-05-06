@@ -1,0 +1,119 @@
+import { Router } from "express";
+import { nanoid } from "nanoid";
+import { db } from "@workspace/db";
+import { familyUnitsTable, personsTable } from "@workspace/db";
+import { eq, ilike, count } from "drizzle-orm";
+import { CreateFamilyUnitBody, UpdateFamilyUnitBody } from "@workspace/api-zod";
+import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { formatPerson, formatUnit } from "./auth";
+
+const router = Router();
+
+// POST /api/family-units
+router.post("/family-units", requireAuth, async (req, res) => {
+  const parsed = CreateFamilyUnitBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation error", message: parsed.error.message });
+    return;
+  }
+
+  const unitCode = nanoid(8).toUpperCase();
+  const [unit] = await db
+    .insert(familyUnitsTable)
+    .values({ unitName: parsed.data.unitName, unitCode, createdBy: req.auth!.personId })
+    .returning();
+
+  res.status(201).json(formatUnit(unit, 0, 0));
+});
+
+// GET /api/family-units/search
+router.get("/family-units/search", requireAuth, async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  if (!q) {
+    res.json([]);
+    return;
+  }
+
+  const units = await db
+    .select()
+    .from(familyUnitsTable)
+    .where(ilike(familyUnitsTable.unitName, `%${q}%`))
+    .limit(10);
+
+  const results = await Promise.all(
+    units.map(async (u) => {
+      const [row] = await db
+        .select({ count: count() })
+        .from(personsTable)
+        .where(eq(personsTable.familyUnitId, u.id));
+      return {
+        id: u.id,
+        unitName: u.unitName,
+        unitCode: u.unitCode,
+        memberCount: Number(row?.count ?? 0),
+      };
+    }),
+  );
+
+  res.json(results);
+});
+
+// GET /api/family-units/:unitId
+router.get("/family-units/:unitId", requireAuth, async (req, res) => {
+  const unitId = String(req.params.unitId);
+  const units = await db
+    .select()
+    .from(familyUnitsTable)
+    .where(eq(familyUnitsTable.id, unitId))
+    .limit(1);
+
+  if (!units.length) {
+    res.status(404).json({ error: "Not found", message: "Unit not found" });
+    return;
+  }
+
+  const unit = units[0];
+  const members = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, unit.id));
+
+  res.json({
+    ...formatUnit(unit, members.length, members.filter((m) => m.claimed).length),
+    members: members.map(formatPerson),
+  });
+});
+
+// PATCH /api/family-units/:unitId
+router.patch("/family-units/:unitId", requireAuth, requireAdmin, async (req, res) => {
+  const unitId = String(req.params.unitId);
+  const parsed = UpdateFamilyUnitBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation error", message: parsed.error.message });
+    return;
+  }
+
+  const updateData: Partial<typeof familyUnitsTable.$inferInsert> = {};
+  if (parsed.data.unitName) updateData.unitName = parsed.data.unitName;
+  updateData.updatedAt = new Date();
+
+  const updated = await db
+    .update(familyUnitsTable)
+    .set(updateData)
+    .where(eq(familyUnitsTable.id, unitId))
+    .returning();
+
+  if (!updated.length) {
+    res.status(404).json({ error: "Not found", message: "Unit not found" });
+    return;
+  }
+
+  const members = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, updated[0].id));
+
+  res.json(formatUnit(updated[0], members.length, members.filter((m) => m.claimed).length));
+});
+
+export default router;
