@@ -26,7 +26,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -233,16 +235,16 @@ export default function Members() {
                           </FormControl>
                           <SelectContent>
                             {RELATIONSHIP_OPTIONS.map((group) => (
-                              <div key={group.group}>
-                                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              <SelectGroup key={group.group}>
+                                <SelectLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                                   {group.group}
-                                </div>
+                                </SelectLabel>
                                 {group.options.map((opt) => (
                                   <SelectItem key={opt} value={opt}>
                                     {opt}
                                   </SelectItem>
                                 ))}
-                              </div>
+                              </SelectGroup>
                             ))}
                           </SelectContent>
                         </Select>
