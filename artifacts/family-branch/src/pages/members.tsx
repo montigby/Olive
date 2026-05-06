@@ -44,13 +44,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const RELATIONSHIP_OPTIONS = [
-  { group: "Spouses & Partners", options: ["Mom", "Dad", "Wife", "Husband", "Partner", "Spouse"] },
-  { group: "Children", options: ["Son", "Daughter", "Child", "Stepson", "Stepdaughter"] },
-  { group: "Grandchildren", options: ["Grandson", "Granddaughter", "Grandchild"] },
-  { group: "Siblings", options: ["Brother", "Sister", "Sibling"] },
-  { group: "Extended Family", options: ["Uncle", "Aunt", "Nephew", "Niece", "Cousin"] },
-  { group: "Grandparents", options: ["Grandma", "Grandpa", "Grandmother", "Grandfather", "Nana", "Papa"] },
-  { group: "Other", options: ["In-Law", "Stepparent", "Guardian", "Other"] },
+  {
+    group: "Women",
+    options: ["Wife", "Mom", "Daughter", "Sister", "Granddaughter", "Aunt", "Niece", "Grandma", "Nana", "Stepdaughter"],
+  },
+  {
+    group: "Men",
+    options: ["Husband", "Dad", "Son", "Brother", "Grandson", "Uncle", "Nephew", "Grandpa", "Papa", "Stepson"],
+  },
+  {
+    group: "Other",
+    options: ["Partner", "Spouse", "Cousin", "In-Law", "Stepparent", "Guardian", "Other"],
+  },
 ];
 
 const ALL_ROLES = RELATIONSHIP_OPTIONS.flatMap((g) => g.options);
@@ -93,7 +98,7 @@ export default function Members() {
   });
 
   const selectedRole = form.watch("relationshipLabel");
-  const isGrandchildRole = ["Grandson", "Granddaughter", "Grandchild"].includes(selectedRole);
+  const isGrandchildRole = ["Grandson", "Granddaughter"].includes(selectedRole);
 
   const onSubmit = (data: AddMemberForm) => {
     addMemberMutation.mutate(
@@ -152,9 +157,9 @@ export default function Members() {
     }
   };
 
-  // Members eligible to be a "parent" in the tree (adult roles)
+  // Members eligible to be a "parent" in the tree (children who can have their own kids)
   const parentCandidates = (members || []).filter((m) =>
-    ["Mom", "Dad", "Son", "Daughter", "Child", "Stepson", "Stepdaughter"].includes(m.relationshipLabel)
+    ["Son", "Daughter", "Stepson", "Stepdaughter"].includes(m.relationshipLabel)
   );
 
   return (
@@ -222,7 +227,7 @@ export default function Members() {
                           onValueChange={(val) => {
                             field.onChange(val);
                             // Clear parent if not a grandchild role
-                            if (!["Grandson", "Granddaughter", "Grandchild"].includes(val)) {
+                            if (!["Grandson", "Granddaughter"].includes(val)) {
                               form.setValue("parentPersonId", null);
                             }
                           }}
