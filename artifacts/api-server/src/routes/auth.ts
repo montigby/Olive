@@ -34,6 +34,7 @@ function formatPerson(p: typeof personsTable.$inferSelect) {
     linkedin: p.linkedin,
     otherSocial: p.otherSocial,
     relationshipLabel: p.relationshipLabel,
+    parentPersonId: p.parentPersonId ?? null,
     familyUnitId: p.familyUnitId,
     isAdmin: p.isAdmin,
     claimed: p.claimed,

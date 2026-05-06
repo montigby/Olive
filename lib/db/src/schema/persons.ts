@@ -36,6 +36,7 @@ export const personsTable = pgTable(
     linkedin: varchar("linkedin", { length: 100 }),
     otherSocial: text("other_social"),
     relationshipLabel: varchar("relationship_label", { length: 100 }).notNull(),
+    parentPersonId: uuid("parent_person_id"),
     familyUnitId: uuid("family_unit_id")
       .notNull()
       .references(() => familyUnitsTable.id, { onDelete: "cascade" }),

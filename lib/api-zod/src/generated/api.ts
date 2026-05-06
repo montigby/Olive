@@ -205,6 +205,7 @@ export const UpdatePersonBody = zod.object({
   linkedin: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
   relationshipLabel: zod.string().optional(),
+  parentPersonId: zod.string().uuid().nullish(),
 });
 
 export const UpdatePersonResponse = zod.object({
@@ -396,6 +397,7 @@ export const AddMemberBody = zod.object({
   firstName: zod.string(),
   lastName: zod.string(),
   relationshipLabel: zod.string(),
+  parentPersonId: zod.string().uuid().nullish(),
 });
 
 /**

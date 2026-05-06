@@ -744,6 +744,10 @@ components:
           nullable: true
         relationshipLabel:
           type: string
+        parentPersonId:
+          type: string
+          format: uuid
+          nullable: true
 
     # ─── Family Unit ───────────────────────────────────────────────
     FamilyUnit:
@@ -831,6 +835,10 @@ components:
           type: string
         relationshipLabel:
           type: string
+        parentPersonId:
+          type: string
+          format: uuid
+          nullable: true
       required: [firstName, lastName, relationshipLabel]
 
     # ─── Invites ───────────────────────────────────────────────────

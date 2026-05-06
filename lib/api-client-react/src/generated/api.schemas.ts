@@ -114,6 +114,7 @@ export interface UpdatePersonBody {
   linkedin?: string | null;
   otherSocial?: string | null;
   relationshipLabel?: string;
+  parentPersonId?: string | null;
 }
 
 export interface FamilyUnitSummary {
@@ -139,6 +140,7 @@ export interface AddMemberBody {
   firstName: string;
   lastName: string;
   relationshipLabel: string;
+  parentPersonId?: string | null;
 }
 
 export interface InviteResponse {
