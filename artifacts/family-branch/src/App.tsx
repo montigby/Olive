@@ -16,6 +16,7 @@ const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Tree = lazy(() => import("@/pages/tree"));
 const Members = lazy(() => import("@/pages/members"));
 const Profile = lazy(() => import("@/pages/profile"));
+const Calendar = lazy(() => import("@/pages/calendar"));
 const LinkPage = lazy(() => import("@/pages/link"));
 const Settings = lazy(() => import("@/pages/settings"));
 
@@ -43,6 +44,7 @@ function AppRouter() {
               <Route path="/members" component={Members} />
               <Route path="/members/:personId" component={Profile} />
               <Route path="/profile" component={Profile} />
+              <Route path="/calendar" component={Calendar} />
               <Route path="/link" component={LinkPage} />
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />

@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { BookUser, LogOut, Settings, Users, Network, Home, Menu } from "lucide-react";
+import { BookUser, LogOut, Settings, Users, Network, Home, Menu, Cake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLogout } from "@workspace/api-client-react";
@@ -44,6 +44,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { label: "Dashboard", href: "/dashboard", icon: Home },
     { label: "Family Tree", href: "/tree", icon: Network },
     { label: "Directory", href: "/members", icon: Users },
+    { label: "Birthdays", href: "/calendar", icon: Cake },
     { label: "Settings", href: "/settings", icon: Settings },
   ];
 

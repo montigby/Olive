@@ -1,7 +1,7 @@
 import { useGetFamilyTree, getGetFamilyTreeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useEffect } from "react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import {
   ReactFlow,
   MiniMap,
@@ -48,30 +48,31 @@ const V_GAP = 120;
 const H_GAP = 16;
 
 // ---------------------------------------------------------------------------
-// PersonCard — uses Link so navigation is guaranteed
+// PersonCard — data-person-id lets onNodeClick detect which person was clicked
 // ---------------------------------------------------------------------------
 function PersonCard({ member }: { member: any }) {
   return (
-    <Link href={`/members/${member.id}`}>
-      <div
-        className="flex items-center gap-2.5 bg-background rounded-xl border border-border shadow-sm px-3 py-2 cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
-        style={{ width: PERSON_W }}
-      >
-        <Avatar className="h-8 w-8 flex-shrink-0 border border-primary/20">
-          <AvatarImage src={member.photoUrl} />
-          <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
-            {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight truncate text-foreground">
-            {member.firstName} {member.lastName}
-          </p>
-          <p className="text-[11px] text-muted-foreground truncate">{member.relationshipLabel}</p>
-        </div>
-        {member.claimed && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />}
+    <div
+      data-person-id={member.id}
+      className="nopan flex items-center gap-2.5 bg-background rounded-xl border border-border shadow-sm px-3 py-2 cursor-pointer hover:border-primary/50 hover:shadow-md hover:bg-secondary/30 transition-all select-none"
+      style={{ width: PERSON_W }}
+    >
+      <Avatar className="h-8 w-8 flex-shrink-0 border border-primary/20 pointer-events-none">
+        <AvatarImage src={member.photoUrl} />
+        <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
+          {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1 pointer-events-none">
+        <p className="text-sm font-semibold leading-tight truncate text-foreground">
+          {member.firstName} {member.lastName}
+        </p>
+        <p className="text-[11px] text-muted-foreground truncate">{member.relationshipLabel}</p>
       </div>
-    </Link>
+      {member.claimed && (
+        <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 pointer-events-none" />
+      )}
+    </div>
   );
 }
 
@@ -84,11 +85,9 @@ const CoupleNode = ({ data }: any) => {
   return (
     <div className="flex flex-col items-center gap-0">
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
-
-      <div className="mb-2 px-4 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold tracking-wide shadow-sm whitespace-nowrap">
+      <div className="mb-2 px-4 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold tracking-wide shadow-sm whitespace-nowrap pointer-events-none">
         {unitName}
       </div>
-
       <div className="flex items-center">
         {parents.length === 0 ? (
           <div className="px-4 py-2 text-sm text-muted-foreground italic">No members</div>
@@ -97,7 +96,7 @@ const CoupleNode = ({ data }: any) => {
         ) : (
           <>
             <PersonCard member={parents[0]} />
-            <div className="flex items-center mx-1">
+            <div className="flex items-center mx-1 pointer-events-none">
               <div className="w-4 h-0.5 bg-primary/40" />
               <div className="w-3 h-3 rounded-full border-2 border-primary/50 bg-background shadow-sm" />
               <div className="w-4 h-0.5 bg-primary/40" />
@@ -106,7 +105,6 @@ const CoupleNode = ({ data }: any) => {
           </>
         )}
       </div>
-
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
   );
@@ -136,7 +134,6 @@ function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: an
   const edges: any[] = [];
 
   const allMembers: any[] = unit.members || [];
-
   const parents = allMembers.filter((m: any) => isParentRole(m.relationshipLabel));
   const grandchildren = allMembers.filter((m: any) => isGrandchildRole(m.relationshipLabel));
   const children = allMembers.filter(
@@ -170,24 +167,18 @@ function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: an
 
   const childSlotWidths = finalChildren.map((child: any) => {
     const myGrandkids = grandchildrenByParent[child.id] || [];
-    if (myGrandkids.length === 0) return PERSON_W;
-    return Math.max(PERSON_W, myGrandkids.length * PERSON_W + (myGrandkids.length - 1) * H_GAP);
+    return myGrandkids.length === 0
+      ? PERSON_W
+      : Math.max(PERSON_W, myGrandkids.length * PERSON_W + (myGrandkids.length - 1) * H_GAP);
   });
   const childRowWidth =
     childSlotWidths.reduce((s: number, w: number) => s + w, 0) +
-    (finalChildren.length - 1) * H_GAP;
+    Math.max(0, finalChildren.length - 1) * H_GAP;
 
   const unattachedGCWidth =
     unattachedGrandchildren.length > 0
       ? unattachedGrandchildren.length * PERSON_W + (unattachedGrandchildren.length - 1) * H_GAP
       : 0;
-
-  const linkedUnitCount = unit.children?.length || 0;
-  const linkedUnitsWidth =
-    linkedUnitCount > 0 ? linkedUnitCount * (COUPLE_W + 60) + (linkedUnitCount - 1) * 60 : 0;
-
-  const totalWidth = Math.max(coupleNodeW, childRowWidth, unattachedGCWidth, linkedUnitsWidth, 10);
-  void totalWidth;
 
   if (finalChildren.length > 0) {
     const childY = y + V_GAP;
@@ -302,6 +293,7 @@ function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: an
 export default function Tree() {
   const { user } = useAuth();
   const unitId = user?.familyUnit.id || "";
+  const [, navigate] = useLocation();
 
   const { data: treeData, isLoading } = useGetFamilyTree(unitId, {
     query: {
@@ -333,12 +325,10 @@ export default function Tree() {
     <div className="flex flex-col h-[calc(100vh-120px)] space-y-4">
       <div>
         <h1 className="text-4xl font-serif font-bold text-foreground">Family Tree</h1>
-        <p className="text-muted-foreground mt-1">
-          Click any person to view their profile.
-        </p>
+        <p className="text-muted-foreground mt-1">Click any person to view their profile.</p>
       </div>
 
-      <div className="flex-1 rounded-2xl border overflow-hidden relative shadow-inner bg-[#FAF7F2]">
+      <div className="flex-1 rounded-2xl border overflow-hidden shadow-inner bg-[#FAF7F2]">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -351,7 +341,17 @@ export default function Tree() {
           maxZoom={2}
           nodesDraggable={false}
           nodesConnectable={false}
+          elementsSelectable={false}
           className="bg-[#FAF7F2]"
+          onNodeClick={(event) => {
+            // Walk up from the clicked element to find a PersonCard with data-person-id
+            const target = event.target as HTMLElement;
+            const card = target.closest("[data-person-id]");
+            if (card) {
+              const personId = card.getAttribute("data-person-id");
+              if (personId) navigate(`/members/${personId}`);
+            }
+          }}
         >
           <Background color="#c8ddd0" gap={24} size={1} />
           <Controls className="bg-card border shadow-sm rounded-xl" />

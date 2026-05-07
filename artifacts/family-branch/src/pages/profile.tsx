@@ -35,6 +35,7 @@ import {
   Link as LinkIcon,
   Pencil,
   AlertCircle,
+  Cake,
 } from "lucide-react";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
@@ -184,9 +185,10 @@ function ProfileView({
           </h2>
           <p className="text-muted-foreground text-sm mt-1">{person.relationshipLabel}</p>
           {birthday && (
-            <p className="text-muted-foreground text-sm mt-1">
-              <span className="text-foreground/60">Birthday:</span> {birthday}
-            </p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <Cake className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span className="text-sm text-muted-foreground">{birthday}</span>
+            </div>
           )}
         </CardContent>
       </Card>
