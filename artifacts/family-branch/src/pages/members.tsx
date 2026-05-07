@@ -46,11 +46,11 @@ import { Badge } from "@/components/ui/badge";
 const RELATIONSHIP_OPTIONS = [
   {
     group: "Women",
-    options: ["Wife", "Mom", "Daughter", "Sister", "Granddaughter", "Aunt", "Niece", "Grandma", "Nana", "Stepdaughter"],
+    options: ["Daughter", "Granddaughter", "Sister", "Aunt", "Niece", "Wife", "Mom", "Grandma", "Nana", "Stepdaughter"],
   },
   {
     group: "Men",
-    options: ["Husband", "Dad", "Son", "Brother", "Grandson", "Uncle", "Nephew", "Grandpa", "Papa", "Stepson"],
+    options: ["Son", "Grandson", "Brother", "Uncle", "Nephew", "Husband", "Dad", "Grandpa", "Papa", "Stepson"],
   },
   {
     group: "Other",
@@ -238,7 +238,7 @@ export default function Members() {
                               <SelectValue placeholder="Select relationship..." />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent position="popper" className="max-h-64 overflow-y-auto">
                             {RELATIONSHIP_OPTIONS.map((group) => (
                               <SelectGroup key={group.group}>
                                 <SelectLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
