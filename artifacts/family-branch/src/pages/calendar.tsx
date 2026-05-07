@@ -10,13 +10,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Cake } from "lucide-react";
 
+function parseDateLocal(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y!, m! - 1, d!);
+}
+
 function formatBirthdayDate(birthday: string): string {
-  const d = new Date(birthday);
+  const d = parseDateLocal(birthday);
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
 function getMonthLabel(birthday: string): string {
-  const d = new Date(birthday);
+  const d = parseDateLocal(birthday);
   const now = new Date();
   const thisYear = new Date(now.getFullYear(), d.getMonth(), d.getDate());
   if (thisYear < now) thisYear.setFullYear(now.getFullYear() + 1);

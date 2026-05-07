@@ -74,11 +74,17 @@ function formatAddress(person: any): string | null {
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
+function parseDateLocal(s: string): Date | null {
+  const parts = s.split("-").map(Number);
+  if (parts.length < 3 || parts.some(isNaN)) return null;
+  return new Date(parts[0]!, parts[1]! - 1, parts[2]!);
+}
+
 function formatBirthday(birthday: string | null | undefined, showYear: boolean): string | null {
   if (!birthday) return null;
   try {
-    const d = new Date(birthday);
-    if (isNaN(d.getTime())) return null;
+    const d = parseDateLocal(birthday.split("T")[0]!);
+    if (!d || isNaN(d.getTime())) return null;
     return showYear
       ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
       : d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
