@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "wouter";
+import { Link, useLocation, useParams } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
   useGetPerson,
@@ -560,7 +560,13 @@ function ProfileEditForm({
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Profile() {
-  const { personId } = useParams<{ personId?: string }>();
+  // useParams is unreliable in Wouter v3 nested routes (outer /:path* swallows params).
+  // Parse personId directly from the URL as the authoritative source.
+  const [location] = useLocation();
+  const { personId: paramPersonId } = useParams<{ personId?: string }>();
+  const personIdFromUrl = location.match(/^\/members\/([^/]+)/)?.[1];
+  const personId = personIdFromUrl || paramPersonId;
+
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
 

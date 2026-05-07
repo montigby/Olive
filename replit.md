@@ -67,6 +67,7 @@ A private living family directory where families stay connected — members clai
 - `req.params.xxx` in Express is typed `string | string[]` — always cast with `String(req.params.xxx)` in route handlers
 - Do not add leaf packages to root `tsconfig.json` references
 - `pnpm run typecheck` is authoritative; ignore editor LSP disagreements
+- **Wouter v3 nested-route params bug**: `useParams()` inside a component nested under `<Route path="/:path*">` returns the outer route's params (e.g. `{ path: "members/uuid" }`), not the inner route's (e.g. `{ personId: "uuid" }`). Fix: parse from URL directly — `const id = useLocation()[0].match(/\/members\/([^/]+)/)?.[1]`
 
 ## Pointers
 
