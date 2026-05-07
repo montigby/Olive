@@ -1,6 +1,7 @@
 import { useGetFamilyTree, getGetFamilyTreeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import {
   ReactFlow,
   MiniMap,
@@ -41,20 +42,20 @@ function isGrandchildRole(label: string) {
 // Layout sizes
 // ---------------------------------------------------------------------------
 const PERSON_W = 190;
-const PERSON_H = 56;
-const COUPLE_CONNECTOR_W = 36; // ring + two lines
+const COUPLE_CONNECTOR_W = 36;
 const COUPLE_W = PERSON_W * 2 + COUPLE_CONNECTOR_W;
 const V_GAP = 120;
 const H_GAP = 16;
 
 // ---------------------------------------------------------------------------
-// PersonCard component
+// PersonCard — clickable
 // ---------------------------------------------------------------------------
-function PersonCard({ member }: { member: any }) {
+function PersonCard({ member, onNavigate }: { member: any; onNavigate?: (id: string) => void }) {
   return (
     <div
-      className="flex items-center gap-2.5 bg-background rounded-xl border border-border shadow-sm px-3 py-2"
+      className="flex items-center gap-2.5 bg-background rounded-xl border border-border shadow-sm px-3 py-2 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
       style={{ width: PERSON_W }}
+      onClick={() => onNavigate?.(member.id)}
     >
       <Avatar className="h-8 w-8 flex-shrink-0 border border-primary/20">
         <AvatarImage src={member.photoUrl} />
@@ -74,11 +75,11 @@ function PersonCard({ member }: { member: any }) {
 }
 
 // ---------------------------------------------------------------------------
-// Node types
+// Node types — receive onNavigate through data
 // ---------------------------------------------------------------------------
 
 const CoupleNode = ({ data }: any) => {
-  const { parents, unitName } = data as { parents: any[]; unitName: string };
+  const { parents, unitName, onNavigate } = data;
   return (
     <div className="flex flex-col items-center gap-0">
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
@@ -91,16 +92,16 @@ const CoupleNode = ({ data }: any) => {
         {parents.length === 0 ? (
           <div className="px-4 py-2 text-sm text-muted-foreground italic">No members</div>
         ) : parents.length === 1 ? (
-          <PersonCard member={parents[0]} />
+          <PersonCard member={parents[0]} onNavigate={onNavigate} />
         ) : (
           <>
-            <PersonCard member={parents[0]} />
+            <PersonCard member={parents[0]} onNavigate={onNavigate} />
             <div className="flex items-center mx-1">
               <div className="w-4 h-0.5 bg-primary/40" />
               <div className="w-3 h-3 rounded-full border-2 border-primary/50 bg-background shadow-sm" />
               <div className="w-4 h-0.5 bg-primary/40" />
             </div>
-            <PersonCard member={parents[1]} />
+            <PersonCard member={parents[1]} onNavigate={onNavigate} />
           </>
         )}
       </div>
@@ -110,32 +111,11 @@ const CoupleNode = ({ data }: any) => {
   );
 };
 
-// A "person" node used for children AND grandchildren
 const ChildNode = ({ data }: any) => {
   return (
     <div>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
-      <PersonCard member={data.member} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
-    </div>
-  );
-};
-
-// A sub-couple: a child who has their own spouse shown inline (no linked unit yet)
-const SubCoupleNode = ({ data }: any) => {
-  const { person, spouse } = data as { person: any; spouse: any };
-  return (
-    <div className="flex flex-col items-center">
-      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
-      <div className="flex items-center">
-        <PersonCard member={person} />
-        <div className="flex items-center mx-1">
-          <div className="w-4 h-0.5 bg-primary/40" />
-          <div className="w-3 h-3 rounded-full border-2 border-primary/50 bg-background shadow-sm" />
-          <div className="w-4 h-0.5 bg-primary/40" />
-        </div>
-        <PersonCard member={spouse} />
-      </div>
+      <PersonCard member={data.member} onNavigate={data.onNavigate} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
   );
@@ -144,7 +124,6 @@ const SubCoupleNode = ({ data }: any) => {
 const nodeTypes = {
   couple: CoupleNode,
   child: ChildNode,
-  subCouple: SubCoupleNode,
 };
 
 // ---------------------------------------------------------------------------
@@ -157,20 +136,23 @@ interface LayoutResult {
   totalWidth: number;
 }
 
-function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
+function layoutUnit(
+  unit: any,
+  cx: number,
+  y: number,
+  onNavigate: (id: string) => void,
+): LayoutResult {
   const nodes: any[] = [];
   const edges: any[] = [];
 
   const allMembers: any[] = unit.members || [];
 
-  // Split into parents (adults), children, and grandchildren
   const parents = allMembers.filter((m: any) => isParentRole(m.relationshipLabel));
   const grandchildren = allMembers.filter((m: any) => isGrandchildRole(m.relationshipLabel));
   const children = allMembers.filter(
     (m: any) => !isParentRole(m.relationshipLabel) && !isGrandchildRole(m.relationshipLabel)
   );
 
-  // Fallback: if no explicit parents, treat first 1–2 as parents when no children exist
   let finalParents = parents;
   let finalChildren = children;
   if (parents.length === 0 && children.length > 0) {
@@ -178,19 +160,15 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
     finalChildren = children.slice(2);
   }
 
-  // --- Couple node (top) ---
   const coupleId = `couple-${unit.unitId}`;
   const coupleNodeW = finalParents.length >= 2 ? COUPLE_W : PERSON_W;
   nodes.push({
     id: coupleId,
     type: "couple",
     position: { x: cx - coupleNodeW / 2, y },
-    data: { parents: finalParents, unitName: unit.unitName },
+    data: { parents: finalParents, unitName: unit.unitName, onNavigate },
   });
 
-  // ── Children row ──────────────────────────────────────────────────────────
-  // For each child we need to figure out if they have grandchildren attached.
-  // Build a map: parentPersonId → grandchildren[]
   const grandchildrenByParent: Record<string, any[]> = {};
   for (const gc of grandchildren) {
     if (gc.parentPersonId) {
@@ -198,28 +176,25 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
       grandchildrenByParent[gc.parentPersonId].push(gc);
     }
   }
-  // Unattached grandchildren (no parentPersonId set)
   const unattachedGrandchildren = grandchildren.filter((gc: any) => !gc.parentPersonId);
 
-  // Total width needed for child row
-  let childRowWidth = 0;
-  // Each child slot: max(PERSON_W, sum of their grandchildren)
   const childSlotWidths = finalChildren.map((child: any) => {
     const myGrandkids = grandchildrenByParent[child.id] || [];
     if (myGrandkids.length === 0) return PERSON_W;
     return Math.max(PERSON_W, myGrandkids.length * PERSON_W + (myGrandkids.length - 1) * H_GAP);
   });
-  childRowWidth = childSlotWidths.reduce((s: number, w: number) => s + w, 0) + (finalChildren.length - 1) * H_GAP;
+  const childRowWidth =
+    childSlotWidths.reduce((s: number, w: number) => s + w, 0) +
+    (finalChildren.length - 1) * H_GAP;
 
-  // Unattached grandchildren row width
   const unattachedGCWidth =
     unattachedGrandchildren.length > 0
       ? unattachedGrandchildren.length * PERSON_W + (unattachedGrandchildren.length - 1) * H_GAP
       : 0;
 
-  // Linked child units width (for sizing)
   const linkedUnitCount = unit.children?.length || 0;
-  const linkedUnitsWidth = linkedUnitCount > 0 ? linkedUnitCount * (COUPLE_W + 60) + (linkedUnitCount - 1) * 60 : 0;
+  const linkedUnitsWidth =
+    linkedUnitCount > 0 ? linkedUnitCount * (COUPLE_W + 60) + (linkedUnitCount - 1) * 60 : 0;
 
   const totalWidth = Math.max(coupleNodeW, childRowWidth, unattachedGCWidth, linkedUnitsWidth, 10);
 
@@ -236,7 +211,7 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
         id: childNodeId,
         type: "child",
         position: { x: childCx - PERSON_W / 2, y: childY },
-        data: { member: child },
+        data: { member: child, onNavigate },
       });
       edges.push({
         id: `e-${coupleId}-${childNodeId}`,
@@ -246,7 +221,6 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
         style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.5 },
       });
 
-      // Grandchildren under this child
       const myGrandkids = grandchildrenByParent[child.id] || [];
       if (myGrandkids.length > 0) {
         const gcY = childY + V_GAP;
@@ -259,7 +233,7 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
             id: gcId,
             type: "child",
             position: { x: gcStartX + gi * (PERSON_W + H_GAP), y: gcY },
-            data: { member: gc },
+            data: { member: gc, onNavigate },
           });
           edges.push({
             id: `e-${childNodeId}-${gcId}`,
@@ -275,7 +249,6 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
     });
   }
 
-  // Unattached grandchildren below the couple (no specific parent set)
   if (unattachedGrandchildren.length > 0) {
     const gcY = y + V_GAP * (finalChildren.length > 0 ? 2 : 1);
     const gcStartX = cx - unattachedGCWidth / 2;
@@ -285,7 +258,7 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
         id: gcId,
         type: "child",
         position: { x: gcStartX + gi * (PERSON_W + H_GAP), y: gcY },
-        data: { member: gc },
+        data: { member: gc, onNavigate },
       });
       edges.push({
         id: `e-${coupleId}-${gcId}`,
@@ -297,7 +270,6 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
     });
   }
 
-  // ── Linked child units (separate family branches) ─────────────────────────
   if (unit.children && unit.children.length > 0) {
     const childY =
       y +
@@ -310,7 +282,7 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
 
     unit.children.forEach((childUnit: any) => {
       const childCx = unitStartX + unitSlotW / 2;
-      const result = layoutUnit(childUnit, childCx, childY);
+      const result = layoutUnit(childUnit, childCx, childY, onNavigate);
       nodes.push(...result.nodes);
       edges.push(...result.edges);
 
@@ -339,6 +311,7 @@ function layoutUnit(unit: any, cx: number, y: number): LayoutResult {
 export default function Tree() {
   const { user } = useAuth();
   const unitId = user?.familyUnit.id || "";
+  const [, navigate] = useLocation();
 
   const { data: treeData, isLoading } = useGetFamilyTree(unitId, {
     query: {
@@ -350,13 +323,18 @@ export default function Tree() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  const onNavigate = useCallback(
+    (personId: string) => navigate(`/members/${personId}`),
+    [navigate],
+  );
+
   useEffect(() => {
     if (treeData?.rootUnit) {
-      const { nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0);
+      const { nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, onNavigate);
       setNodes(n);
       setEdges(e);
     }
-  }, [treeData, setNodes, setEdges]);
+  }, [treeData, setNodes, setEdges, onNavigate]);
 
   if (isLoading) {
     return (
@@ -371,7 +349,7 @@ export default function Tree() {
       <div>
         <h1 className="text-4xl font-serif font-bold text-foreground">Family Tree</h1>
         <p className="text-muted-foreground mt-1">
-          Spouses at the top, children below — grandchildren nest under their parent.
+          Click any person to view their profile.
         </p>
       </div>
 
