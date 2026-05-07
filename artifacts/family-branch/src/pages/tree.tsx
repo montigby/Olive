@@ -1,7 +1,7 @@
 import { useGetFamilyTree, getGetFamilyTreeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
-import { useEffect, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useEffect } from "react";
+import { Link } from "wouter";
 import {
   ReactFlow,
   MiniMap,
@@ -48,38 +48,39 @@ const V_GAP = 120;
 const H_GAP = 16;
 
 // ---------------------------------------------------------------------------
-// PersonCard — clickable
+// PersonCard — uses Link so navigation is guaranteed
 // ---------------------------------------------------------------------------
-function PersonCard({ member, onNavigate }: { member: any; onNavigate?: (id: string) => void }) {
+function PersonCard({ member }: { member: any }) {
   return (
-    <div
-      className="flex items-center gap-2.5 bg-background rounded-xl border border-border shadow-sm px-3 py-2 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
-      style={{ width: PERSON_W }}
-      onClick={() => onNavigate?.(member.id)}
-    >
-      <Avatar className="h-8 w-8 flex-shrink-0 border border-primary/20">
-        <AvatarImage src={member.photoUrl} />
-        <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
-          {member.firstName[0]}{member.lastName[0]}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold leading-tight truncate text-foreground">
-          {member.firstName} {member.lastName}
-        </p>
-        <p className="text-[11px] text-muted-foreground truncate">{member.relationshipLabel}</p>
+    <Link href={`/members/${member.id}`}>
+      <div
+        className="flex items-center gap-2.5 bg-background rounded-xl border border-border shadow-sm px-3 py-2 cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+        style={{ width: PERSON_W }}
+      >
+        <Avatar className="h-8 w-8 flex-shrink-0 border border-primary/20">
+          <AvatarImage src={member.photoUrl} />
+          <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
+            {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-tight truncate text-foreground">
+            {member.firstName} {member.lastName}
+          </p>
+          <p className="text-[11px] text-muted-foreground truncate">{member.relationshipLabel}</p>
+        </div>
+        {member.claimed && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />}
       </div>
-      {member.claimed && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />}
-    </div>
+    </Link>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Node types — receive onNavigate through data
+// Node types
 // ---------------------------------------------------------------------------
 
 const CoupleNode = ({ data }: any) => {
-  const { parents, unitName, onNavigate } = data;
+  const { parents, unitName } = data as { parents: any[]; unitName: string };
   return (
     <div className="flex flex-col items-center gap-0">
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
@@ -92,16 +93,16 @@ const CoupleNode = ({ data }: any) => {
         {parents.length === 0 ? (
           <div className="px-4 py-2 text-sm text-muted-foreground italic">No members</div>
         ) : parents.length === 1 ? (
-          <PersonCard member={parents[0]} onNavigate={onNavigate} />
+          <PersonCard member={parents[0]} />
         ) : (
           <>
-            <PersonCard member={parents[0]} onNavigate={onNavigate} />
+            <PersonCard member={parents[0]} />
             <div className="flex items-center mx-1">
               <div className="w-4 h-0.5 bg-primary/40" />
               <div className="w-3 h-3 rounded-full border-2 border-primary/50 bg-background shadow-sm" />
               <div className="w-4 h-0.5 bg-primary/40" />
             </div>
-            <PersonCard member={parents[1]} onNavigate={onNavigate} />
+            <PersonCard member={parents[1]} />
           </>
         )}
       </div>
@@ -115,7 +116,7 @@ const ChildNode = ({ data }: any) => {
   return (
     <div>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
-      <PersonCard member={data.member} onNavigate={data.onNavigate} />
+      <PersonCard member={data.member} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
   );
@@ -130,18 +131,7 @@ const nodeTypes = {
 // Layout engine
 // ---------------------------------------------------------------------------
 
-interface LayoutResult {
-  nodes: any[];
-  edges: any[];
-  totalWidth: number;
-}
-
-function layoutUnit(
-  unit: any,
-  cx: number,
-  y: number,
-  onNavigate: (id: string) => void,
-): LayoutResult {
+function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: any[] } {
   const nodes: any[] = [];
   const edges: any[] = [];
 
@@ -166,7 +156,7 @@ function layoutUnit(
     id: coupleId,
     type: "couple",
     position: { x: cx - coupleNodeW / 2, y },
-    data: { parents: finalParents, unitName: unit.unitName, onNavigate },
+    data: { parents: finalParents, unitName: unit.unitName },
   });
 
   const grandchildrenByParent: Record<string, any[]> = {};
@@ -197,6 +187,7 @@ function layoutUnit(
     linkedUnitCount > 0 ? linkedUnitCount * (COUPLE_W + 60) + (linkedUnitCount - 1) * 60 : 0;
 
   const totalWidth = Math.max(coupleNodeW, childRowWidth, unattachedGCWidth, linkedUnitsWidth, 10);
+  void totalWidth;
 
   if (finalChildren.length > 0) {
     const childY = y + V_GAP;
@@ -211,7 +202,7 @@ function layoutUnit(
         id: childNodeId,
         type: "child",
         position: { x: childCx - PERSON_W / 2, y: childY },
-        data: { member: child, onNavigate },
+        data: { member: child },
       });
       edges.push({
         id: `e-${coupleId}-${childNodeId}`,
@@ -233,7 +224,7 @@ function layoutUnit(
             id: gcId,
             type: "child",
             position: { x: gcStartX + gi * (PERSON_W + H_GAP), y: gcY },
-            data: { member: gc, onNavigate },
+            data: { member: gc },
           });
           edges.push({
             id: `e-${childNodeId}-${gcId}`,
@@ -258,7 +249,7 @@ function layoutUnit(
         id: gcId,
         type: "child",
         position: { x: gcStartX + gi * (PERSON_W + H_GAP), y: gcY },
-        data: { member: gc, onNavigate },
+        data: { member: gc },
       });
       edges.push({
         id: `e-${coupleId}-${gcId}`,
@@ -282,9 +273,9 @@ function layoutUnit(
 
     unit.children.forEach((childUnit: any) => {
       const childCx = unitStartX + unitSlotW / 2;
-      const result = layoutUnit(childUnit, childCx, childY, onNavigate);
-      nodes.push(...result.nodes);
-      edges.push(...result.edges);
+      const { nodes: cn, edges: ce } = layoutUnit(childUnit, childCx, childY);
+      nodes.push(...cn);
+      edges.push(...ce);
 
       const childCoupleId = `couple-${childUnit.unitId}`;
       edges.push({
@@ -301,7 +292,7 @@ function layoutUnit(
     });
   }
 
-  return { nodes, edges, totalWidth };
+  return { nodes, edges };
 }
 
 // ---------------------------------------------------------------------------
@@ -311,7 +302,6 @@ function layoutUnit(
 export default function Tree() {
   const { user } = useAuth();
   const unitId = user?.familyUnit.id || "";
-  const [, navigate] = useLocation();
 
   const { data: treeData, isLoading } = useGetFamilyTree(unitId, {
     query: {
@@ -323,18 +313,13 @@ export default function Tree() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const onNavigate = useCallback(
-    (personId: string) => navigate(`/members/${personId}`),
-    [navigate],
-  );
-
   useEffect(() => {
     if (treeData?.rootUnit) {
-      const { nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, onNavigate);
+      const { nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0);
       setNodes(n);
       setEdges(e);
     }
-  }, [treeData, setNodes, setEdges, onNavigate]);
+  }, [treeData, setNodes, setEdges]);
 
   if (isLoading) {
     return (
@@ -364,6 +349,8 @@ export default function Tree() {
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.1}
           maxZoom={2}
+          nodesDraggable={false}
+          nodesConnectable={false}
           className="bg-[#FAF7F2]"
         >
           <Background color="#c8ddd0" gap={24} size={1} />
