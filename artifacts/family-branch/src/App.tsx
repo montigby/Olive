@@ -22,36 +22,56 @@ const Settings = lazy(() => import("@/pages/settings"));
 
 const queryClient = new QueryClient();
 
+const fallback = (
+  <div className="min-h-[50vh] flex flex-col items-center justify-center gap-4">
+    <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+    <p className="text-muted-foreground font-medium">Loading...</p>
+  </div>
+);
+
+// Each protected page gets its own top-level Route so Wouter v3 sets params
+// correctly in the routing context (nested /:path* breaks param extraction).
+function makePage(Component: React.ComponentType) {
+  return function Page() {
+    return (
+      <Layout>
+        <Suspense fallback={fallback}>
+          <Component />
+        </Suspense>
+      </Layout>
+    );
+  };
+}
+
+const DashboardPage = makePage(Dashboard);
+const TreePage     = makePage(Tree);
+const MembersPage  = makePage(Members);
+const ProfilePage  = makePage(Profile);
+const CalendarPage = makePage(Calendar);
+const LinkPageW    = makePage(LinkPage);
+const SettingsPage = makePage(Settings);
+const NotFoundPage = makePage(NotFound);
+
 function AppRouter() {
   return (
     <Switch>
-      <Route path="/" component={Landing} />
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      <Route path="/invite/:token" component={InviteClaim} />
+      {/* Public */}
+      <Route path="/"                component={Landing}     />
+      <Route path="/login"           component={Login}       />
+      <Route path="/register"        component={Register}    />
+      <Route path="/invite/:token"   component={InviteClaim} />
 
-      <Route path="/:path*">
-        <Layout>
-          <Suspense fallback={
-            <div className="min-h-[50vh] flex flex-col items-center justify-center gap-4">
-              <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-              <p className="text-muted-foreground font-medium">Loading...</p>
-            </div>
-          }>
-            <Switch>
-              <Route path="/dashboard" component={Dashboard} />
-              <Route path="/tree" component={Tree} />
-              <Route path="/members" component={Members} />
-              <Route path="/members/:personId" component={Profile} />
-              <Route path="/profile" component={Profile} />
-              <Route path="/calendar" component={Calendar} />
-              <Route path="/link" component={LinkPage} />
-              <Route path="/settings" component={Settings} />
-              <Route component={NotFound} />
-            </Switch>
-          </Suspense>
-        </Layout>
-      </Route>
+      {/* Protected — order matters: more-specific paths first */}
+      <Route path="/members/:personId" component={ProfilePage}  />
+      <Route path="/members"           component={MembersPage}  />
+      <Route path="/dashboard"         component={DashboardPage}/>
+      <Route path="/tree"              component={TreePage}     />
+      <Route path="/profile"           component={ProfilePage}  />
+      <Route path="/calendar"          component={CalendarPage} />
+      <Route path="/link"              component={LinkPageW}    />
+      <Route path="/settings"          component={SettingsPage} />
+
+      <Route component={NotFoundPage} />
     </Switch>
   );
 }

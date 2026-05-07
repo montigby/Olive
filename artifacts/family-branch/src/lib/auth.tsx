@@ -14,9 +14,10 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem("oliveToken"));
 
-  useEffect(() => {
-    setAuthTokenGetter(() => localStorage.getItem("oliveToken"));
-  }, []);
+  // Set synchronously on every render so the getter is available before any
+  // child component fires its first TanStack Query request. A useEffect would
+  // be too late — queries fire before effects run, causing spurious 401s.
+  setAuthTokenGetter(() => localStorage.getItem("oliveToken"));
 
   const { data: user, isLoading: isUserLoading, error } = useGetMe({
     query: {
