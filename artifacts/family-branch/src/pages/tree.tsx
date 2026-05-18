@@ -914,11 +914,15 @@ function layoutPersonalView(
   }
 
   // ── Render viewer + spouse couple (labels from viewer's perspective) ──
+  // For the family head the spouse goes on the LEFT and the viewer on the RIGHT
+  // so each person is adjacent to their own family branch:
+  //   LEFT  = spouse → pill (their extended family) is also to the left
+  //   RIGHT = viewer → parents + siblings also extend to the right
+  // For all other viewers keep the conventional viewer-left ordering.
   const coupleId    = `pv-couple-${viewerId}`;
-  const coupleMems  = [
-    relabeled(viewerPerson, "self"),
-    ...(viewerSpouse ? [relabeled(viewerSpouse, "spouse")] : []),
-  ];
+  const coupleMems  = (viewerIsFamilyHead && viewerSpouse)
+    ? [relabeled(viewerSpouse, "spouse"), relabeled(viewerPerson, "self")]
+    : [relabeled(viewerPerson, "self"), ...(viewerSpouse ? [relabeled(viewerSpouse, "spouse")] : [])];
   const coupleNodeW = coupleMems.length >= 2 ? COUPLE_W : PERSON_W;
 
   nodes.push({
@@ -1045,11 +1049,10 @@ function layoutPersonalView(
     // clears it cleanly.  Fall back to the couple width when there are no parents.
     const PILL_SEP = H_GAP * 3;
     const pillY = y - V_GAP;
-    const anchorNodeW =
-      viewerParents.length >= 2 ? COUPLE_W
-      : viewerParents.length === 1 ? PERSON_W
-      : coupleNodeW;
-    const pillX = rowCenter - anchorNodeW / 2 - PILL_SEP - PILL_W;
+    // Anchor the pill to the LEFT of the leftmost element in the children row
+    // (the couple's left edge = rowLeft).  This keeps it firmly on the spouse's
+    // side regardless of how far right the sibling row extends.
+    const pillX = rowLeft - PILL_SEP - PILL_W;
     const edgeId = `e-pill-${pillNodeIds[0]?.slice(0, 8) ?? "x"}-couple`;
 
     if (expandedPills.has(pillId)) {
