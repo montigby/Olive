@@ -717,6 +717,27 @@ function relabeled(member: any, role: "self" | "spouse" | "parent" | "child" | "
 }
 
 // ---------------------------------------------------------------------------
+// Family head — the primary couple member (not the explicit partner).
+// Prefers the isAdmin flag; falls back to label-based detection so the tree
+// still works correctly after Spencer's account is demoted from admin.
+// Detection: parent-role label, not a sibling/in-law/partner/nephew,
+// and has at least one unit member whose parentPersonId points to them.
+// ---------------------------------------------------------------------------
+function findFamilyHead(allMembers: any[]): any | undefined {
+  return (
+    allMembers.find((m: any) => m.isAdmin) ??
+    allMembers.find((m: any) =>
+      isParentRole(m.relationshipLabel ?? "") &&
+      !isExplicitPartner(m.relationshipLabel ?? "") &&
+      !isInlawParent(m.relationshipLabel ?? "") &&
+      !isSiblingRole(m.relationshipLabel ?? "") &&
+      !isNephewNieceRole(m.relationshipLabel ?? "") &&
+      allMembers.some((child: any) => child.parentPersonId === m.id),
+    )
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Spouse map — who is paired with whom across the whole unit
 // (mirrors the coupling logic in layoutUnit so the two stay in sync)
 // ---------------------------------------------------------------------------
@@ -724,9 +745,9 @@ function buildSpouseMap(allMembers: any[]): Map<string, string> {
   const map = new Map<string, string>();
   const pair = (a: any, b: any) => { map.set(a.id, b.id); map.set(b.id, a.id); };
 
-  const admin = allMembers.find((m: any) => m.isAdmin);
+  const head = findFamilyHead(allMembers);
   const partner = allMembers.find((m: any) => isExplicitPartner(m.relationshipLabel ?? ""));
-  if (admin && partner) pair(admin, partner);
+  if (head && partner) pair(head, partner);
 
   const sibs = allMembers.filter((m: any) => isSiblingRole(m.relationshipLabel ?? ""));
   const brothers = sibs.filter((m: any) => ["brother", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()));
@@ -783,6 +804,16 @@ function layoutPersonalView(
   const viewerSpouse   = viewerSpouseId ? allMembers.find((m: any) => m.id === viewerSpouseId) : null;
   const excludeIds     = new Set<string>([viewerId, ...(viewerSpouseId ? [viewerSpouseId] : [])]);
 
+  // True when the viewer is the family head (e.g. Spencer/"Dad") — not the explicit
+  // partner, not a sibling/in-law, and has children recorded in the unit.
+  const viewerIsFamilyHead =
+    isParentRole(viewerLabel) &&
+    !isExplicitPartner(viewerLabel) &&
+    !isInlawParent(viewerLabel) &&
+    !isSiblingRole(viewerLabel) &&
+    !isNephewNieceRole(viewerLabel) &&
+    allMembers.some((child: any) => child.parentPersonId === viewerId);
+
   // ── Parents ──
   let viewerParents: any[] = [];
   if (viewerPerson.parentPersonId) {
@@ -793,10 +824,26 @@ function layoutPersonalView(
       const ps   = psId ? allMembers.find((m: any) => m.id === psId) : null;
       viewerParents = [directParent, ...(ps ? [ps] : [])];
     }
-  } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
-    // Spencer's siblings → parents are mom / dad (non-admin, non-partner parent-labelled members)
+  } else if (viewerIsFamilyHead) {
+    // Family head (Spencer/"Dad") → parents are parent-role members who are not
+    // siblings, not in-law parents, not the viewer, and not themselves a family head
+    // (i.e. they have no children recorded in the unit — that's Steven/Deborah).
     viewerParents = allMembers.filter((m: any) =>
-      isParentRole(m.relationshipLabel ?? "") && !isExplicitPartner(m.relationshipLabel ?? "") && !m.isAdmin,
+      isParentRole(m.relationshipLabel ?? "") &&
+      !isExplicitPartner(m.relationshipLabel ?? "") &&
+      !isInlawParent(m.relationshipLabel ?? "") &&
+      !isSiblingRole(m.relationshipLabel ?? "") &&
+      m.id !== viewerId &&
+      !allMembers.some((child: any) => child.parentPersonId === m.id),
+    );
+  } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
+    // Spencer's siblings → parents are mom / dad (parent-labelled members who are
+    // neither the explicit partner nor the family head)
+    viewerParents = allMembers.filter((m: any) =>
+      isParentRole(m.relationshipLabel ?? "") &&
+      !isExplicitPartner(m.relationshipLabel ?? "") &&
+      !m.isAdmin &&
+      !allMembers.some((child: any) => child.parentPersonId === m.id),
     );
   } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
     // Miranda's siblings → parents are the in-law parents (Sandra, Randy)
@@ -809,14 +856,15 @@ function layoutPersonalView(
   // ── Children ──
   let viewerChildren: any[] = [];
   if (isExplicitPartner(viewerLabel)) {
-    // Miranda shares the couple's children (non-parent, non-sibling, non-in-law direct members)
+    // Miranda shares the couple's children (non-parent, non-sibling, non-in-law direct members).
+    // Exclude both Miranda and Spencer (via excludeIds) rather than relying on isAdmin.
     viewerChildren = allMembers.filter((m: any) =>
       !isParentRole(m.relationshipLabel ?? "") &&
       !isSiblingRole(m.relationshipLabel ?? "") &&
       !isInlawParent(m.relationshipLabel ?? "") &&
       !isNephewNieceRole(m.relationshipLabel ?? "") &&
       !isGrandchildRole(m.relationshipLabel ?? "") &&
-      !m.isAdmin && m.id !== viewerId,
+      !excludeIds.has(m.id),
     );
   } else {
     // Everyone else: direct children via parentPersonId
@@ -830,14 +878,20 @@ function layoutPersonalView(
     viewerSiblings = allMembers.filter((m: any) =>
       m.parentPersonId === viewerPerson.parentPersonId && !excludeIds.has(m.id),
     );
+  } else if (viewerIsFamilyHead) {
+    // Family head (Spencer) → siblings are brother/sister labelled members
+    viewerSiblings = allMembers.filter((m: any) =>
+      ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
+      !excludeIds.has(m.id),
+    );
   } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
-    // Spencer's siblings: other brothers/sisters + the admin (Spencer)
+    // Nathan/Madeline's siblings: other brothers/sisters + the family head (Spencer)
     const otherSibs = allMembers.filter((m: any) =>
       ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
       !excludeIds.has(m.id),
     );
-    const adminMember = allMembers.find((m: any) => m.isAdmin);
-    if (adminMember) viewerSiblings.push(adminMember);
+    const familyHead = findFamilyHead(allMembers);
+    if (familyHead && !excludeIds.has(familyHead.id)) viewerSiblings.push(familyHead);
     viewerSiblings.push(...otherSibs);
   } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
     // Miranda's siblings: Miranda + other Miranda-side in-laws
