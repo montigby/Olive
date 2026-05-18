@@ -927,14 +927,50 @@ function layoutPersonalView(
     data: { parents: coupleMems, unitName: "" },
   });
 
-  // ── Parents above — labelled "mom" / "dad" ──
+  // ── Pre-calculate sibling slots — needed to centre parents above the full row ──
+  type SibSlot2 = { members: any[] };
+  const sibSlots: SibSlot2[] = [];
+  {
+    const usedSibIds = new Set<string>();
+    for (const sib of viewerSiblings) {
+      if (usedSibIds.has(sib.id)) continue;
+      const sibSpouseId = spouseMap.get(sib.id);
+      const sibSpouse   = sibSpouseId && !usedSibIds.has(sibSpouseId)
+        ? allMembers.find((m: any) => m.id === sibSpouseId) : null;
+      if (sibSpouse) {
+        sibSlots.push({ members: [relabeled(sib, "sibling"), relabeled(sibSpouse, "sibling-spouse")] });
+        usedSibIds.add(sib.id); usedSibIds.add(sibSpouse.id);
+      } else {
+        sibSlots.push({ members: [relabeled(sib, "sibling")] });
+        usedSibIds.add(sib.id);
+      }
+    }
+  }
+
+  // ── Compute children row extent so the parent node can be centred over all kids ──
+  const SIB_SEP = H_GAP * 5;   // gap between viewer's couple and first sibling
+  const SIB_GAP = H_GAP * 3;   // gap between sibling slots
+  const sibSlotW = (sl: SibSlot2) => sl.members.length >= 2 ? COUPLE_W : PERSON_W;
+
+  const rowLeft  = cx - coupleNodeW / 2;
+  let   rowRight = cx + coupleNodeW / 2;
+  if (sibSlots.length > 0) {
+    let slotX = cx + coupleNodeW / 2 + SIB_SEP;
+    for (const sl of sibSlots) { slotX += sibSlotW(sl) + SIB_GAP; }
+    rowRight = slotX - SIB_GAP; // strip trailing gap
+  }
+  const rowCenter = (rowLeft + rowRight) / 2;
+
+  // ── Parents above — centred over the entire children row ──
+  let parentNodeId: string | null = null;
   if (viewerParents.length > 0) {
     const parentId    = `pv-parents-${viewerId}`;
+    parentNodeId = parentId;
     const parentMems  = viewerParents.map((p: any) => relabeled(p, "parent"));
     const parentNodeW = parentMems.length >= 2 ? COUPLE_W : PERSON_W;
     nodes.push({
       id: parentId, type: "couple",
-      position: { x: cx - parentNodeW / 2, y: y - V_GAP },
+      position: { x: rowCenter - parentNodeW / 2, y: y - V_GAP },
       data: { parents: parentMems, unitName: "" },
     });
     edges.push({
@@ -956,31 +992,10 @@ function layoutPersonalView(
     });
   }
 
-  // ── Siblings to the right — paired as couples, labelled "brother/sister" + "in-law" ──
-  if (viewerSiblings.length > 0) {
-    type SibSlot2 = { members: any[] };
-    const sibSlots: SibSlot2[] = [];
-    const usedSibIds = new Set<string>();
-
-    for (const sib of viewerSiblings) {
-      if (usedSibIds.has(sib.id)) continue;
-      const sibSpouseId = spouseMap.get(sib.id);
-      const sibSpouse   = sibSpouseId && !usedSibIds.has(sibSpouseId)
-        ? allMembers.find((m: any) => m.id === sibSpouseId) : null;
-      if (sibSpouse) {
-        // members[0] = sibling, members[1] = sibling's spouse
-        sibSlots.push({ members: [relabeled(sib, "sibling"), relabeled(sibSpouse, "sibling-spouse")] });
-        usedSibIds.add(sib.id); usedSibIds.add(sibSpouse.id);
-      } else {
-        sibSlots.push({ members: [relabeled(sib, "sibling")] });
-        usedSibIds.add(sib.id);
-      }
-    }
-
-    const SEP = H_GAP * 5;
-    const sibSlotW = (sl: SibSlot2) => sl.members.length >= 2 ? COUPLE_W : PERSON_W;
-    let slotX = cx + coupleNodeW / 2 + SEP;
-
+  // ── Siblings to the right — edges connect from the shared parent node so the
+  //    parent visually fans out over all its children (not from the couple). ──
+  if (sibSlots.length > 0) {
+    let slotX = cx + coupleNodeW / 2 + SIB_SEP;
     for (const slot of sibSlots) {
       const slotW  = sibSlotW(slot);
       const slotCx = slotX + slotW / 2;
@@ -992,8 +1007,10 @@ function layoutPersonalView(
         slotNodeId = `pv-sib-${slot.members[0].id}`;
         nodes.push({ id: slotNodeId, type: "child", position: { x: slotX, y }, data: { member: slot.members[0] } });
       }
-      edges.push({ id: `e-${coupleId}-${slotNodeId}`, source: coupleId, target: slotNodeId, type: "smoothstep", style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 } });
-      slotX += slotW + H_GAP * 3;
+      // Connect from the parent node when one exists (shared parentage), else from the couple
+      const sibSrc = parentNodeId ?? coupleId;
+      edges.push({ id: `e-${sibSrc}-${slotNodeId}`, source: sibSrc, target: slotNodeId, type: "smoothstep", style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 } });
+      slotX += slotW + SIB_GAP;
     }
   }
 
@@ -1023,16 +1040,16 @@ function layoutPersonalView(
     const pillId = "pill:" + pillNodeIds.join("-");
     const pillLabel = generatePillLabel(pillMembers, viewerSpouse?.firstName);
 
-    // Position: above the couple, to the LEFT (blood parents are centred above).
-    // Use the parent node width as the anchor so the pill never overlaps the
-    // parent couple node regardless of whether the viewer has a spouse or not.
-    const PILL_SEP = H_GAP * 5;
+    // Position: same vertical level as the parent node (y - V_GAP), to the LEFT.
+    // Anchor off the parent node (now centred over the children row) so the pill
+    // clears it cleanly.  Fall back to the couple width when there are no parents.
+    const PILL_SEP = H_GAP * 3;
     const pillY = y - V_GAP;
-    const parentNodeW =
+    const anchorNodeW =
       viewerParents.length >= 2 ? COUPLE_W
       : viewerParents.length === 1 ? PERSON_W
       : coupleNodeW;
-    const pillX = cx - parentNodeW / 2 - PILL_SEP - PILL_W;
+    const pillX = rowCenter - anchorNodeW / 2 - PILL_SEP - PILL_W;
     const edgeId = `e-pill-${pillNodeIds[0]?.slice(0, 8) ?? "x"}-couple`;
 
     if (expandedPills.has(pillId)) {
