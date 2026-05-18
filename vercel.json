@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm install && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/family-branch run build",
+  "outputDirectory": "artifacts/family-branch/dist/public",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

@@ -32,6 +32,8 @@ function formatPerson(p: typeof personsTable.$inferSelect) {
     facebook: p.facebook,
     tiktok: p.tiktok,
     linkedin: p.linkedin,
+    snapchat: p.snapchat,
+    venmo: p.venmo,
     otherSocial: p.otherSocial,
     relationshipLabel: p.relationshipLabel,
     parentPersonId: p.parentPersonId ?? null,
@@ -40,6 +42,8 @@ function formatPerson(p: typeof personsTable.$inferSelect) {
     claimed: p.claimed,
     claimedAt: p.claimedAt?.toISOString() ?? null,
     inviteExpiresAt: p.inviteExpiresAt?.toISOString() ?? null,
+    tier2ContactField: p.tier2ContactField,
+    confirmedMembersOnly: p.confirmedMembersOnly,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };

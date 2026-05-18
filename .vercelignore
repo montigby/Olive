@@ -1,0 +1,14 @@
+# Replit runtime data
+.local/
+.cache/
+.agents/
+.replitignore
+.replit
+
+# Build outputs (rebuilt on Vercel)
+artifacts/family-branch/dist/
+artifacts/mockup-sandbox/dist/
+artifacts/api-server/dist/
+
+# Dev assets not needed at runtime
+attached_assets/

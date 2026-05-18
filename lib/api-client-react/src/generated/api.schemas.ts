@@ -53,6 +53,8 @@ export interface Person {
   facebook?: string | null;
   tiktok?: string | null;
   linkedin?: string | null;
+  snapchat?: string | null;
+  venmo?: string | null;
   otherSocial?: string | null;
   relationshipLabel: string;
   familyUnitId: string;
@@ -60,6 +62,8 @@ export interface Person {
   claimed: boolean;
   claimedAt?: string | null;
   inviteExpiresAt?: string | null;
+  tier2ContactField?: string | null;
+  confirmedMembersOnly?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -112,9 +116,13 @@ export interface UpdatePersonBody {
   facebook?: string | null;
   tiktok?: string | null;
   linkedin?: string | null;
+  snapchat?: string | null;
+  venmo?: string | null;
   otherSocial?: string | null;
   relationshipLabel?: string;
   parentPersonId?: string | null;
+  tier2ContactField?: "phone" | "email";
+  confirmedMembersOnly?: boolean;
 }
 
 export interface FamilyUnitSummary {
@@ -237,3 +245,33 @@ export interface BirthdayEntry {
 export type SearchFamilyUnitsParams = {
   q: string;
 };
+
+export interface MergePreviewBody {
+  email: string;
+  password: string;
+}
+
+export interface MergePreviewResponse {
+  placeholder: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    relationshipLabel: string;
+    unitName: string;
+    unitId: string;
+  };
+  existingPerson: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    familyUnitId: string;
+  };
+}
+
+export interface MergeConfirmBody {
+  email: string;
+  password: string;
+}
+
+export type MergeConfirmResponse = AuthResponse;

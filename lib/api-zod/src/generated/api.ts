@@ -203,9 +203,13 @@ export const UpdatePersonBody = zod.object({
   facebook: zod.string().nullish(),
   tiktok: zod.string().nullish(),
   linkedin: zod.string().nullish(),
+  snapchat: zod.string().nullish(),
+  venmo: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
   relationshipLabel: zod.string().optional(),
   parentPersonId: zod.string().uuid().nullish(),
+  tier2ContactField: zod.enum(["phone", "email"]).optional(),
+  confirmedMembersOnly: zod.boolean().optional(),
 });
 
 export const UpdatePersonResponse = zod.object({
@@ -649,6 +653,96 @@ export const GetUnitSummaryResponse = zod.object({
   linkedUnits: zod.number(),
   pendingInvites: zod.number(),
   pendingLinkRequests: zod.number(),
+});
+
+/**
+ * @summary Preview merge: authenticate existing account and return placeholder + existing person data
+ */
+export const MergePreviewParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const MergePreviewBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const MergePreviewResponse = zod.object({
+  placeholder: zod.object({
+    id: zod.string().uuid(),
+    firstName: zod.string(),
+    lastName: zod.string(),
+    relationshipLabel: zod.string(),
+    unitName: zod.string(),
+    unitId: zod.string().uuid(),
+  }),
+  existingPerson: zod.object({
+    id: zod.string().uuid(),
+    firstName: zod.string(),
+    lastName: zod.string(),
+    email: zod.string().nullish(),
+    familyUnitId: zod.string().uuid(),
+  }),
+});
+
+/**
+ * @summary Confirm merge: re-authenticate and execute the account merge
+ */
+export const MergeConfirmParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const MergeConfirmBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const MergeConfirmResponse = zod.object({
+  person: zod
+    .object({
+      id: zod.string().uuid(),
+      firstName: zod.string(),
+      lastName: zod.string(),
+      photoUrl: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      email: zod.string().nullish(),
+      addressLine1: zod.string().nullish(),
+      addressCity: zod.string().nullish(),
+      addressState: zod.string().nullish(),
+      addressZip: zod.string().nullish(),
+      addressCountry: zod.string().nullish(),
+      birthday: zod.string().nullish(),
+      showBirthYear: zod.boolean(),
+      instagram: zod.string().nullish(),
+      facebook: zod.string().nullish(),
+      tiktok: zod.string().nullish(),
+      linkedin: zod.string().nullish(),
+      otherSocial: zod.string().nullish(),
+      relationshipLabel: zod.string(),
+      familyUnitId: zod.string().uuid(),
+      isAdmin: zod.boolean(),
+      claimed: zod.boolean(),
+      claimedAt: zod.coerce.date().nullish(),
+      inviteExpiresAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    })
+    .and(
+      zod.object({
+        familyUnit: zod.object({
+          id: zod.string().uuid(),
+          unitName: zod.string(),
+          unitCode: zod.string(),
+          parentUnitId: zod.string().uuid().nullish(),
+          parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
+          parentLinkedAt: zod.coerce.date().nullish(),
+          createdAt: zod.coerce.date(),
+          memberCount: zod.number(),
+          claimedCount: zod.number(),
+        }),
+      }),
+    ),
+  token: zod.string().describe("JWT session token"),
 });
 
 /**

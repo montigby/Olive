@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { UpdatePersonBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
+import { computeTier, applyVisibility } from "../lib/visibility";
 
 const router = Router();
 
@@ -22,7 +23,39 @@ router.get("/persons/:personId", requireAuth, async (req, res) => {
     return;
   }
 
-  res.json(formatPerson(persons[0]));
+  const target = persons[0];
+
+  // Load the viewer's person record
+  const viewers = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.id, req.auth!.personId))
+    .limit(1);
+
+  if (!viewers.length) {
+    res.status(401).json({ error: "Unauthorized", message: "Viewer not found" });
+    return;
+  }
+
+  const viewer = viewers[0];
+
+  // Load all members of the target's family unit (for potential future use)
+  const allMembers = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, target.familyUnitId));
+
+  // If viewer is in a different unit, use tier logic; if same unit, computeTier handles it
+  const tier = computeTier(viewer, target, allMembers);
+  const formatted = formatPerson(target);
+  const filtered = applyVisibility(formatted, tier);
+
+  if (!filtered) {
+    res.status(403).json({ error: "Forbidden", message: "Profile not visible" });
+    return;
+  }
+
+  res.json(filtered);
 });
 
 // PATCH /api/persons/:personId
@@ -58,10 +91,14 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
   if (data.facebook !== undefined) updateData.facebook = data.facebook;
   if (data.tiktok !== undefined) updateData.tiktok = data.tiktok;
   if (data.linkedin !== undefined) updateData.linkedin = data.linkedin;
+  if ((data as any).snapchat !== undefined) updateData.snapchat = (data as any).snapchat;
+  if ((data as any).venmo !== undefined) updateData.venmo = (data as any).venmo;
   if (data.otherSocial !== undefined) updateData.otherSocial = data.otherSocial;
   if (data.relationshipLabel !== undefined && req.auth!.isAdmin) {
     updateData.relationshipLabel = data.relationshipLabel;
   }
+  if (data.tier2ContactField !== undefined) updateData.tier2ContactField = data.tier2ContactField;
+  if (data.confirmedMembersOnly !== undefined) updateData.confirmedMembersOnly = data.confirmedMembersOnly;
   updateData.updatedAt = new Date();
 
   const updated = await db

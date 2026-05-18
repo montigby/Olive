@@ -7,6 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
+function parseDateLocal(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y!, m! - 1, d!);
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   
@@ -131,7 +136,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-sm text-accent">{b.daysUntil === 0 ? 'Today!' : `In ${b.daysUntil} days`}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                      <p className="text-xs text-muted-foreground">{parseDateLocal(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
                     </div>
                   </div>
                 ))}

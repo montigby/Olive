@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useParams } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
@@ -6,6 +6,7 @@ import {
   getGetPersonQueryKey,
   useUpdatePerson,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +37,15 @@ import {
   Pencil,
   AlertCircle,
   Cake,
+  Camera,
+  Loader2,
 } from "lucide-react";
+
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -51,13 +60,17 @@ const profileSchema = z.object({
   addressState: z.string().nullable().optional(),
   addressZip: z.string().nullable().optional(),
   addressCountry: z.string().nullable().optional(),
-  birthday: z.string().nullable().optional(),
-  showBirthYear: z.boolean(),
+  birthdayMonth: z.string().nullable().optional(),
+  birthdayDay: z.string().nullable().optional(),
   instagram: z.string().nullable().optional(),
   facebook: z.string().nullable().optional(),
   tiktok: z.string().nullable().optional(),
   linkedin: z.string().nullable().optional(),
+  snapchat: z.string().nullable().optional(),
+  venmo: z.string().nullable().optional(),
   otherSocial: z.string().nullable().optional(),
+  tier2ContactField: z.enum(["phone", "email"]).default("phone"),
+  confirmedMembersOnly: z.boolean().default(false),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -80,23 +93,49 @@ function parseDateLocal(s: string): Date | null {
   return new Date(parts[0]!, parts[1]! - 1, parts[2]!);
 }
 
-function formatBirthday(birthday: string | null | undefined, showYear: boolean): string | null {
+function formatBirthday(birthday: string | null | undefined): string | null {
   if (!birthday) return null;
   try {
     const d = parseDateLocal(birthday.split("T")[0]!);
     if (!d || isNaN(d.getTime())) return null;
-    return showYear
-      ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-      : d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   } catch {
     return null;
   }
+}
+
+/** Parse a stored birthday string into { month: "1"–"12", day: "1"–"31" } */
+function parseBirthdayParts(birthday: string | null | undefined): { month: string; day: string } {
+  if (!birthday) return { month: "", day: "" };
+  const dateStr = birthday.split("T")[0]!;
+  const parts = dateStr.split("-");
+  if (parts.length < 3) return { month: "", day: "" };
+  const m = parseInt(parts[1]!, 10);
+  const d = parseInt(parts[2]!, 10);
+  if (isNaN(m) || isNaN(d)) return { month: "", day: "" };
+  return { month: String(m), day: String(d) };
 }
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.73a4.85 4.85 0 0 1-1.01-.04z" />
+    </svg>
+  );
+}
+
+function SnapchatIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.004 2c-2.782 0-5.636 1.554-5.636 5.208v.816c-.48.173-.96.28-1.473.28-.39 0-.787-.054-1.173-.162-.066-.019-.13-.029-.19-.029-.29 0-.532.19-.532.47 0 .577.84 1.02 1.77 1.247.017.004.034.007.051.01-.202.536-.478 1.002-.836 1.37-.87.9-1.985 1.16-2.985 1.16-.19 0-.38-.01-.56-.03-.28-.03-.52.15-.52.43 0 .84 1.56 1.7 3.55 1.93.01.001.01.003.02.004.22.56.85.91 1.98.91.19 0 .39-.01.6-.04.7-.08 1.37-.26 2.01-.26.3 0 .59.03.88.1.54.13 1.03.46 1.5.8.6.44 1.26.69 1.97.69.7 0 1.35-.24 1.94-.67.48-.34.97-.67 1.51-.8.29-.07.58-.1.88-.1.64 0 1.31.18 2.01.26.21.03.41.04.6.04 1.13 0 1.76-.35 1.98-.91.01-.001.01-.003.02-.004 1.99-.23 3.55-1.09 3.55-1.93 0-.28-.24-.46-.52-.43-.18.02-.37.03-.56.03-1 0-2.115-.26-2.985-1.16-.358-.368-.634-.834-.836-1.37.017-.003.034-.006.051-.01.93-.227 1.77-.67 1.77-1.247 0-.28-.242-.47-.532-.47-.06 0-.124.01-.19.029a4.48 4.48 0 0 1-1.173.162c-.513 0-.993-.107-1.473-.28v-.816C17.64 3.554 14.786 2 12.004 2z" />
+    </svg>
+  );
+}
+
+function VenmoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.45 2.005c.48.8.695 1.625.695 2.665 0 3.32-2.835 7.63-5.13 10.66H9.875L7.71 2.97l-4.595.44 2.73 16.95h7.17c3.565-4.665 7.93-12.04 7.93-17.17 0-1.24-.215-2.085-.625-2.77l-4.875 1.585z"/>
     </svg>
   );
 }
@@ -145,17 +184,45 @@ function ContactRow({
 
 // ─── ProfileView ──────────────────────────────────────────────────────────────
 
+function resizeImageToDataUrl(file: File, maxPx = 400, quality = 0.82): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 function ProfileView({
   person,
   canEdit,
   onEdit,
+  targetId,
 }: {
   person: any;
   canEdit: boolean;
   onEdit: () => void;
+  targetId: string;
 }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const updateMutation = useUpdatePerson();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
   const address = formatAddress(person);
-  const birthday = formatBirthday(person.birthday, person.showBirthYear ?? false);
+  const birthday = formatBirthday(person.birthday);
   const mapsHref = address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : undefined;
 
   const initials =
@@ -163,22 +230,78 @@ function ProfileView({
 
   const hasContact = !!(person.phone || person.email || address);
   const hasSocial = !!(
-    person.instagram || person.facebook || person.tiktok || person.linkedin || person.otherSocial
+    person.instagram || person.facebook || person.tiktok || person.linkedin ||
+    person.snapchat || person.venmo || person.otherSocial
   );
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!fileInputRef.current) return;
+    fileInputRef.current.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ variant: "destructive", title: "Please select an image file." });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "Image must be under 10 MB." });
+      return;
+    }
+
+    setPhotoUploading(true);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      await updateMutation.mutateAsync(
+        { personId: targetId, data: { photoUrl: dataUrl } },
+      );
+      queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(targetId) });
+      toast({ title: "Photo updated!" });
+    } catch {
+      toast({ variant: "destructive", title: "Upload failed", description: "Please try again." });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoChange}
+      />
+
       {/* Header card */}
       <Card className="overflow-hidden border border-border shadow-sm">
         <div className="h-24 bg-gradient-to-r from-primary/15 via-primary/10 to-accent/15" />
         <CardContent className="px-6 pb-6 pt-0">
           <div className="flex items-end justify-between -mt-12 mb-4">
-            <Avatar className="w-24 h-24 border-4 border-card shadow-md">
-              <AvatarImage src={person.photoUrl || undefined} />
-              <AvatarFallback className="text-3xl bg-primary/10 text-primary font-serif">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            {/* Avatar with upload overlay */}
+            <div className="relative group w-24 h-24">
+              <Avatar className="w-24 h-24 border-4 border-card shadow-md">
+                <AvatarImage src={person.photoUrl || undefined} />
+                <AvatarFallback className="text-3xl bg-primary/10 text-primary font-serif">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              {canEdit && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={photoUploading}
+                  className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer border-4 border-card"
+                  title="Change photo"
+                >
+                  {photoUploading
+                    ? <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    : <Camera className="w-6 h-6 text-white" />
+                  }
+                </button>
+              )}
+            </div>
             {canEdit && (
               <Button variant="outline" size="sm" onClick={onEdit} className="rounded-full mb-1">
                 <Pencil className="w-3.5 h-3.5 mr-1.5" />
@@ -275,6 +398,26 @@ function ProfileView({
                 }
               />
               <ContactRow
+                icon={SnapchatIcon}
+                label="Snapchat"
+                value={person.snapchat ? `@${person.snapchat.replace(/^@/, "")}` : null}
+                href={
+                  person.snapchat
+                    ? `https://snapchat.com/add/${person.snapchat.replace(/^@/, "")}`
+                    : undefined
+                }
+              />
+              <ContactRow
+                icon={VenmoIcon}
+                label="Venmo"
+                value={person.venmo ? `@${person.venmo.replace(/^@/, "")}` : null}
+                href={
+                  person.venmo
+                    ? `https://venmo.com/${person.venmo.replace(/^@/, "")}`
+                    : undefined
+                }
+              />
+              <ContactRow
                 icon={LinkIcon}
                 label="Other"
                 value={person.otherSocial}
@@ -310,14 +453,19 @@ function ProfileView({
 function ProfileEditForm({
   person,
   targetId,
+  isOwnProfile,
   onCancel,
 }: {
   person: any;
   targetId: string;
+  isOwnProfile: boolean;
   onCancel: () => void;
 }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const updateMutation = useUpdatePerson();
+
+  const bdParts = parseBirthdayParts(person?.birthday);
 
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -332,19 +480,33 @@ function ProfileEditForm({
       addressState: person?.addressState ?? "",
       addressZip: person?.addressZip ?? "",
       addressCountry: person?.addressCountry ?? "",
-      birthday: person?.birthday ? person.birthday.split("T")[0] : "",
-      showBirthYear: person?.showBirthYear ?? false,
+      birthdayMonth: bdParts.month,
+      birthdayDay: bdParts.day,
       instagram: person?.instagram ?? "",
       facebook: person?.facebook ?? "",
       tiktok: person?.tiktok ?? "",
       linkedin: person?.linkedin ?? "",
+      snapchat: person?.snapchat ?? "",
+      venmo: person?.venmo ?? "",
       otherSocial: person?.otherSocial ?? "",
+      tier2ContactField: (person?.tier2ContactField as "phone" | "email") ?? "phone",
+      confirmedMembersOnly: person?.confirmedMembersOnly ?? false,
     },
   });
 
   const onSubmit = (data: ProfileForm) => {
+    // Compose birthday as "2000-MM-DD" if both month and day are set
+    let birthday: string | null = null;
+    if (data.birthdayMonth && data.birthdayDay) {
+      const m = String(parseInt(data.birthdayMonth, 10)).padStart(2, "0");
+      const d = String(parseInt(data.birthdayDay, 10)).padStart(2, "0");
+      birthday = `2000-${m}-${d}`;
+    }
+
     const cleaned = {
-      ...data,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      relationshipLabel: data.relationshipLabel,
       phone: data.phone || null,
       email: data.email || null,
       addressLine1: data.addressLine1 || null,
@@ -352,18 +514,23 @@ function ProfileEditForm({
       addressState: data.addressState || null,
       addressZip: data.addressZip || null,
       addressCountry: data.addressCountry || null,
-      birthday: data.birthday ? new Date(data.birthday).toISOString() : null,
+      birthday,
       instagram: data.instagram || null,
       facebook: data.facebook || null,
       tiktok: data.tiktok || null,
       linkedin: data.linkedin || null,
+      snapchat: data.snapchat || null,
+      venmo: data.venmo || null,
       otherSocial: data.otherSocial || null,
+      tier2ContactField: data.tier2ContactField,
+      confirmedMembersOnly: data.confirmedMembersOnly,
     };
 
     updateMutation.mutate(
-      { personId: targetId, data: cleaned },
+      { personId: targetId, data: cleaned as any },
       {
         onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(targetId) });
           toast({ title: "Profile updated" });
           onCancel();
         },
@@ -404,19 +571,47 @@ function ProfileEditForm({
                   )}
                 />
               ))}
-              <FormField
-                control={form.control}
-                name="birthday"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Birthday</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} value={field.value ?? ""} className="bg-background" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Birthday</FormLabel>
+                <div className="flex gap-2">
+                  <FormField
+                    control={form.control}
+                    name="birthdayMonth"
+                    render={({ field }) => (
+                      <FormControl>
+                        <select
+                          {...field}
+                          value={field.value ?? ""}
+                          className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        >
+                          <option value="">Month</option>
+                          {MONTHS.map((m, i) => (
+                            <option key={m} value={String(i + 1)}>{m}</option>
+                          ))}
+                        </select>
+                      </FormControl>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="birthdayDay"
+                    render={({ field }) => (
+                      <FormControl>
+                        <select
+                          {...field}
+                          value={field.value ?? ""}
+                          className="w-24 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        >
+                          <option value="">Day</option>
+                          {DAYS.map((d) => (
+                            <option key={d} value={String(d)}>{d}</option>
+                          ))}
+                        </select>
+                      </FormControl>
+                    )}
+                  />
+                </div>
+              </FormItem>
             </div>
           </section>
 
@@ -519,6 +714,8 @@ function ProfileEditForm({
                   { name: "facebook", label: "Facebook", placeholder: "username or URL" },
                   { name: "tiktok", label: "TikTok", placeholder: "username" },
                   { name: "linkedin", label: "LinkedIn", placeholder: "username" },
+                  { name: "snapchat", label: "Snapchat", placeholder: "username" },
+                  { name: "venmo", label: "Venmo", placeholder: "username" },
                   { name: "otherSocial", label: "Other Link", placeholder: "https://..." },
                 ] as const
               ).map(({ name, label, placeholder }) => (
@@ -543,6 +740,88 @@ function ProfileEditForm({
               ))}
             </div>
           </section>
+
+          {/* Privacy — only shown on own profile */}
+          {isOwnProfile && (
+            <section className="space-y-4">
+              <h3 className="font-serif text-lg font-semibold border-b pb-2">Privacy</h3>
+
+              {/* Tier 2 contact field */}
+              <FormField
+                control={form.control}
+                name="tier2ContactField"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">
+                      Contact info shared with extended family
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground -mt-1 mb-2">
+                      Grandparents, in-laws, and similar relatives see only one contact method.
+                    </p>
+                    <div className="flex gap-3">
+                      {(["phone", "email"] as const).map((opt) => (
+                        <label
+                          key={opt}
+                          className={`flex items-center gap-2 cursor-pointer rounded-lg border px-4 py-2.5 text-sm transition-colors ${
+                            field.value === opt
+                              ? "border-primary bg-primary/5 text-primary font-medium"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            className="sr-only"
+                            value={opt}
+                            checked={field.value === opt}
+                            onChange={() => field.onChange(opt)}
+                          />
+                          <span className="capitalize">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Confirmed members only */}
+              <FormField
+                control={form.control}
+                name="confirmedMembersOnly"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+                      <div>
+                        <FormLabel className="text-sm font-medium leading-none">
+                          Restrict to direct &amp; close family
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Only Tier 1 &amp; 2 family members (e.g. parents, siblings, grandparents) can view your full profile.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={field.value}
+                        onClick={() => field.onChange(!field.value)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                          field.value ? "bg-primary" : "bg-muted"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            field.value ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </section>
+          )}
 
           <div className="flex gap-3 pt-2">
             <Button
@@ -648,10 +927,11 @@ export default function Profile() {
         <ProfileEditForm
           person={person}
           targetId={targetId!}
+          isOwnProfile={isOwnProfile}
           onCancel={() => setEditing(false)}
         />
       ) : (
-        <ProfileView person={person} canEdit={canEdit} onEdit={() => setEditing(true)} />
+        <ProfileView person={person} canEdit={canEdit} onEdit={() => setEditing(true)} targetId={targetId!} />
       )}
     </div>
   );

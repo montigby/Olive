@@ -34,6 +34,10 @@ import type {
   LinkRequest,
   LinkRequestsResponse,
   LoginBody,
+  MergeConfirmBody,
+  MergeConfirmResponse,
+  MergePreviewBody,
+  MergePreviewResponse,
   MessageResponse,
   Person,
   PersonWithUnit,
@@ -2093,3 +2097,169 @@ export function useGetUpcomingBirthdays<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Preview merge: authenticate existing account and return placeholder + existing person
+ */
+export const getMergePreviewUrl = (token: string) => {
+  return `/api/invites/${token}/merge/preview`;
+};
+
+export const mergePreview = async (
+  token: string,
+  mergePreviewBody: MergePreviewBody,
+  options?: RequestInit,
+): Promise<MergePreviewResponse> => {
+  return customFetch<MergePreviewResponse>(getMergePreviewUrl(token), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(mergePreviewBody),
+  });
+};
+
+export const getMergePreviewMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mergePreview>>,
+    TError,
+    { token: string; data: BodyType<MergePreviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof mergePreview>>,
+  TError,
+  { token: string; data: BodyType<MergePreviewBody> },
+  TContext
+> => {
+  const mutationKey = ["mergePreview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof mergePreview>>,
+    { token: string; data: BodyType<MergePreviewBody> }
+  > = (props) => {
+    const { token, data } = props ?? {};
+    return mergePreview(token, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MergePreviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof mergePreview>>
+>;
+export type MergePreviewMutationBody = BodyType<MergePreviewBody>;
+export type MergePreviewMutationError = ErrorType<ErrorResponse>;
+
+export const useMergePreview = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mergePreview>>,
+    TError,
+    { token: string; data: BodyType<MergePreviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof mergePreview>>,
+  TError,
+  { token: string; data: BodyType<MergePreviewBody> },
+  TContext
+> => {
+  return useMutation(getMergePreviewMutationOptions(options));
+};
+
+/**
+ * @summary Confirm merge: re-authenticate and execute the account merge
+ */
+export const getMergeConfirmUrl = (token: string) => {
+  return `/api/invites/${token}/merge/confirm`;
+};
+
+export const mergeConfirm = async (
+  token: string,
+  mergeConfirmBody: MergeConfirmBody,
+  options?: RequestInit,
+): Promise<MergeConfirmResponse> => {
+  return customFetch<MergeConfirmResponse>(getMergeConfirmUrl(token), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(mergeConfirmBody),
+  });
+};
+
+export const getMergeConfirmMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mergeConfirm>>,
+    TError,
+    { token: string; data: BodyType<MergeConfirmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof mergeConfirm>>,
+  TError,
+  { token: string; data: BodyType<MergeConfirmBody> },
+  TContext
+> => {
+  const mutationKey = ["mergeConfirm"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof mergeConfirm>>,
+    { token: string; data: BodyType<MergeConfirmBody> }
+  > = (props) => {
+    const { token, data } = props ?? {};
+    return mergeConfirm(token, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MergeConfirmMutationResult = NonNullable<
+  Awaited<ReturnType<typeof mergeConfirm>>
+>;
+export type MergeConfirmMutationBody = BodyType<MergeConfirmBody>;
+export type MergeConfirmMutationError = ErrorType<ErrorResponse>;
+
+export const useMergeConfirm = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mergeConfirm>>,
+    TError,
+    { token: string; data: BodyType<MergeConfirmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof mergeConfirm>>,
+  TError,
+  { token: string; data: BodyType<MergeConfirmBody> },
+  TContext
+> => {
+  return useMutation(getMergeConfirmMutationOptions(options));
+};

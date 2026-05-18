@@ -2,7 +2,7 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { db } from "@workspace/db";
 import { personsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import { AddMemberBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
@@ -26,6 +26,25 @@ router.post("/family-units/:unitId/members", requireAuth, requireAdmin, async (r
   const parsed = AddMemberBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
+    return;
+  }
+
+  // Duplicate guard
+  const existing = await db
+    .select()
+    .from(personsTable)
+    .where(
+      and(
+        eq(personsTable.familyUnitId, unitId),
+        ilike(personsTable.firstName, parsed.data.firstName.trim()),
+        ilike(personsTable.lastName, parsed.data.lastName.trim()),
+        ilike(personsTable.relationshipLabel, parsed.data.relationshipLabel.trim()),
+      ),
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    res.status(409).json({ error: "Duplicate", message: "A member with that name and relationship already exists." });
     return;
   }
 
@@ -53,7 +72,7 @@ router.post(
   async (req, res) => {
     const personId = String(req.params.personId);
     const token = nanoid(32);
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
     const updated = await db
       .update(personsTable)
@@ -66,9 +85,8 @@ router.post(
       return;
     }
 
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "http://localhost:80";
+    const baseUrl = process.env.APP_BASE_URL
+      ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:80");
 
     res.json({
       inviteToken: token,
