@@ -55,6 +55,7 @@ export interface Person {
   linkedin?: string | null;
   snapchat?: string | null;
   venmo?: string | null;
+  bereal?: string | null;
   otherSocial?: string | null;
   relationshipLabel: string;
   familyUnitId: string;
@@ -118,6 +119,7 @@ export interface UpdatePersonBody {
   linkedin?: string | null;
   snapchat?: string | null;
   venmo?: string | null;
+  bereal?: string | null;
   otherSocial?: string | null;
   relationshipLabel?: string;
   parentPersonId?: string | null;

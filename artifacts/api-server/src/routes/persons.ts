@@ -93,6 +93,7 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
   if (data.linkedin !== undefined) updateData.linkedin = data.linkedin;
   if ((data as any).snapchat !== undefined) updateData.snapchat = (data as any).snapchat;
   if ((data as any).venmo !== undefined) updateData.venmo = (data as any).venmo;
+  if ((data as any).bereal !== undefined) updateData.bereal = (data as any).bereal;
   if (data.otherSocial !== undefined) updateData.otherSocial = data.otherSocial;
   if (data.relationshipLabel !== undefined && req.auth!.isAdmin) {
     updateData.relationshipLabel = data.relationshipLabel;

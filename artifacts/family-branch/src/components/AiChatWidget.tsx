@@ -27,9 +27,7 @@ export function AiChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Only show for admins
-  if (!user?.isAdmin) return null;
-
+  if (!user) return null;
   const unitId = user.familyUnit.id;
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import {
 import { eq, or, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
+import { computeVisibleSet, applyVisibility } from "../lib/visibility";
 
 const router = Router();
 
@@ -90,6 +91,30 @@ router.get("/family-units/:unitId/tree", requireAuth, async (req, res) => {
   }
 
   const rootNode = await buildTree(rootId);
+
+  // Apply visibility filtering for non-admin viewers in their own root unit
+  const viewerPersons = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.id, req.auth!.personId))
+    .limit(1);
+
+  if (viewerPersons.length && !viewerPersons[0].isAdmin) {
+    const viewer = viewerPersons[0];
+    // Only filter if viewer is in the root unit (personal view)
+    if (viewer.familyUnitId === rootNode.unitId) {
+      const allMembers = rootNode.members; // already formatPerson'd
+      const visibleSet = computeVisibleSet(viewer, allMembers);
+      rootNode.members = allMembers
+        .map((m: any) => {
+          const tier = visibleSet.get(m.id) ?? 4;
+          if (tier === 4) return null;
+          return applyVisibility(m, tier);
+        })
+        .filter(Boolean) as any[];
+    }
+  }
+
   const { units, members } = countTree(rootNode);
 
   res.json({ rootUnit: rootNode, totalUnits: units, totalMembers: members });

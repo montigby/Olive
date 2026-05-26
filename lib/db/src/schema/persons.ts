@@ -36,6 +36,7 @@ export const personsTable = pgTable(
     linkedin: varchar("linkedin", { length: 100 }),
     snapchat: varchar("snapchat", { length: 100 }),
     venmo: varchar("venmo", { length: 100 }),
+    bereal: varchar("bereal", { length: 100 }),
     otherSocial: text("other_social"),
     relationshipLabel: varchar("relationship_label", { length: 100 }).notNull(),
     parentPersonId: uuid("parent_person_id"),

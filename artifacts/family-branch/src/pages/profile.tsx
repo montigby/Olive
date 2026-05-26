@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, Component } from "react";
+import type { ReactNode } from "react";
 import { Link, useParams } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
@@ -68,6 +69,7 @@ const profileSchema = z.object({
   linkedin: z.string().nullable().optional(),
   snapchat: z.string().nullable().optional(),
   venmo: z.string().nullable().optional(),
+  bereal: z.string().nullable().optional(),
   otherSocial: z.string().nullable().optional(),
   tier2ContactField: z.enum(["phone", "email"]).default("phone"),
   confirmedMembersOnly: z.boolean().default(false),
@@ -128,6 +130,14 @@ function SnapchatIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M12.004 2c-2.782 0-5.636 1.554-5.636 5.208v.816c-.48.173-.96.28-1.473.28-.39 0-.787-.054-1.173-.162-.066-.019-.13-.029-.19-.029-.29 0-.532.19-.532.47 0 .577.84 1.02 1.77 1.247.017.004.034.007.051.01-.202.536-.478 1.002-.836 1.37-.87.9-1.985 1.16-2.985 1.16-.19 0-.38-.01-.56-.03-.28-.03-.52.15-.52.43 0 .84 1.56 1.7 3.55 1.93.01.001.01.003.02.004.22.56.85.91 1.98.91.19 0 .39-.01.6-.04.7-.08 1.37-.26 2.01-.26.3 0 .59.03.88.1.54.13 1.03.46 1.5.8.6.44 1.26.69 1.97.69.7 0 1.35-.24 1.94-.67.48-.34.97-.67 1.51-.8.29-.07.58-.1.88-.1.64 0 1.31.18 2.01.26.21.03.41.04.6.04 1.13 0 1.76-.35 1.98-.91.01-.001.01-.003.02-.004 1.99-.23 3.55-1.09 3.55-1.93 0-.28-.24-.46-.52-.43-.18.02-.37.03-.56.03-1 0-2.115-.26-2.985-1.16-.358-.368-.634-.834-.836-1.37.017-.003.034-.006.051-.01.93-.227 1.77-.67 1.77-1.247 0-.28-.242-.47-.532-.47-.06 0-.124.01-.19.029a4.48 4.48 0 0 1-1.173.162c-.513 0-.993-.107-1.473-.28v-.816C17.64 3.554 14.786 2 12.004 2z" />
+    </svg>
+  );
+}
+
+function BeRealIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M6.5 3A3.5 3.5 0 0 0 3 6.5v11A3.5 3.5 0 0 0 6.5 21h11A3.5 3.5 0 0 0 21 17.5v-11A3.5 3.5 0 0 0 17.5 3H6.5zM8 7h3.5a2.5 2.5 0 0 1 0 5H9v2h-.5A.5.5 0 0 1 8 13.5V7zm1.5 1v2.5H11a1 1 0 0 0 0-2H9.5zm4.25.5c.97 0 1.75.78 1.75 1.75S14.72 12 13.75 12H13v1.5a.5.5 0 0 1-.5.5H12V8.5h1.75zM13 9.5v1h.75a.5.5 0 0 0 0-1H13z"/>
     </svg>
   );
 }
@@ -231,7 +241,7 @@ function ProfileView({
   const hasContact = !!(person.phone || person.email || address);
   const hasSocial = !!(
     person.instagram || person.facebook || person.tiktok || person.linkedin ||
-    person.snapchat || person.venmo || person.otherSocial
+    person.snapchat || person.venmo || person.bereal || person.otherSocial
   );
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -418,6 +428,12 @@ function ProfileView({
                 }
               />
               <ContactRow
+                icon={BeRealIcon}
+                label="BeReal"
+                value={person.bereal ? `@${person.bereal.replace(/^@/, "")}` : null}
+                href={undefined}
+              />
+              <ContactRow
                 icon={LinkIcon}
                 label="Other"
                 value={person.otherSocial}
@@ -446,6 +462,38 @@ function ProfileView({
       )}
     </div>
   );
+}
+
+// ─── ErrorBoundary ────────────────────────────────────────────────────────────
+
+class ProfileEditErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-6 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive space-y-2">
+          <p className="font-semibold">Something went wrong loading the edit form.</p>
+          <p className="text-sm opacity-80 font-mono break-all">{this.state.error.message}</p>
+          <button
+            className="text-sm underline"
+            onClick={() => this.setState({ error: null })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // ─── ProfileEditForm ──────────────────────────────────────────────────────────
@@ -488,6 +536,7 @@ function ProfileEditForm({
       linkedin: person?.linkedin ?? "",
       snapchat: person?.snapchat ?? "",
       venmo: person?.venmo ?? "",
+      bereal: person?.bereal ?? "",
       otherSocial: person?.otherSocial ?? "",
       tier2ContactField: (person?.tier2ContactField as "phone" | "email") ?? "phone",
       confirmedMembersOnly: person?.confirmedMembersOnly ?? false,
@@ -521,6 +570,7 @@ function ProfileEditForm({
       linkedin: data.linkedin || null,
       snapchat: data.snapchat || null,
       venmo: data.venmo || null,
+      bereal: data.bereal || null,
       otherSocial: data.otherSocial || null,
       tier2ContactField: data.tier2ContactField,
       confirmedMembersOnly: data.confirmedMembersOnly,
@@ -571,47 +621,51 @@ function ProfileEditForm({
                   )}
                 />
               ))}
-              <FormItem>
-                <FormLabel>Birthday</FormLabel>
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none">Birthday</label>
                 <div className="flex gap-2">
                   <FormField
                     control={form.control}
                     name="birthdayMonth"
                     render={({ field }) => (
-                      <FormControl>
-                        <select
-                          {...field}
-                          value={field.value ?? ""}
-                          className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                          <option value="">Month</option>
-                          {MONTHS.map((m, i) => (
-                            <option key={m} value={String(i + 1)}>{m}</option>
-                          ))}
-                        </select>
-                      </FormControl>
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <select
+                            {...field}
+                            value={field.value ?? ""}
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="">Month</option>
+                            {MONTHS.map((m, i) => (
+                              <option key={m} value={String(i + 1)}>{m}</option>
+                            ))}
+                          </select>
+                        </FormControl>
+                      </FormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
                     name="birthdayDay"
                     render={({ field }) => (
-                      <FormControl>
-                        <select
-                          {...field}
-                          value={field.value ?? ""}
-                          className="w-24 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                          <option value="">Day</option>
-                          {DAYS.map((d) => (
-                            <option key={d} value={String(d)}>{d}</option>
-                          ))}
-                        </select>
-                      </FormControl>
+                      <FormItem className="w-24">
+                        <FormControl>
+                          <select
+                            {...field}
+                            value={field.value ?? ""}
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="">Day</option>
+                            {DAYS.map((d) => (
+                              <option key={d} value={String(d)}>{d}</option>
+                            ))}
+                          </select>
+                        </FormControl>
+                      </FormItem>
                     )}
                   />
                 </div>
-              </FormItem>
+              </div>
             </div>
           </section>
 
@@ -716,6 +770,7 @@ function ProfileEditForm({
                   { name: "linkedin", label: "LinkedIn", placeholder: "username" },
                   { name: "snapchat", label: "Snapchat", placeholder: "username" },
                   { name: "venmo", label: "Venmo", placeholder: "username" },
+                  { name: "bereal", label: "BeReal", placeholder: "username" },
                   { name: "otherSocial", label: "Other Link", placeholder: "https://..." },
                 ] as const
               ).map(({ name, label, placeholder }) => (
@@ -924,12 +979,14 @@ export default function Profile() {
       </div>
 
       {editing ? (
-        <ProfileEditForm
-          person={person}
-          targetId={targetId!}
-          isOwnProfile={isOwnProfile}
-          onCancel={() => setEditing(false)}
-        />
+        <ProfileEditErrorBoundary>
+          <ProfileEditForm
+            person={person}
+            targetId={targetId!}
+            isOwnProfile={isOwnProfile}
+            onCancel={() => setEditing(false)}
+          />
+        </ProfileEditErrorBoundary>
       ) : (
         <ProfileView person={person} canEdit={canEdit} onEdit={() => setEditing(true)} targetId={targetId!} />
       )}

@@ -205,6 +205,7 @@ export const UpdatePersonBody = zod.object({
   linkedin: zod.string().nullish(),
   snapchat: zod.string().nullish(),
   venmo: zod.string().nullish(),
+  bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
   relationshipLabel: zod.string().optional(),
   parentPersonId: zod.string().uuid().nullish(),

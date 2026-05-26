@@ -1,5 +1,6 @@
 import { useAuth } from "@/lib/auth";
-import { 
+import { Link } from "wouter";
+import {
   useGetFamilyUnit, getGetFamilyUnitQueryKey,
   useUpdateFamilyUnit,
   useListLinkRequests, getListLinkRequestsQueryKey,
@@ -15,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Network, Save, Check, X, Building2 } from "lucide-react";
+import { Network, Save, Check, X, Building2, User } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -87,7 +88,30 @@ export default function Settings() {
   };
 
   if (!user?.isAdmin) {
-    return <div className="p-8 text-center">Only administrators can view unit settings.</div>;
+    return (
+      <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-foreground">Settings</h1>
+          <p className="text-muted-foreground mt-1">Manage your account and family unit.</p>
+        </div>
+        <Card className="border-none shadow-sm bg-card">
+          <CardContent className="p-8 flex flex-col items-center gap-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="w-7 h-7 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Looking to update your info?</h2>
+              <p className="text-muted-foreground text-sm mt-1">
+                Edit your name, contact details, birthday, and social links from your profile page.
+              </p>
+            </div>
+            <Link href="/profile">
+              <Button className="mt-2">Go to My Profile</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const incomingRequests = linkRequests?.incoming.filter(r => r.status === 'pending') || [];
