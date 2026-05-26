@@ -216,13 +216,15 @@ Three layout functions exist:
   - Madeline ↔ Sam Woodbury (spouse, 2 rows) — inserted manually via SQL
   - Various `biological_parent` edges created during backfill for persons who had `parentPersonId` set
 
-### Known Missing Edges
-The following sibling couples have **no explicit spouse edges** in the DB because their `parent_person_id` was null in `personsTable` at backfill time. They're handled by the layout heuristic but are fragile:
-- Joe ↔ Heather
-- Nick ↔ Michelle
-- Ryan ↔ Jackie
-
-**To fix**: Either (a) update `parent_person_id` in `personsTable` for the in-law to point to their sibling, then re-run backfill, or (b) insert the spouse edges directly via Supabase SQL.
+### Spouse Edges (complete as of 2026-05-26)
+All 7 couples have explicit symmetric spouse edges in the `relationships` table (14 total rows):
+1. Spencer ↔ Miranda
+2. Tanner ↔ Anna
+3. Madeline ↔ Sam
+4. Nathan Rigby ↔ Carrie Rigby
+5. Joe Mosley ↔ Heather Mosley
+6. Nick Monson ↔ Michelle Monson
+7. Ryan Toone ↔ Jackie Toone
 
 ---
 
@@ -249,31 +251,7 @@ The following sibling couples have **no explicit spouse edges** in the DB becaus
 
 ## 9. Exact Next Steps (Priority Order)
 
-### Priority 1 — Fix remaining sibling couples (data quality)
-Insert explicit spouse edges for Joe↔Heather, Nick↔Michelle, Ryan↔Jackie via Supabase SQL:
-```sql
--- Get IDs first
-SELECT id, first_name, last_name, relationship_label FROM persons 
-WHERE family_unit_id = '9b8dfa66-bef1-422e-8d3c-77c72fd94148'
-AND relationship_label IN ('brother', 'brother-in-law', 'sister', 'sister-in-law')
-ORDER BY first_name;
-
--- Then insert spouse edges (fill in actual UUIDs)
-INSERT INTO relationships (family_id, from_person, to_person, type) VALUES
-  ('9b8dfa66-bef1-422e-8d3c-77c72fd94148', '<joe-uuid>', '<heather-uuid>', 'spouse'),
-  ('9b8dfa66-bef1-422e-8d3c-77c72fd94148', '<heather-uuid>', '<joe-uuid>', 'spouse'),
-  ...
-ON CONFLICT ON CONSTRAINT unique_edge DO NOTHING;
-```
-
-### Priority 2 — Also update `parent_person_id` in `personsTable`
-Update `persons.parent_person_id` for each in-law to point to their sibling. This enables future re-runs of the backfill to auto-create the edges:
-```sql
-UPDATE persons SET parent_person_id = '<sibling-uuid>' 
-WHERE id = '<inlaw-uuid>';
-```
-
-### Priority 3 — Sync admin person on registration
+### Priority 1 — Sync admin person on registration
 In `artifacts/api-server/src/routes/auth.ts`, after the `personsTable` insert in the register transaction, call `syncPersonToRelationshipLayer` for the new admin person (no edge needed, just ensure they're in `people` table).
 
 ### Priority 4 — Remove dead code
@@ -317,7 +295,7 @@ The canonical `formatPerson` function lives in `artifacts/api-server/src/routes/
 
 ## 11. Known Issues / TODOs
 
-- [ ] **Sibling spouse edges missing** for Joe/Heather, Nick/Michelle, Ryan/Jackie (see Priority 1)
+- [x] **Sibling spouse edges** — all 7 couples now have explicit DB edges (14 rows, 2026-05-26)
 - [ ] **Register flow doesn't sync admin to `people` table** (low impact since backfill covers existing users)
 - [ ] **`layoutPersonalView` is dead code** — should be deleted to reduce confusion
 - [ ] **Vitest tests require DATABASE_URL** — can't run locally without a connection
