@@ -1,73 +1,87 @@
 /**
- * Admin endpoints — one-time operations that require a secret.
- * TEMPORARY: Remove after migrations are applied.
+ * Admin endpoints — protected by ADMIN_SECRET env var.
+ * These are low-volume ops (backfill, one-time migrations).
  */
 import { Router } from "express";
-import { pool } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { db } from "@workspace/db";
+import { personsTable, peopleTable } from "@workspace/db";
+import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET ?? "olive-admin-2026";
 
-const MIGRATION_0007_SQL = `
-create table if not exists people (
-  id uuid primary key default gen_random_uuid(),
-  family_id uuid not null,
-  first_name text not null,
-  last_name text,
-  birth_date date,
-  death_date date,
-  gender text,
-  managed_by uuid references people(id),
-  created_at timestamptz default now()
-);
-
-create index if not exists people_family_id_idx on people (family_id);
-
-create table if not exists relationships (
-  id uuid primary key default gen_random_uuid(),
-  family_id uuid not null,
-  from_person uuid not null references people(id) on delete cascade,
-  to_person   uuid not null references people(id) on delete cascade,
-  type text not null check (type in (
-    'biological_parent',
-    'adoptive_parent',
-    'step_parent',
-    'spouse',
-    'ex_spouse',
-    'partner'
-  )),
-  start_date date,
-  end_date date,
-  created_at timestamptz default now(),
-  constraint no_self_relationship check (from_person <> to_person),
-  constraint unique_edge unique (from_person, to_person, type)
-);
-
-create index if not exists relationships_from_idx on relationships (from_person, type);
-create index if not exists relationships_to_idx on relationships (to_person, type);
-create index if not exists relationships_family_idx on relationships (family_id);
-`;
-
-// POST /api/admin/migrate-0007
-router.post("/admin/migrate-0007", async (req, res) => {
+function checkSecret(req: any, res: any): boolean {
   const secret = req.headers["x-admin-secret"] ?? req.query["secret"];
   if (secret !== ADMIN_SECRET) {
     res.status(403).json({ error: "Forbidden" });
-    return;
+    return false;
   }
+  return true;
+}
 
-  const client = await pool.connect();
+/**
+ * POST /api/admin/backfill-people
+ *
+ * One-time backfill: for each existing person in personsTable that is NOT yet
+ * in peopleTable, insert them and create their relationship edges. Safe to call
+ * multiple times (idempotent via onConflictDoNothing + existing-edge guards).
+ */
+router.post("/admin/backfill-people", async (req, res) => {
+  if (!checkSecret(req, res)) return;
+
   try {
-    await client.query(MIGRATION_0007_SQL);
-    res.json({ ok: true, message: "Migration 0007 applied successfully." });
+    // Load all persons grouped by family unit
+    const allPersons = await db.select().from(personsTable);
+
+    // Load already-synced people IDs to skip them
+    const alreadySynced = await db.select({ id: peopleTable.id }).from(peopleTable);
+    const syncedIds = new Set(alreadySynced.map((r) => r.id));
+
+    // Group by familyUnitId so we can find the admin per unit
+    const byUnit = new Map<string, typeof allPersons>();
+    for (const p of allPersons) {
+      if (!byUnit.has(p.familyUnitId)) byUnit.set(p.familyUnitId, []);
+      byUnit.get(p.familyUnitId)!.push(p);
+    }
+
+    let synced = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const [unitId, members] of byUnit) {
+      const admin = members.find((m) => m.isAdmin);
+      if (!admin) {
+        errors.push(`Unit ${unitId}: no admin found, skipping`);
+        continue;
+      }
+
+      for (const person of members) {
+        if (syncedIds.has(person.id)) {
+          skipped++;
+          continue;
+        }
+        try {
+          await syncPersonToRelationshipLayer({
+            personId: person.id,
+            familyId: unitId,
+            firstName: person.firstName,
+            lastName: person.lastName,
+            label: person.relationshipLabel,
+            adminId: admin.id,
+            parentPersonId: person.parentPersonId,
+          });
+          synced++;
+        } catch (e: any) {
+          errors.push(`Person ${person.id} (${person.firstName}): ${e?.message}`);
+        }
+      }
+    }
+
+    res.json({ ok: true, synced, skipped, errors });
   } catch (err: any) {
-    res.status(500).json({
-      error: "Migration failed",
-      message: err?.message ?? String(err),
-    });
-  } finally {
-    client.release();
+    res.status(500).json({ error: "Backfill failed", message: err?.message ?? String(err) });
   }
 });
 

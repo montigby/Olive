@@ -8,7 +8,6 @@ import invitesRouter from "./invites";
 import linkRequestsRouter from "./linkRequests";
 import summaryRouter from "./summary";
 import aiRouter from "./ai";
-import testRelationshipsRouter from "./test-relationships";
 import adminRouter from "./admin";
 
 const router: IRouter = Router();
@@ -22,7 +21,6 @@ router.use(invitesRouter);
 router.use(linkRequestsRouter);
 router.use(summaryRouter);
 router.use(aiRouter);
-router.use(testRelationshipsRouter);
 router.use(adminRouter);
 
 export default router;

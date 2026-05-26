@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { db } from "@workspace/db";
-import { personsTable } from "@workspace/db";
+import { personsTable, relationshipsTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
 import { AddMemberBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
+import { computeVisibleSet, applyVisibility } from "../lib/visibility";
+import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
 
@@ -17,7 +19,38 @@ router.get("/family-units/:unitId/members", requireAuth, async (req, res) => {
     .from(personsTable)
     .where(eq(personsTable.familyUnitId, unitId));
 
-  res.json(members.map(formatPerson));
+  // Load viewer's person record
+  const viewers = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.id, req.auth!.personId))
+    .limit(1);
+
+  if (!viewers.length) {
+    res.status(401).json({ error: "Unauthorized", message: "Viewer not found" });
+    return;
+  }
+
+  const viewer = viewers[0];
+
+  // Admin or viewer not in this unit: return all (admin sees all; cross-unit access untouched)
+  if (viewer.isAdmin || viewer.familyUnitId !== unitId) {
+    res.json(members.map(formatPerson));
+    return;
+  }
+
+  // Non-admin viewer in their own unit: apply social graph visibility
+  const visibleSet = computeVisibleSet(viewer, members);
+
+  const result = members
+    .map((m) => {
+      const tier = visibleSet.get(m.id) ?? 4;
+      if (tier === 4) return null;
+      return applyVisibility(formatPerson(m), tier);
+    })
+    .filter(Boolean);
+
+  res.json(result);
 });
 
 // POST /api/family-units/:unitId/members
@@ -61,7 +94,39 @@ router.post("/family-units/:unitId/members", requireAuth, requireAdmin, async (r
     })
     .returning();
 
+  // Sync to explicit relationship layer (best-effort)
+  await syncPersonToRelationshipLayer({
+    personId: person.id,
+    familyId: unitId,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    label: person.relationshipLabel,
+    adminId: req.auth!.personId,
+    parentPersonId: person.parentPersonId,
+  });
+
   res.status(201).json(formatPerson(person));
+});
+
+// GET /api/family-units/:unitId/relationships
+// Returns all explicit relationship edges for the family unit.
+router.get("/family-units/:unitId/relationships", requireAuth, async (req, res) => {
+  const unitId = String(req.params.unitId);
+  if (req.auth?.familyUnitId !== unitId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const rows = await db
+    .select({
+      fromPerson: relationshipsTable.fromPerson,
+      toPerson: relationshipsTable.toPerson,
+      type: relationshipsTable.type,
+    })
+    .from(relationshipsTable)
+    .where(eq(relationshipsTable.familyId, unitId));
+
+  res.json(rows);
 });
 
 // POST /api/family-units/:unitId/members/:personId/invite

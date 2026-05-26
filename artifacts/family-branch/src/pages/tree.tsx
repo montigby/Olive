@@ -68,6 +68,16 @@ function isGrandchildRole(label: string) {
   return GRANDCHILD_LABELS.has(label.toLowerCase().trim());
 }
 
+// Grandparent-specific labels (subset of PARENT_LABELS — used to separate the
+// grandparent generation from the immediate-parent generation in the tree layout)
+const GRANDPARENT_LABEL_SET = new Set([
+  "grandma", "grandpa", "grandmother", "grandfather",
+  "nana", "papa", "nan", "pop", "pops", "gram", "gramps",
+]);
+function isGrandparentRole(label: string): boolean {
+  return GRANDPARENT_LABEL_SET.has(label.toLowerCase().trim());
+}
+
 function isSiblingRole(label: string) {
   return SIBLING_LABELS.has(label.toLowerCase().trim());
 }
@@ -79,12 +89,12 @@ function isNephewNieceRole(label: string) {
 // ---------------------------------------------------------------------------
 // Layout sizes
 // ---------------------------------------------------------------------------
-const PERSON_W = 190;
-const COUPLE_CONNECTOR_W = 36;
+const PERSON_W = 80;            // circle avatar + label below
+const COUPLE_CONNECTOR_W = 40;  // ─●─ connector between two circles
 const COUPLE_W = PERSON_W * 2 + COUPLE_CONNECTOR_W;
-const V_GAP = 120;
-const H_GAP = 16;
-const PILL_W = 200; // estimated pill width for layout positioning
+const V_GAP = 160;
+const H_GAP = 24;
+const PILL_W = 160; // estimated pill width for layout positioning
 
 // ─── Member tree preferences (Phase 2 pin UI) ─────────────────────────────
 // type MemberTreePreferences = { pinnedNodes: string[] };
@@ -111,29 +121,33 @@ function generatePillLabel(members: any[], spouseFirstName?: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PersonCard — data-person-id lets onNodeClick detect which person was clicked
+// PersonCard — circle avatar with name + label below
+// data-person-id lets onNodeClick detect which person was clicked
 // ---------------------------------------------------------------------------
 function PersonCard({ member }: { member: any }) {
   return (
     <div
       data-person-id={member.id}
-      className="nopan flex items-center gap-2.5 bg-background rounded-xl border border-border shadow-sm px-3 py-2 cursor-pointer hover:border-primary/50 hover:shadow-md hover:bg-secondary/30 transition-all select-none"
+      className="nopan flex flex-col items-center cursor-pointer select-none group"
       style={{ width: PERSON_W }}
     >
-      <Avatar className="h-8 w-8 flex-shrink-0 border border-primary/20 pointer-events-none">
-        <AvatarImage src={member.photoUrl} />
-        <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
-          {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1 pointer-events-none">
-        <p className="text-sm font-bold leading-tight truncate text-foreground">{member.firstName}</p>
-        <p className="text-[11px] text-foreground/50 truncate leading-none">{member.lastName}</p>
-        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{member.relationshipLabel}</p>
+      {/* Circle avatar */}
+      <div className="relative flex-shrink-0">
+        <Avatar className="h-16 w-16 border-2 border-border shadow-sm group-hover:border-primary/60 group-hover:shadow-md transition-all pointer-events-none">
+          <AvatarImage src={member.photoUrl} />
+          <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">
+            {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
+          </AvatarFallback>
+        </Avatar>
+        {member.claimed && (
+          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background pointer-events-none" />
+        )}
       </div>
-      {member.claimed && (
-        <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 pointer-events-none" />
-      )}
+      {/* Name + label */}
+      <div className="mt-1.5 text-center pointer-events-none w-full px-1">
+        <p className="text-xs font-semibold leading-tight truncate text-foreground">{member.firstName}</p>
+        <p className="text-[10px] text-muted-foreground truncate leading-snug">{member.relationshipLabel}</p>
+      </div>
     </div>
   );
 }
@@ -156,7 +170,7 @@ const CoupleNode = ({ data }: any) => {
           {unitName}
         </div>
       )}
-      <div className="flex items-center">
+      <div className="flex items-start">
         {parents.length === 0 ? (
           <div className="px-4 py-2 text-sm text-muted-foreground italic">No members</div>
         ) : parents.length === 1 ? (
@@ -164,7 +178,8 @@ const CoupleNode = ({ data }: any) => {
         ) : (
           <>
             <PersonCard member={parents[0]} />
-            <div className="flex items-center mx-1 pointer-events-none">
+            {/* mt-[26px] centres the ─●─ connector with the 64px circle (64/2 - 6 = 26) */}
+            <div className="flex items-center mt-[26px] flex-shrink-0 pointer-events-none">
               <div className="w-4 h-0.5 bg-primary/40" />
               <div className="w-3 h-3 rounded-full border-2 border-primary/50 bg-background shadow-sm" />
               <div className="w-4 h-0.5 bg-primary/40" />
@@ -310,7 +325,12 @@ const nodeTypes = {
 // Layout engine
 // ---------------------------------------------------------------------------
 
-function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: any[] } {
+function layoutUnit(
+  unit: any,
+  cx: number,
+  y: number,
+  explicitPairs: Map<string, string> = new Map(),
+): { nodes: any[]; edges: any[] } {
   const nodes: any[] = [];
   const edges: any[] = [];
 
@@ -422,8 +442,13 @@ function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: an
     const broInLaw = siblings.filter((m: any) => m.relationshipLabel.toLowerCase().trim() === "brother-in-law");
     const usedIds  = new Set<string>();
 
+    // Helper: find a sibling's explicit spouse among a candidate list
+    const explicitSpouseIn = (person: any, candidates: any[]) =>
+      candidates.find((c: any) => !usedIds.has(c.id) && explicitPairs.get(person.id) === c.id);
+
     for (const bro of brothers) {
       const paired =
+        explicitSpouseIn(bro, sisInLaw) ??
         sisInLaw.find((s: any) => !usedIds.has(s.id) && s.parentPersonId === bro.id) ??
         sisInLaw.find((s: any) => !usedIds.has(s.id));
       if (paired) { usedIds.add(paired.id); spencerSlots.push({ members: [bro, paired] }); }
@@ -432,6 +457,7 @@ function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: an
     }
     for (const sis of sisters) {
       const paired =
+        explicitSpouseIn(sis, broInLaw) ??
         broInLaw.find((b: any) => !usedIds.has(b.id) && b.parentPersonId === sis.id) ??
         broInLaw.find((b: any) => !usedIds.has(b.id));
       if (paired) { usedIds.add(paired.id); spencerSlots.push({ members: [sis, paired] }); }
@@ -441,6 +467,7 @@ function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: an
     for (const bro of broInLaw) {
       if (usedIds.has(bro.id)) continue;
       const paired =
+        explicitSpouseIn(bro, sisInLaw) ??
         sisInLaw.find((s: any) => !usedIds.has(s.id) && s.parentPersonId === bro.id) ??
         sisInLaw.find((s: any) => !usedIds.has(s.id) && bro.parentPersonId === s.id) ??
         sisInLaw.find((s: any) => !usedIds.has(s.id));
@@ -665,7 +692,7 @@ function layoutUnit(unit: any, cx: number, y: number): { nodes: any[]; edges: an
 
     unit.children.forEach((childUnit: any) => {
       const childCx = unitStartX + unitSlotW / 2;
-      const { nodes: cn, edges: ce } = layoutUnit(childUnit, childCx, childY);
+      const { nodes: cn, edges: ce } = layoutUnit(childUnit, childCx, childY, explicitPairs);
       nodes.push(...cn);
       edges.push(...ce);
 
@@ -738,44 +765,83 @@ function findFamilyHead(allMembers: any[]): any | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// Spouse map — who is paired with whom across the whole unit
-// (mirrors the coupling logic in layoutUnit so the two stay in sync)
+// Spouse map — who is paired with whom across the whole unit.
+//
+// explicitPairs: Map<personId, spouseId> built from the relationships table
+// (type = "spouse"). When provided, explicit pairs take priority over the
+// heuristic label-based passes below — any member already in an explicit pair
+// is excluded from the fallback matching so the heuristic only handles people
+// not yet in the relationship DB.
 // ---------------------------------------------------------------------------
-function buildSpouseMap(allMembers: any[]): Map<string, string> {
-  const map = new Map<string, string>();
-  const pair = (a: any, b: any) => { map.set(a.id, b.id); map.set(b.id, a.id); };
+function buildSpouseMap(
+  allMembers: any[],
+  explicitPairs: Map<string, string> = new Map(),
+): Map<string, string> {
+  const map = new Map<string, string>(explicitPairs);
+  const alreadyPaired = new Set<string>(explicitPairs.keys());
 
+  const pair = (a: any, b: any) => {
+    if (alreadyPaired.has(a.id) || alreadyPaired.has(b.id)) return;
+    map.set(a.id, b.id);
+    map.set(b.id, a.id);
+  };
+
+  // Head + partner (wife/husband/spouse/partner labels)
   const head = findFamilyHead(allMembers);
-  const partner = allMembers.find((m: any) => isExplicitPartner(m.relationshipLabel ?? ""));
-  if (head && partner) pair(head, partner);
+  const partner = allMembers.find((m: any) =>
+    isExplicitPartner(m.relationshipLabel ?? "") && !alreadyPaired.has(m.id),
+  );
+  if (head && partner && !alreadyPaired.has(head.id)) pair(head, partner);
 
   const sibs = allMembers.filter((m: any) => isSiblingRole(m.relationshipLabel ?? ""));
   const brothers = sibs.filter((m: any) => ["brother", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()));
   const sisters  = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "sister");
   const sisInLaw = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "sister-in-law");
   const broInLaw = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "brother-in-law");
-  const used = new Set<string>();
+  const used = new Set<string>(alreadyPaired);
 
+  // Pass 1: pair using explicit parentPersonId links (strongest heuristic signal).
   for (const bro of brothers) {
+    if (used.has(bro.id)) continue;
     const p = sisInLaw.find((s: any) => !used.has(s.id) && s.parentPersonId === bro.id)
-           ?? sisInLaw.find((s: any) => !used.has(s.id));
-    if (p) { pair(bro, p); used.add(p.id); }
-    used.add(bro.id);
+           ?? sisInLaw.find((s: any) => !used.has(s.id) && bro.parentPersonId === s.id);
+    if (p) { pair(bro, p); used.add(p.id); used.add(bro.id); }
   }
   for (const sis of sisters) {
+    if (used.has(sis.id)) continue;
     const p = broInLaw.find((b: any) => !used.has(b.id) && b.parentPersonId === sis.id)
-           ?? broInLaw.find((b: any) => !used.has(b.id));
-    if (p) { pair(sis, p); used.add(p.id); }
-    used.add(sis.id);
+           ?? broInLaw.find((b: any) => !used.has(b.id) && sis.parentPersonId === b.id);
+    if (p) { pair(sis, p); used.add(p.id); used.add(sis.id); }
   }
   for (const bro of broInLaw) {
     if (used.has(bro.id)) continue;
     const p = sisInLaw.find((s: any) => !used.has(s.id) && s.parentPersonId === bro.id)
-           ?? sisInLaw.find((s: any) => !used.has(s.id) && bro.parentPersonId === s.id)
-           ?? sisInLaw.find((s: any) => !used.has(s.id));
-    if (p) { pair(bro, p); used.add(p.id); }
-    used.add(bro.id);
+           ?? sisInLaw.find((s: any) => !used.has(s.id) && bro.parentPersonId === s.id);
+    if (p) { pair(bro, p); used.add(p.id); used.add(bro.id); }
   }
+
+  // Pass 2: sisters + brothers-in-law (run BEFORE brothers + sisters-in-law).
+  const remSisters  = sisters.filter((s: any) => !used.has(s.id));
+  const remBroInLaw = broInLaw.filter((b: any) => !used.has(b.id));
+  const sCount = Math.min(remSisters.length, remBroInLaw.length);
+  for (let i = 0; i < sCount; i++) {
+    pair(remSisters[i], remBroInLaw[i]);
+    used.add(remSisters[i].id);
+    used.add(remBroInLaw[i].id);
+  }
+
+  // Pass 3: brothers + sisters-in-law (blind fallback, order-based).
+  const remBros = brothers.filter((b: any) => !used.has(b.id));
+  const remSisInLaw = sisInLaw.filter((s: any) => !used.has(s.id));
+  const remainingUnpairedBIL = broInLaw.filter((b: any) => !used.has(b.id)).length;
+  const availableSILForBrothers = Math.max(0, remSisInLaw.length - remainingUnpairedBIL);
+  const bCount = Math.min(remBros.length, availableSILForBrothers);
+  for (let i = 0; i < bCount; i++) {
+    pair(remBros[i], remSisInLaw[i]);
+    used.add(remBros[i].id);
+    used.add(remSisInLaw[i].id);
+  }
+
   return map;
 }
 
@@ -793,13 +859,14 @@ function layoutPersonalView(
   cx: number,
   y: number,
   expandedPills: Set<string> = new Set(),
+  explicitPairs: Map<string, string> = new Map(),
 ): { nodes: any[]; edges: any[] } {
   const nodes: any[] = [];
   const edges: any[] = [];
 
   const viewerId  = viewerPerson.id;
   const viewerLabel = (viewerPerson.relationshipLabel ?? "").toLowerCase().trim();
-  const spouseMap   = buildSpouseMap(allMembers);
+  const spouseMap   = buildSpouseMap(allMembers, explicitPairs);
   const viewerSpouseId = spouseMap.get(viewerId);
   const viewerSpouse   = viewerSpouseId ? allMembers.find((m: any) => m.id === viewerSpouseId) : null;
   const excludeIds     = new Set<string>([viewerId, ...(viewerSpouseId ? [viewerSpouseId] : [])]);
@@ -913,6 +980,34 @@ function layoutPersonalView(
     );
   }
 
+  // ── Pre-compute shownIds + pill membership (needed before row layout) ──────
+  const shownIds = new Set<string>([
+    viewerId,
+    ...(viewerSpouseId ? [viewerSpouseId] : []),
+    ...viewerParents.map((m: any) => m.id),
+    ...viewerChildren.map((m: any) => m.id),
+  ]);
+  for (const sib of viewerSiblings) {
+    shownIds.add(sib.id);
+    const ssId = spouseMap.get(sib.id);
+    if (ssId) shownIds.add(ssId);
+  }
+  for (const m of allMembers) {
+    if (isNephewNieceRole(m.relationshipLabel ?? "")) shownIds.add(m.id);
+  }
+
+  // In-law pill (Miranda's side)
+  const inLawPillMembersArr = allMembers.filter((m: any) => !shownIds.has(m.id));
+  const inLawPillNodeIds    = inLawPillMembersArr.map((m: any) => m.id as string).sort();
+  const inLawPillId         = "pill:" + inLawPillNodeIds.join("-");
+  const inLawPillExpanded   = inLawPillMembersArr.length > 0 && expandedPills.has(inLawPillId);
+
+  // Sibling pill (Spencer's side — shown when in-law pill is expanded)
+  const sibPillNodeIds  = viewerSiblings.map((s: any) => s.id as string).sort();
+  const sibPillId       = "sib-pill:" + sibPillNodeIds.join("-");
+  // Collapse siblings to a pill whenever the in-law side is open (and there are siblings)
+  const showSiblingsAsPill = inLawPillExpanded && viewerSiblings.length > 0;
+
   // ── Render viewer + spouse couple (labels from viewer's perspective) ──
   // For the family head the spouse goes on the LEFT and the viewer on the RIGHT
   // so each person is adjacent to their own family branch:
@@ -958,7 +1053,10 @@ function layoutPersonalView(
 
   const rowLeft  = cx - coupleNodeW / 2;
   let   rowRight = cx + coupleNodeW / 2;
-  if (sibSlots.length > 0) {
+  if (showSiblingsAsPill) {
+    // Siblings collapsed to a pill — only pill width extends the row
+    rowRight = cx + coupleNodeW / 2 + SIB_SEP + PILL_W;
+  } else if (sibSlots.length > 0) {
     let slotX = cx + coupleNodeW / 2 + SIB_SEP;
     for (const sl of sibSlots) { slotX += sibSlotW(sl) + SIB_GAP; }
     rowRight = slotX - SIB_GAP; // strip trailing gap
@@ -998,7 +1096,22 @@ function layoutPersonalView(
 
   // ── Siblings to the right — edges connect from the shared parent node so the
   //    parent visually fans out over all its children (not from the couple). ──
-  if (sibSlots.length > 0) {
+  if (showSiblingsAsPill) {
+    // In-law side is expanded → collapse siblings into a pill so there's no overlap
+    const sibPillLabel = `${viewerSiblings.length} sibling${viewerSiblings.length !== 1 ? "s" : ""}`;
+    const sibPillX = cx + coupleNodeW / 2 + SIB_SEP;
+    nodes.push({
+      id: sibPillId, type: "pill",
+      position: { x: sibPillX, y },
+      data: { members: viewerSiblings, label: sibPillLabel, pillId: sibPillId },
+    });
+    const sibSrc = parentNodeId ?? coupleId;
+    edges.push({
+      id: `e-${sibSrc}-${sibPillId}`, source: sibSrc, target: sibPillId,
+      type: "smoothstep",
+      style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 },
+    });
+  } else if (sibSlots.length > 0) {
     let slotX = cx + coupleNodeW / 2 + SIB_SEP;
     for (const slot of sibSlots) {
       const slotW  = sibSlotW(slot);
@@ -1019,30 +1132,11 @@ function layoutPersonalView(
   }
 
   // ── In-law pill group ──────────────────────────────────────────────────────
-  // Collect all member IDs already rendered in this personal view.
-  const shownIds = new Set<string>([
-    viewerId,
-    ...(viewerSpouseId ? [viewerSpouseId] : []),
-    ...viewerParents.map((m: any) => m.id),
-    ...viewerChildren.map((m: any) => m.id),
-  ]);
-  for (const sib of viewerSiblings) {
-    shownIds.add(sib.id);
-    const ssId = spouseMap.get(sib.id);
-    if (ssId) shownIds.add(ssId);
-  }
-  for (const m of allMembers) {
-    if (isNephewNieceRole(m.relationshipLabel ?? "")) shownIds.add(m.id);
-  }
-
-  // Any member not yet shown becomes part of the in-law pill.
-  const pillMembers = allMembers.filter((m: any) => !shownIds.has(m.id));
-
-  if (pillMembers.length > 0) {
-    // Stable pill ID derived from the sorted set of member IDs
-    const pillNodeIds = pillMembers.map((m: any) => m.id as string).sort();
-    const pillId = "pill:" + pillNodeIds.join("-");
-    const pillLabel = generatePillLabel(pillMembers, viewerSpouse?.firstName);
+  // Use the pre-computed in-law pill membership from above.
+  if (inLawPillMembersArr.length > 0) {
+    const pillMembers = inLawPillMembersArr;
+    const pillId      = inLawPillId;
+    const pillLabel   = generatePillLabel(pillMembers, viewerSpouse?.firstName);
 
     // Position: same vertical level as the parent node (y - V_GAP), to the LEFT.
     // Anchor off the parent node (now centred over the children row) so the pill
@@ -1053,50 +1147,161 @@ function layoutPersonalView(
     // (the couple's left edge = rowLeft).  This keeps it firmly on the spouse's
     // side regardless of how far right the sibling row extends.
     const pillX = rowLeft - PILL_SEP - PILL_W;
-    const edgeId = `e-pill-${pillNodeIds[0]?.slice(0, 8) ?? "x"}-couple`;
+    const edgeId = `e-pill-${inLawPillNodeIds[0]?.slice(0, 8) ?? "x"}-couple`;
 
     if (expandedPills.has(pillId)) {
-      // ── Expanded: render members as a couple / child node ──
-      const expId = `pv-pill-exp-${pillNodeIds[0]?.slice(0, 8) ?? "x"}`;
-      if (pillMembers.length >= 2) {
+      // ── Expanded ──────────────────────────────────────────────────────────
+      // Strategy:
+      //   • In-law parents (mother-in-law / father-in-law) → top couple at y−V_GAP
+      //   • Remaining in-law members → a row of properly-paired couple/child
+      //     nodes at y, right-aligned to (rowLeft − PILL_EXP_SEP) so they
+      //     never overlap the viewer couple.
+      const expId = `pv-pill-exp-${inLawPillNodeIds[0]?.slice(0, 8) ?? "x"}`;
+      const PILL_EXP_SEP = H_GAP * 5;
+
+      // Split into parents vs. everyone else
+      const ilParents  = pillMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
+      const ilSiblings = pillMembers.filter((m: any) => !isInlawParent(m.relationshipLabel ?? ""));
+
+      // Pair the siblings using the shared spouseMap
+      const usedIlIds = new Set<string>();
+      const sibPairs: { members: any[] }[] = [];
+      for (const m of ilSiblings) {
+        if (usedIlIds.has(m.id)) continue;
+        const spId = spouseMap.get(m.id);
+        const sp = spId && !usedIlIds.has(spId)
+          ? ilSiblings.find((s: any) => s.id === spId) : null;
+        if (sp) {
+          sibPairs.push({ members: [m, sp] });
+          usedIlIds.add(m.id); usedIlIds.add(sp.id);
+        } else {
+          sibPairs.push({ members: [m] });
+          usedIlIds.add(m.id);
+        }
+      }
+
+      const pairNodeW = (pair: { members: any[] }) =>
+        pair.members.length >= 2 ? COUPLE_W : PERSON_W;
+
+      const totalSibRowW = sibPairs.reduce((s, p) => s + pairNodeW(p), 0)
+        + Math.max(0, sibPairs.length - 1) * (H_GAP * 3);
+      const topW = ilParents.length >= 2 ? COUPLE_W
+                 : ilParents.length === 1 ? PERSON_W : 0;
+      // Footprint = widest of: sib row, top couple, or a single person
+      const footprintW = Math.max(totalSibRowW, topW, PERSON_W);
+
+      // Anchor the footprint so its right edge is PILL_EXP_SEP left of the viewer couple
+      const anchorRight    = rowLeft - PILL_EXP_SEP;
+      const footprintLeft  = anchorRight - footprintW;
+      const footprintCenterX = footprintLeft + footprintW / 2;
+
+      // ── Top node: in-law parents at y − V_GAP ──
+      const hasTopNode = ilParents.length > 0;
+      if (ilParents.length >= 2) {
         nodes.push({
-          id: expId,
-          type: "couple",
-          position: { x: pillX - (COUPLE_W - PILL_W) / 2, y: pillY },
-          data: { parents: pillMembers.slice(0, 2), unitName: "", pillId },
+          id: expId, type: "couple",
+          position: { x: footprintCenterX - COUPLE_W / 2, y: y - V_GAP },
+          data: { parents: ilParents.slice(0, 2), unitName: "", pillId },
         });
-      } else {
+      } else if (ilParents.length === 1) {
         nodes.push({
-          id: expId,
-          type: "child",
-          position: { x: pillX, y: pillY },
-          data: { member: pillMembers[0], pillId },
+          id: expId, type: "child",
+          position: { x: footprintCenterX - PERSON_W / 2, y: y - V_GAP },
+          data: { member: ilParents[0], pillId },
         });
       }
-      // If there are more than 2 pill members, render the extras as a row below
-      if (pillMembers.length > 2) {
-        const extraMembers = pillMembers.slice(2);
-        const extraRowW = extraMembers.length * PERSON_W + (extraMembers.length - 1) * H_GAP;
-        const extraStartX = pillX - (COUPLE_W - PILL_W) / 2 + COUPLE_W / 2 - extraRowW / 2;
-        extraMembers.forEach((em: any, ei: number) => {
-          const emId = `pv-pill-extra-${em.id}`;
-          nodes.push({
-            id: emId, type: "child",
-            position: { x: extraStartX + ei * (PERSON_W + H_GAP), y: pillY + V_GAP },
-            data: { member: em },
-          });
-          edges.push({
-            id: `e-${expId}-${emId}`, source: expId, target: emId,
-            type: "smoothstep",
-            style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 },
-          });
-        });
-      }
+
+      // Determine which node drives the edge to the viewer couple
+      const firstSibNodeId = sibPairs.length > 0
+        ? `pv-pill-extra-${sibPairs[0].members[0].id}` : null;
+      const edgeSrc = hasTopNode ? expId : (firstSibNodeId ?? expId);
+
       edges.push({
-        id: edgeId, source: expId, target: coupleId,
+        id: edgeId, source: edgeSrc, target: coupleId,
         type: "smoothstep",
         style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.5 },
       });
+
+      // ── Sibling pairs: row at y, right-aligned to anchorRight ──
+      if (sibPairs.length > 0) {
+        const sibStartX = anchorRight - totalSibRowW;
+        let pairX = sibStartX;
+        for (let si = 0; si < sibPairs.length; si++) {
+          const pair = sibPairs[si];
+          const pw = pairNodeW(pair);
+          const pairCx = pairX + pw / 2;
+          const nodeId = `pv-pill-extra-${pair.members[0].id}`;
+          const isFirstSib = si === 0;
+          // Give the collapse affordance to the first sib when there are no top parents
+          const extraData = !hasTopNode && isFirstSib ? { pillId } : {};
+
+          if (pair.members.length >= 2) {
+            nodes.push({
+              id: nodeId, type: "couple",
+              position: { x: pairCx - COUPLE_W / 2, y },
+              data: { parents: pair.members, unitName: "", ...extraData },
+            });
+          } else {
+            nodes.push({
+              id: nodeId, type: "child",
+              position: { x: pairX, y },
+              data: { member: pair.members[0], ...extraData },
+            });
+          }
+
+          // Parents → children edges
+          if (hasTopNode) {
+            edges.push({
+              id: `e-${expId}-${nodeId}`, source: expId, target: nodeId,
+              type: "smoothstep",
+              style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 },
+            });
+          }
+
+          // ── Child pill below this couple ──────────────────────────────────
+          const coupleKids = allMembers.filter((m: any) =>
+            isNephewNieceRole(m.relationshipLabel ?? "") &&
+            pair.members.some((parent: any) => m.parentPersonId === parent.id)
+          );
+          if (coupleKids.length > 0) {
+            const childPillId = `child-pill:${pair.members[0].id}`;
+            const childY = y + V_GAP;
+            if (expandedPills.has(childPillId)) {
+              // Expanded — show kids in a row below the couple
+              const kidRowW = coupleKids.length * PERSON_W + (coupleKids.length - 1) * H_GAP;
+              const kidStartX = pairCx - kidRowW / 2;
+              coupleKids.forEach((kid: any, ki: number) => {
+                const kidId = `pv-nn-${kid.id}`;
+                nodes.push({
+                  id: kidId, type: "child",
+                  position: { x: kidStartX + ki * (PERSON_W + H_GAP), y: childY },
+                  data: { member: kid },
+                });
+                edges.push({
+                  id: `e-${nodeId}-${kidId}`, source: nodeId, target: kidId,
+                  type: "smoothstep",
+                  style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 },
+                });
+              });
+            } else {
+              // Collapsed — show as a pill
+              const kidLabel = `${coupleKids.length} kid${coupleKids.length !== 1 ? "s" : ""}`;
+              nodes.push({
+                id: childPillId, type: "pill",
+                position: { x: pairCx - PILL_W / 2, y: childY },
+                data: { members: coupleKids, label: kidLabel, pillId: childPillId },
+              });
+              edges.push({
+                id: `e-${nodeId}-${childPillId}`, source: nodeId, target: childPillId,
+                type: "smoothstep",
+                style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 },
+              });
+            }
+          }
+
+          pairX += pw + H_GAP * 3;
+        }
+      }
     } else {
       // ── Collapsed: render as pill node ──
       nodes.push({
@@ -1110,6 +1315,472 @@ function layoutPersonalView(
         style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5, strokeOpacity: 0.4 },
       });
     }
+  }
+
+  return { nodes, edges };
+}
+
+// ---------------------------------------------------------------------------
+// Layered drill-down view — group pill design.
+// Layer 0 (core): viewer + spouse + their children — always rendered as nodes.
+// Layer 1: ONE "grp:viewer" pill for viewer's whole side (parents + siblings),
+//           ONE "grp:spouse" pill for spouse's whole side.
+// Layer 2: when a group expands, parents couple node + sibling row appear.
+//           Each sibling with children gets a "kids:{sibId}" pill below them.
+// Layer 3: when a kids pill expands, individual child nodes appear in a row.
+// ---------------------------------------------------------------------------
+function layoutLayeredView(
+  viewerPerson: any,
+  allMembers: any[],
+  cx: number,
+  y: number,
+  expandedPills: Set<string>,
+  explicitPairs: Map<string, string> = new Map(),
+): { nodes: any[]; edges: any[] } {
+  const nodes: any[] = [];
+  const edges: any[] = [];
+
+  const viewerId = viewerPerson.id;
+  const viewerLabel = (viewerPerson.relationshipLabel ?? "").toLowerCase().trim();
+  const spouseMap = buildSpouseMap(allMembers, explicitPairs);
+  const viewerSpouseId = spouseMap.get(viewerId);
+  const viewerSpouse = viewerSpouseId
+    ? allMembers.find((m: any) => m.id === viewerSpouseId)
+    : null;
+  const excludeIds = new Set<string>([
+    viewerId,
+    ...(viewerSpouseId ? [viewerSpouseId] : []),
+  ]);
+
+  const viewerIsFamilyHead =
+    isParentRole(viewerLabel) &&
+    !isExplicitPartner(viewerLabel) &&
+    !isInlawParent(viewerLabel) &&
+    !isSiblingRole(viewerLabel) &&
+    !isNephewNieceRole(viewerLabel) &&
+    allMembers.some((c: any) => c.parentPersonId === viewerId);
+
+  // ── Family identification ──────────────────────────────────────────────────
+
+  // Viewer's parents
+  let viewerParents: any[] = [];
+  if (viewerPerson.parentPersonId) {
+    const dp = allMembers.find((m: any) => m.id === viewerPerson.parentPersonId);
+    if (dp) {
+      const psId = spouseMap.get(dp.id);
+      const ps = psId ? allMembers.find((m: any) => m.id === psId) : null;
+      viewerParents = [dp, ...(ps ? [ps] : [])];
+    }
+  } else if (viewerIsFamilyHead) {
+    viewerParents = allMembers.filter((m: any) =>
+      isParentRole(m.relationshipLabel ?? "") &&
+      !isGrandparentRole(m.relationshipLabel ?? "") &&
+      !isExplicitPartner(m.relationshipLabel ?? "") &&
+      !isInlawParent(m.relationshipLabel ?? "") &&
+      m.id !== viewerId &&
+      !allMembers.some((c: any) => c.parentPersonId === m.id),
+    );
+  } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
+    viewerParents = allMembers.filter((m: any) =>
+      isParentRole(m.relationshipLabel ?? "") &&
+      !isGrandparentRole(m.relationshipLabel ?? "") &&
+      !isExplicitPartner(m.relationshipLabel ?? "") &&
+      !m.isAdmin &&
+      !allMembers.some((c: any) => c.parentPersonId === m.id),
+    );
+  } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
+    viewerParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
+  } else if (isExplicitPartner(viewerLabel)) {
+    viewerParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
+  } else {
+    // Fallback for any unhandled label (son, daughter, etc.).
+    // Labels in this unit are relative to the viewer, so any member with a
+    // parent-role label (mother, father, etc.) IS the viewer's parent.
+    // We deliberately avoid findFamilyHead() here because when the viewer IS
+    // the admin (e.g. Tyler is admin but labeled "son"), findFamilyHead returns
+    // the viewer themselves, and head.id === viewerId is always in excludeIds.
+    viewerParents = allMembers.filter((m: any) =>
+      isParentRole(m.relationshipLabel ?? "") &&
+      !isGrandparentRole(m.relationshipLabel ?? "") &&
+      !isExplicitPartner(m.relationshipLabel ?? "") &&
+      !isInlawParent(m.relationshipLabel ?? "") &&
+      !excludeIds.has(m.id),
+    );
+  }
+
+  // Grandparents on the viewer's side — shown one level above viewerParents.
+  // Collected across all viewer-label branches: anyone with a grandparent label
+  // who isn't already the viewer or their spouse.
+  const viewerGrandparents = allMembers.filter((m: any) =>
+    isGrandparentRole(m.relationshipLabel ?? "") && !excludeIds.has(m.id),
+  );
+
+  // Viewer's children (Layer 0 — always visible)
+  let viewerChildren: any[] = [];
+  if (isExplicitPartner(viewerLabel)) {
+    viewerChildren = allMembers.filter((m: any) =>
+      !isParentRole(m.relationshipLabel ?? "") &&
+      !isSiblingRole(m.relationshipLabel ?? "") &&
+      !isInlawParent(m.relationshipLabel ?? "") &&
+      !isNephewNieceRole(m.relationshipLabel ?? "") &&
+      !isGrandchildRole(m.relationshipLabel ?? "") &&
+      !excludeIds.has(m.id),
+    );
+  } else {
+    viewerChildren = allMembers.filter((m: any) => m.parentPersonId === viewerId);
+  }
+
+  // Viewer's siblings
+  let viewerSiblings: any[] = [];
+  if (viewerPerson.parentPersonId) {
+    viewerSiblings = allMembers.filter((m: any) =>
+      m.parentPersonId === viewerPerson.parentPersonId && !excludeIds.has(m.id),
+    );
+  } else if (viewerIsFamilyHead) {
+    viewerSiblings = allMembers.filter((m: any) =>
+      ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
+      !excludeIds.has(m.id),
+    );
+  } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
+    const otherSibs = allMembers.filter((m: any) =>
+      ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
+      !excludeIds.has(m.id),
+    );
+    const familyHead = findFamilyHead(allMembers);
+    if (familyHead && !excludeIds.has(familyHead.id)) viewerSiblings.push(familyHead);
+    viewerSiblings.push(...otherSibs);
+  } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
+    const miranda = allMembers.find((m: any) => isExplicitPartner(m.relationshipLabel ?? ""));
+    if (miranda) viewerSiblings.push(miranda);
+    viewerSiblings.push(
+      ...allMembers.filter((m: any) =>
+        (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
+          m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
+        !excludeIds.has(m.id),
+      ),
+    );
+  } else if (isExplicitPartner(viewerLabel)) {
+    viewerSiblings = allMembers.filter((m: any) =>
+      (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
+        m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
+      !excludeIds.has(m.id),
+    );
+  } else {
+    // Fallback siblings for unhandled labels (son, daughter, etc.):
+    // If the viewer has parentPersonId set, siblings share the same parentPersonId.
+    // Otherwise, treat sibling-role labeled members as siblings (they were added
+    // relative to the viewer), plus any others sharing the viewer's own label.
+    if (viewerPerson.parentPersonId) {
+      viewerSiblings = allMembers.filter((m: any) =>
+        m.parentPersonId === viewerPerson.parentPersonId && !excludeIds.has(m.id),
+      );
+    } else {
+      viewerSiblings = allMembers.filter((m: any) => {
+        const l = (m.relationshipLabel ?? "").toLowerCase();
+        return !excludeIds.has(m.id) && (isSiblingRole(l) || l === viewerLabel);
+      });
+    }
+  }
+
+  // Spouse's parents and siblings
+  let spouseParents: any[] = [];
+  let spouseSiblings: any[] = [];
+  if (viewerSpouse) {
+    if (viewerIsFamilyHead) {
+      spouseParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
+
+      // Exclude people who are already the spouse of one of viewer's own siblings —
+      // those in-laws belong to viewer's group, not the spouse's group.
+      const viewerSibSpouseIds = new Set<string>();
+      for (const sib of viewerSiblings) {
+        const spId = spouseMap.get(sib.id);
+        if (spId) viewerSibSpouseIds.add(spId);
+      }
+
+      spouseSiblings = allMembers.filter((m: any) =>
+        (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
+          m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
+        !excludeIds.has(m.id) &&
+        !viewerSibSpouseIds.has(m.id),
+      );
+    } else if (isExplicitPartner(viewerLabel)) {
+      spouseParents = allMembers.filter((m: any) =>
+        isParentRole(m.relationshipLabel ?? "") &&
+        !isExplicitPartner(m.relationshipLabel ?? "") &&
+        !isInlawParent(m.relationshipLabel ?? "") &&
+        !allMembers.some((c: any) => c.parentPersonId === m.id),
+      );
+      spouseSiblings = allMembers.filter((m: any) =>
+        ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
+        !excludeIds.has(m.id),
+      );
+    }
+  }
+
+  // ── Layout constants ───────────────────────────────────────────────────────
+
+  const GROUP_SEP = H_GAP * 4;  // gap between core couple edge and group anchor
+  const SIB_GAP = H_GAP * 2;   // gap between sibling slots in expanded row
+  // Actual rendered height of a CoupleNode with expanded kids:
+  // avatar (64) + mt-1.5 (6) + name (16) + label (14) + "‹ collapse" line (22) ≈ 122px
+  const NODE_H = 128;
+  const KIDS_SEP = 32;          // vertical gap from sib node bottom to kids pill/nodes
+
+  // ── Helper: edge ───────────────────────────────────────────────────────────
+  const addEdge = (src: string, tgt: string, opacity = 0.4) =>
+    edges.push({
+      id: `e-${src}-${tgt}`,
+      source: src,
+      target: tgt,
+      type: "smoothstep",
+      style: {
+        stroke: "hsl(var(--primary))",
+        strokeWidth: 1.5,
+        strokeOpacity: opacity,
+      },
+    });
+
+  // ── Sibling slot builder ───────────────────────────────────────────────────
+
+  interface SibSlot {
+    primary: any;
+    spouse: any | null;
+    children: any[];
+    kidsId: string;
+  }
+
+  const sibSlotW = (s: SibSlot) => (s.spouse ? COUPLE_W : PERSON_W);
+
+  const buildSibSlots = (siblings: any[]): SibSlot[] => {
+    const used = new Set<string>();
+    const slots: SibSlot[] = [];
+    for (const sib of siblings) {
+      if (used.has(sib.id)) continue;
+      const spouseId = spouseMap.get(sib.id);
+      const spouse =
+        spouseId && !used.has(spouseId)
+          ? allMembers.find((m: any) => m.id === spouseId)
+          : null;
+      const sibChildren = allMembers.filter(
+        (m: any) =>
+          m.parentPersonId === sib.id ||
+          (spouse && m.parentPersonId === spouse.id),
+      );
+      slots.push({
+        primary: sib,
+        spouse,
+        children: sibChildren,
+        kidsId: `kids:${sib.id}`,
+      });
+      used.add(sib.id);
+      if (spouse) used.add(spouse.id);
+    }
+    return slots;
+  };
+
+  const viewerSibSlots = buildSibSlots(viewerSiblings);
+  const spouseSibSlots = buildSibSlots(spouseSiblings);
+
+  // ── Core couple (Layer 0) ──────────────────────────────────────────────────
+
+  const coupleId = `lv-couple-${viewerId}`;
+  const coupleMems =
+    viewerIsFamilyHead && viewerSpouse
+      ? [relabeled(viewerSpouse, "spouse"), relabeled(viewerPerson, "self")]
+      : [
+          relabeled(viewerPerson, "self"),
+          ...(viewerSpouse ? [relabeled(viewerSpouse, "spouse")] : []),
+        ];
+  const coupleW = coupleMems.length >= 2 ? COUPLE_W : PERSON_W;
+
+  nodes.push({
+    id: coupleId,
+    type: "couple",
+    position: { x: cx - coupleW / 2, y },
+    data: { parents: coupleMems, unitName: "" },
+  });
+
+  // Children row (Layer 0 — always visible)
+  if (viewerChildren.length > 0) {
+    const childRowW = viewerChildren.length * PERSON_W + (viewerChildren.length - 1) * H_GAP;
+    const childStartX = cx - childRowW / 2;
+    const childY = y + V_GAP;
+    viewerChildren.forEach((child: any, i: number) => {
+      const childId = `lv-child-${child.id}`;
+      nodes.push({
+        id: childId,
+        type: "child",
+        position: { x: childStartX + i * (PERSON_W + H_GAP), y: childY },
+        data: { member: relabeled(child, "child") },
+      });
+      addEdge(coupleId, childId, 0.5);
+    });
+  }
+
+  // ── Group pill renderer ────────────────────────────────────────────────────
+  // Renders either a single collapsed group pill, or the expanded group
+  // (parents couple node above + sibling row, with kids pills/nodes below each sib).
+
+  const renderGroup = (
+    grandparentsArr: any[],
+    parentsArr: any[],
+    sibSlots: SibSlot[],
+    groupPillId: string,
+    side: "left" | "right",
+  ) => {
+    if (grandparentsArr.length === 0 && parentsArr.length === 0 && sibSlots.length === 0) return;
+
+    const isExpanded = expandedPills.has(groupPillId);
+
+    // Total width of the sibling row
+    const totalSibW =
+      sibSlots.reduce((s, sl) => s + sibSlotW(sl), 0) +
+      Math.max(0, sibSlots.length - 1) * SIB_GAP;
+
+    // Anchor: point adjacent to core couple where the group connects
+    const anchorX = side === "left"
+      ? cx - coupleW / 2 - GROUP_SEP
+      : cx + coupleW / 2 + GROUP_SEP;
+
+    if (!isExpanded) {
+      // ── Collapsed: single group pill ──────────────────────────────────────
+      const allPeople = [
+        ...grandparentsArr,
+        ...parentsArr,
+        ...sibSlots.flatMap(s => [s.primary, ...(s.spouse ? [s.spouse] : [])]),
+      ];
+      const allNames = allPeople.map((p: any) => p.firstName);
+      const label =
+        allNames.slice(0, 3).join(", ") +
+        (allNames.length > 3 ? ` +${allNames.length - 3}` : "");
+      const pillX = side === "left" ? anchorX - PILL_W : anchorX;
+      nodes.push({
+        id: groupPillId,
+        type: "pill",
+        position: { x: pillX, y: y - V_GAP / 2 },
+        data: { members: allPeople, label, pillId: groupPillId },
+      });
+      addEdge(groupPillId, coupleId, 0.5);
+      return;
+    }
+
+    // ── Expanded group ─────────────────────────────────────────────────────
+
+    // Sibling row start x (rows grow away from the core couple)
+    const sibRowStartX = side === "left" ? anchorX - totalSibW : anchorX;
+
+    // Center of the sibling row (for positioning parents above)
+    const sibRowCx = totalSibW > 0 ? sibRowStartX + totalSibW / 2 : anchorX;
+    const parentsY = y - V_GAP;
+    const parentsNodeW = parentsArr.length >= 2 ? COUPLE_W : parentsArr.length === 1 ? PERSON_W : 0;
+
+    // Grandparents node (one level above parents)
+    if (grandparentsArr.length > 0) {
+      const gpMems = grandparentsArr.map((p: any) => relabeled(p, "parent"));
+      const gpW = gpMems.length >= 2 ? COUPLE_W : PERSON_W;
+      const gpNodeId = `${groupPillId}-grandparents`;
+      const gpY = parentsY - V_GAP;
+      nodes.push({
+        id: gpNodeId,
+        type: "couple",
+        position: { x: sibRowCx - gpW / 2, y: gpY },
+        data: { parents: gpMems, unitName: "" },
+      });
+      // Connect grandparents → parents (if parents exist) else → core couple
+      const gpTarget = parentsArr.length > 0 ? `${groupPillId}-parents` : coupleId;
+      addEdge(gpNodeId, gpTarget, 0.4);
+    }
+
+    // Parents couple node (above sibling row)
+    // When siblings exist, do NOT draw parent → coupleId: that edge routes through
+    // the sibling row (both at y=0) and creates tangled lines. The connection is
+    // implied by the parent → sibling edges. When there are no siblings, draw the
+    // edge directly to the core couple so parents aren't floating disconnected.
+    if (parentsArr.length > 0) {
+      const pMems = parentsArr.map((p: any) => relabeled(p, "parent"));
+      const parentNodeId = `${groupPillId}-parents`;
+      nodes.push({
+        id: parentNodeId,
+        type: "couple",
+        position: { x: sibRowCx - parentsNodeW / 2, y: parentsY },
+        data: { parents: pMems, unitName: "", pillId: groupPillId },
+      });
+      if (sibSlots.length === 0 && grandparentsArr.length === 0) {
+        addEdge(parentNodeId, coupleId, 0.5);
+      }
+    }
+
+    // Sibling slots in a horizontal row
+    let sibX = sibRowStartX;
+    for (const slot of sibSlots) {
+      const sw = sibSlotW(slot);
+      const sibMems = [
+        relabeled(slot.primary, "sibling"),
+        ...(slot.spouse ? [relabeled(slot.spouse, "sibling-spouse")] : []),
+      ];
+      const sibNodeId = `grpn-sib-${slot.primary.id}`;
+
+      // Only carry a pillId when this sibling's own kids are expanded — clicking
+      // the background then collapses just that sibling's kids, not the whole group.
+      const kidsExpanded = slot.children.length > 0 && expandedPills.has(slot.kidsId);
+      nodes.push({
+        id: sibNodeId,
+        type: "couple",
+        position: { x: sibX, y },
+        data: { parents: sibMems, unitName: "", pillId: kidsExpanded ? slot.kidsId : undefined },
+      });
+
+      // Connect sibling to parents (if any) or to core couple as fallback
+      const sibEdgeSrc = parentsArr.length > 0 ? `${groupPillId}-parents` : coupleId;
+      addEdge(sibEdgeSrc, sibNodeId, 0.4);
+
+      // Kids below this sibling (if any)
+      if (slot.children.length > 0) {
+        const kidsY = y + NODE_H + KIDS_SEP;
+        const sibCx = sibX + sw / 2;
+
+        if (kidsExpanded) {
+          // Expanded: individual child nodes in a row
+          const kidRowW = slot.children.length * PERSON_W + (slot.children.length - 1) * H_GAP;
+          const kidStartX = sibCx - kidRowW / 2;
+          slot.children.forEach((kid: any, ki: number) => {
+            const kidNodeId = `grpn-kid-${kid.id}`;
+            nodes.push({
+              id: kidNodeId,
+              type: "child",
+              position: { x: kidStartX + ki * (PERSON_W + H_GAP), y: kidsY },
+              data: { member: relabeled(kid, "child") },
+            });
+            addEdge(sibNodeId, kidNodeId, 0.4);
+          });
+        } else {
+          // Collapsed: single kids pill
+          const kidNames = slot.children.map((k: any) => k.firstName);
+          const kidLabel =
+            kidNames.slice(0, 3).join(", ") +
+            (kidNames.length > 3 ? ` +${kidNames.length - 3}` : "");
+          nodes.push({
+            id: slot.kidsId,
+            type: "pill",
+            position: { x: sibCx - PILL_W / 2, y: kidsY },
+            data: { members: slot.children, label: kidLabel, pillId: slot.kidsId },
+          });
+          addEdge(sibNodeId, slot.kidsId, 0.4);
+        }
+      }
+
+      sibX += sw + SIB_GAP;
+    }
+  };
+
+  // ── Render left group (viewer's family side) ───────────────────────────────
+  if (viewerGrandparents.length > 0 || viewerParents.length > 0 || viewerSiblings.length > 0) {
+    renderGroup(viewerGrandparents, viewerParents, viewerSibSlots, "grp:viewer", "left");
+  }
+
+  // ── Render right group (spouse's family side) ──────────────────────────────
+  if (spouseParents.length > 0 || spouseSiblings.length > 0) {
+    renderGroup([], spouseParents, spouseSibSlots, "grp:spouse", "right");
   }
 
   return { nodes, edges };
@@ -1137,6 +1808,9 @@ export default function Tree() {
   // Per-session pill expand state (not persisted — resets on page load per spec)
   const [expandedPills, setExpandedPills] = useState<Set<string>>(new Set());
 
+  // Explicit spouse pairs from the relationship DB (personId → spouseId, bidirectional)
+  const [explicitPairs, setExplicitPairs] = useState<Map<string, string>>(new Map());
+
   const togglePill = (pillId: string) => {
     setExpandedPills((prev) => {
       const next = new Set(prev);
@@ -1146,28 +1820,46 @@ export default function Tree() {
     });
   };
 
+  // Fetch explicit relationship edges and build a bidirectional spouse map
+  useEffect(() => {
+    if (!unitId) return;
+    const token = localStorage.getItem("oliveToken");
+    if (!token) return;
+
+    fetch(`/api/family-units/${unitId}/relationships`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : [])
+      .then((rows: Array<{ fromPerson: string; toPerson: string; type: string }>) => {
+        const map = new Map<string, string>();
+        for (const row of rows) {
+          if (row.type === "spouse") {
+            map.set(row.fromPerson, row.toPerson);
+            map.set(row.toPerson, row.fromPerson);
+          }
+        }
+        setExplicitPairs(map);
+      })
+      .catch(() => {/* best-effort; fall back to heuristic */});
+  }, [unitId]);
+
   useEffect(() => {
     if (!treeData?.rootUnit || !user) return;
     const allMembers: any[] = treeData.rootUnit.members ?? [];
 
     let n: any[], e: any[];
-    if (user.isAdmin) {
-      // Admin sees the full shared tree — no pills (spec §5.1 admin exception)
-      ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0));
+    const viewerPerson = allMembers.find((m: any) => m.id === user.id);
+    if (viewerPerson) {
+      ({ nodes: n, edges: e } = layoutLayeredView(viewerPerson, allMembers, 0, 0, expandedPills, explicitPairs));
+    } else if (user.isAdmin) {
+      ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
     } else {
-      // Everyone else sees a personal view centred on themselves,
-      // with in-law branches collapsed to pills by default.
-      const viewerPerson = allMembers.find((m: any) => m.id === user.id);
-      if (viewerPerson) {
-        ({ nodes: n, edges: e } = layoutPersonalView(viewerPerson, allMembers, 0, 0, expandedPills));
-      } else {
-        ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0));
-      }
+      ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
     }
 
     setNodes(n);
     setEdges(e);
-  }, [treeData, user, expandedPills, setNodes, setEdges]);
+  }, [treeData, user, expandedPills, explicitPairs, setNodes, setEdges]);
 
   if (isLoading) {
     return (

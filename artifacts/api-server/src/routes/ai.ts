@@ -5,6 +5,7 @@ import { personsTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
+import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
 
@@ -37,7 +38,7 @@ const ADD_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
         parentPersonId: {
           type: "string",
           description:
-            "Optional. The ID of their direct parent in the tree. ALWAYS set this for grandchildren — use the parent's [id] from the current members list. For example, if adding Nathan's kids, set parentPersonId to Nathan's id.",
+            "Optional. The ID of their direct parent or spouse link in the tree. ALWAYS set this for: (1) grandchildren and nephews/nieces — use the parent's [id]; (2) a sibling's spouse — use the sibling's [id]. For example, if adding Tanner's wife Anna, set parentPersonId to Tanner's id. If adding Nathan's kids, set parentPersonId to Nathan's id.",
         },
       },
       required: ["firstName", "lastName", "relationshipLabel"],
@@ -66,7 +67,7 @@ ${memberList}
 Guidelines:
 - Be warm and concise — like a helpful friend, not a form.
 - Accept common relationship words directly (mom, dad, son, daughter, sister, brother, wife, husband, grandma, grandpa, etc.).
-- If someone mentions a sibling AND their spouse together (e.g. "my brother and his wife"), add them as two separate people: the sibling as "brother"/"sister", and the spouse as "brother-in-law"/"sister-in-law". Never label a sibling's spouse as "wife", "husband", "sister", or "brother".
+- If someone mentions a sibling AND their spouse together (e.g. "my brother and his wife"), add them as two separate people: the sibling as "brother"/"sister", and the spouse as "brother-in-law"/"sister-in-law". Never label a sibling's spouse as "wife", "husband", "sister", or "brother". ALWAYS set parentPersonId on the spouse to the sibling's id (e.g. when adding Tanner's wife Anna, set Anna's parentPersonId to Tanner's id).
 - If someone mentions a spouse's parent (e.g. "Miranda's mom", "my wife's dad", "my mother-in-law"), label them "mother-in-law" or "father-in-law", never "mom" or "dad".
 - Last name inference: if the user does NOT provide a last name, infer it — do NOT ask. Use the father's last name when the context makes it clear (e.g. "Nathan's kids" → use Nathan Rigby's last name "Rigby"). If you genuinely cannot infer the last name from context or the existing members list, only then ask for it.
 - Nephew/niece rule: when the user says "[someone else]'s kids/children" and that person is a sibling or in-law (not the admin themselves), label them "nephew" (male/unknown) or "niece" (female) — NOT "son" or "daughter". Sons and daughters are only used for the admin's own children. Always set parentPersonId to that person's id.
@@ -184,6 +185,20 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
 
             memberAdded = formatPerson(inserted);
             toolResult = JSON.stringify({ success: true, member: memberAdded });
+
+            // Sync to explicit relationship layer (best-effort)
+            const adminMember = members.find((m) => m.isAdmin);
+            if (adminMember) {
+              await syncPersonToRelationshipLayer({
+                personId: inserted.id,
+                familyId: unitId,
+                firstName: inserted.firstName,
+                lastName: inserted.lastName,
+                label: inserted.relationshipLabel,
+                adminId: adminMember.id,
+                parentPersonId: inserted.parentPersonId,
+              });
+            }
           }
         } catch {
           toolResult = JSON.stringify({ success: false, error: "Failed to add member" });
