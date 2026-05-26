@@ -3,9 +3,7 @@
  * TEMPORARY: Remove after migrations are applied.
  */
 import { Router } from "express";
-import pg from "pg";
-
-const { Pool } = pg;
+import { pool } from "@workspace/db";
 
 const router = Router();
 
@@ -59,13 +57,6 @@ router.post("/admin/migrate-0007", async (req, res) => {
     return;
   }
 
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    res.status(500).json({ error: "DATABASE_URL not set" });
-    return;
-  }
-
-  const pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false } });
   const client = await pool.connect();
   try {
     await client.query(MIGRATION_0007_SQL);
@@ -77,7 +68,6 @@ router.post("/admin/migrate-0007", async (req, res) => {
     });
   } finally {
     client.release();
-    await pool.end();
   }
 });
 
