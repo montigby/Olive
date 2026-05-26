@@ -116,9 +116,13 @@ export async function addRelationship(
   }
 
   // Prevent ancestor cycles for parent-type edges.
+  // We're about to store (personA → personB) meaning "personA's parent is personB".
+  // A cycle would form if personA is already an ancestor of personB
+  // (i.e. personB is already a descendant of personA in the current tree).
+  // Equivalently: personA must NOT appear in the ancestor set of personB.
   if (PARENT_TYPES.includes(type)) {
-    const ancestors = await getAncestors(db, personA);
-    if (ancestors.has(personB)) {
+    const ancestorsOfB = await getAncestors(db, personB);
+    if (ancestorsOfB.has(personA)) {
       throw new Error(
         "Cycle detected: this would make a person their own ancestor.",
       );
@@ -215,7 +219,12 @@ export async function removeRelationship(
 // Graph traversal helpers
 // ---------------------------------------------------------------------------
 
-/** Get all ancestors of a person (transitive parents). */
+/**
+ * Get all ancestors of a person (transitive parents).
+ *
+ * Edge direction: from_person = child, to_person = parent.
+ * To climb the tree we follow from_person → to_person.
+ */
 export async function getAncestors(
   db: DB,
   personId: string,
@@ -225,20 +234,21 @@ export async function getAncestors(
 
   while (queue.length) {
     const current = queue.shift()!;
+    // current is the child; its parents are in the to_person column
     const rows = await db
-      .select({ fromPerson: relationshipsTable.fromPerson })
+      .select({ toPerson: relationshipsTable.toPerson })
       .from(relationshipsTable)
       .where(
         and(
-          eq(relationshipsTable.toPerson, current),
+          eq(relationshipsTable.fromPerson, current),
           inArray(relationshipsTable.type, PARENT_TYPES),
         ),
       );
 
     for (const row of rows) {
-      if (!ancestors.has(row.fromPerson)) {
-        ancestors.add(row.fromPerson);
-        queue.push(row.fromPerson);
+      if (!ancestors.has(row.toPerson)) {
+        ancestors.add(row.toPerson);
+        queue.push(row.toPerson);
       }
     }
   }
@@ -251,23 +261,7 @@ export async function getParents(
   db: DB,
   personId: string,
 ): Promise<string[]> {
-  const rows = await db
-    .select({ fromPerson: relationshipsTable.fromPerson })
-    .from(relationshipsTable)
-    .where(
-      and(
-        eq(relationshipsTable.toPerson, personId),
-        inArray(relationshipsTable.type, PARENT_TYPES),
-      ),
-    );
-  return rows.map((r) => r.fromPerson);
-}
-
-/** Direct children only. */
-export async function getChildren(
-  db: DB,
-  personId: string,
-): Promise<string[]> {
+  // personId is the child (from_person); parents are in to_person
   const rows = await db
     .select({ toPerson: relationshipsTable.toPerson })
     .from(relationshipsTable)
@@ -280,6 +274,24 @@ export async function getChildren(
   return rows.map((r) => r.toPerson);
 }
 
+/** Direct children only. */
+export async function getChildren(
+  db: DB,
+  personId: string,
+): Promise<string[]> {
+  // personId is the parent (to_person); children are in from_person
+  const rows = await db
+    .select({ fromPerson: relationshipsTable.fromPerson })
+    .from(relationshipsTable)
+    .where(
+      and(
+        eq(relationshipsTable.toPerson, personId),
+        inArray(relationshipsTable.type, PARENT_TYPES),
+      ),
+    );
+  return rows.map((r) => r.fromPerson);
+}
+
 /** Siblings — people sharing at least one parent. Derived, never stored. */
 export async function getSiblings(
   db: DB,
@@ -288,17 +300,18 @@ export async function getSiblings(
   const parentIds = await getParents(db, personId);
   if (!parentIds.length) return [];
 
+  // Find all children of those parents (edges where to_person ∈ parentIds)
   const rows = await db
-    .select({ toPerson: relationshipsTable.toPerson })
+    .select({ fromPerson: relationshipsTable.fromPerson })
     .from(relationshipsTable)
     .where(
       and(
-        inArray(relationshipsTable.fromPerson, parentIds),
+        inArray(relationshipsTable.toPerson, parentIds),
         inArray(relationshipsTable.type, PARENT_TYPES),
       ),
     );
 
-  const ids = new Set(rows.map((r) => r.toPerson));
+  const ids = new Set(rows.map((r) => r.fromPerson));
   ids.delete(personId);
   return [...ids];
 }
