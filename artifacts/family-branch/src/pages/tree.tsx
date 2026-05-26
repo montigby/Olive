@@ -1773,14 +1773,21 @@ function layoutLayeredView(
     }
   };
 
-  // ── Render left group (viewer's family side) ───────────────────────────────
-  if (viewerGrandparents.length > 0 || viewerParents.length > 0 || viewerSiblings.length > 0) {
-    renderGroup(viewerGrandparents, viewerParents, viewerSibSlots, "grp:viewer", "left");
-  }
+  // ── Render family groups ────────────────────────────────────────────────────
+  // IMPORTANT: when viewerIsFamilyHead the couple node is ordered [spouse, viewer]
+  // (Miranda on LEFT, Spencer on RIGHT). Each person's family must extend toward
+  // their own side of the couple — viewer RIGHT → viewer's family RIGHT, spouse
+  // LEFT → spouse's family LEFT. For all other viewers the order is [viewer, spouse]
+  // (viewer LEFT) so the default sides are simply swapped. Never hard-code "left"
+  // or "right" here — always derive from viewerIsFamilyHead.
+  const viewerSide: "left" | "right" = viewerIsFamilyHead ? "right" : "left";
+  const spouseSide: "left" | "right" = viewerIsFamilyHead ? "left"  : "right";
 
-  // ── Render right group (spouse's family side) ──────────────────────────────
+  if (viewerGrandparents.length > 0 || viewerParents.length > 0 || viewerSiblings.length > 0) {
+    renderGroup(viewerGrandparents, viewerParents, viewerSibSlots, "grp:viewer", viewerSide);
+  }
   if (spouseParents.length > 0 || spouseSiblings.length > 0) {
-    renderGroup([], spouseParents, spouseSibSlots, "grp:spouse", "right");
+    renderGroup([], spouseParents, spouseSibSlots, "grp:spouse", spouseSide);
   }
 
   return { nodes, edges };
