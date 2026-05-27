@@ -135,6 +135,32 @@ function buildFamilyGraph(
   const adminSpouse = allMembers.find(m => COUPLE_LABELS.has(nl(m.relationshipLabel)));
   if (adminSpouse) addCouple(admin.id, adminSpouse.id);
 
+  // Build an explicit-spouse map from the relationships table so we can
+  // disambiguate "brother-in-law" / "sister-in-law" labels. The label is
+  // ambiguous: it can mean either (a) admin's spouse's sibling — true in-law,
+  // belongs to the adminSpouse-side clan — or (b) admin's sibling's spouse —
+  // belongs to the admin-side clan via marriage. The label heuristic below
+  // historically assumed (a), which leaked admin-side in-laws (e.g. Tanner's
+  // wife "Anna" or Madeline's husband "Sam") into the adminSpouse-side clan's
+  // visibility. Cross-checking the explicit spouse fixes that.
+  const explicitSpouseMap = new Map<string, string>();
+  if (relationships) {
+    for (const r of relationships) {
+      if (COUPLE_EDGE_TYPES.has(r.type)) {
+        explicitSpouseMap.set(r.fromPerson, r.toPerson);
+      }
+    }
+  }
+  // Admin-side "core" people: admin + members labeled as admin's sibling.
+  // Anyone whose explicit spouse falls in this set is admin-side-by-marriage,
+  // not adminSpouse's sibling.
+  const adminSideCoreIds = new Set<string>([admin.id]);
+  for (const m of allMembers) {
+    if (SIBLING_OF_ADMIN.has(nl(m.relationshipLabel))) {
+      adminSideCoreIds.add(m.id);
+    }
+  }
+
   const adminParents: any[] = [];
   const adminSiblings: any[] = [];
   const inlawParents: any[] = [];
@@ -164,8 +190,16 @@ function buildFamilyGraph(
       addParentChild(m.id, adminSpouse.id);
       inlawParents.push(m);
     } else if (INLAW_SIBLING.has(l) && adminSpouse) {
-      addSibling(adminSpouse.id, m.id);
-      inlawSiblings.push(m);
+      // Disambiguation: if their explicit spouse is admin or admin-sibling,
+      // they're admin-side via marriage — DON'T link them into adminSpouse's
+      // clan or the "in-law parents are also parents of in-law siblings" loop.
+      const theirSpouseId = explicitSpouseMap.get(m.id);
+      if (theirSpouseId && adminSideCoreIds.has(theirSpouseId)) {
+        // admin-side in-law (e.g. Anna, Sam) — fall through with no edge
+      } else {
+        addSibling(adminSpouse.id, m.id);
+        inlawSiblings.push(m);
+      }
     } else if (NEPHEW_NIECE.has(l)) {
       if (m.parentPersonId && graph.has(m.parentPersonId)) {
         addParentChild(m.parentPersonId, m.id);
