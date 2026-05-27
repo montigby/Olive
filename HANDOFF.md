@@ -325,9 +325,15 @@ The canonical `formatPerson` function lives in `artifacts/api-server/src/routes/
 
 ## 13. Deployment
 
-Deploys automatically on push to main via Vercel.
+**There is no git remote.** Deploy directly with the Vercel CLI from the project root:
 
-Build command:
+```
+vercel deploy --prod
+```
+
+The CLI reads `.vercel/project.json` to find the project and uploads the local build directly. No `git push` needed.
+
+Build command (run by Vercel automatically):
 ```
 pnpm install && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/family-branch run build
 ```
