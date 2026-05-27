@@ -1419,7 +1419,17 @@ function layoutLayeredView(
     // Primary source: explicit biological_parent edges. This is viewer-relative
     // and correct regardless of admin-frame labels. Works for everyone whose
     // parent edges have been encoded (e.g. Tanner → Deborah/Steven).
-    viewerParents = idsToMembers(viewerExplicitParentIds);
+    //
+    // Also include each explicit parent's spouse (the "co-parent by marriage"),
+    // so a viewer who only has one biological_parent edge encoded still gets
+    // their other parent through the spouse graph (e.g. Tagen → Ryan explicit,
+    // Ryan ↔ Jackie spouse ⇒ Jackie shown alongside Ryan).
+    const parentIds = new Set<string>(viewerExplicitParentIds);
+    for (const pid of viewerExplicitParentIds) {
+      const spId = spouseMap.get(pid);
+      if (spId) parentIds.add(spId);
+    }
+    viewerParents = idsToMembers(parentIds);
   } else if (viewerIsTrueFamilyHead) {
     // Matriarch / patriarch with no encoded parents — their parents are
     // external to this family unit. DON'T fall back to label heuristic
@@ -1590,7 +1600,14 @@ function layoutLayeredView(
   let spouseSiblings: any[] = [];
   if (viewerSpouse) {
     if (spouseExplicitParentIds.size > 0) {
-      spouseParents = idsToMembers(spouseExplicitParentIds);
+      // Mirror the viewerParents logic: also include each explicit parent's
+      // spouse so a missing co-parent edge still surfaces the other parent.
+      const sParentIds = new Set<string>(spouseExplicitParentIds);
+      for (const pid of spouseExplicitParentIds) {
+        const spId = spouseMap.get(pid);
+        if (spId) sParentIds.add(spId);
+      }
+      spouseParents = idsToMembers(sParentIds);
       spouseSiblings = siblingsViaSharedParents(viewerSpouse.id, spouseExplicitParentIds)
         .filter((m: any) => !excludeIds.has(m.id));
     } else if (viewerIsTrueFamilyHead) {
@@ -1818,7 +1835,21 @@ function layoutLayeredView(
         position: { x: sibRowCx - parentsNodeW / 2, y: parentsY },
         data: { parents: pMems, unitName: "", pillId: groupPillId },
       });
-      if (sibSlots.length === 0 && grandparentsArr.length === 0) {
+      // Connect parents → core couple when the relevant member (viewer for
+      // grp:viewer, spouse for grp:spouse) is actually a child of these parents.
+      // The historical condition (skip when siblings exist) leaves the viewer
+      // visually disconnected from their parents when they're single + childless.
+      // For family heads (matriarchs/patriarchs), the parents on this row are
+      // external and shouldn't have a child-edge into the couple node.
+      const groupIsForViewer = groupPillId === "grp:viewer";
+      const isChildOfTheseParents = groupIsForViewer
+        ? (viewerExplicitParentIds.size > 0 || !!viewerPerson.parentPersonId)
+        : (!!viewerSpouse &&
+            (spouseExplicitParentIds.size > 0 || !!viewerSpouse.parentPersonId));
+
+      if (isChildOfTheseParents && !viewerIsFamilyHead) {
+        addEdge(parentNodeId, coupleId, 0.5);
+      } else if (sibSlots.length === 0 && grandparentsArr.length === 0) {
         addEdge(parentNodeId, coupleId, 0.5);
       }
     }
