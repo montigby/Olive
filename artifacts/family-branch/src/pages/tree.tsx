@@ -1341,6 +1341,7 @@ function layoutLayeredView(
   expandedPills: Set<string>,
   explicitPairs: Map<string, string> = new Map(),
   childrenByParent: Map<string, Set<string>> = new Map(),
+  parentsByChild: Map<string, Set<string>> = new Map(),
 ): { nodes: any[]; edges: any[] } {
   const nodes: any[] = [];
   const edges: any[] = [];
@@ -1362,6 +1363,36 @@ function layoutLayeredView(
   // parentPersonId-based logic so matriarchs / patriarchs whose kids weren't
   // linked via parentPersonId on persons still show up correctly.
   const viewerExplicitChildIds = childrenByParent.get(viewerId) ?? new Set<string>();
+  const viewerExplicitParentIds = parentsByChild.get(viewerId) ?? new Set<string>();
+  const spouseExplicitParentIds = viewerSpouseId
+    ? (parentsByChild.get(viewerSpouseId) ?? new Set<string>())
+    : new Set<string>();
+
+  // Helpers: turn an id-set into a member array (filtering out unknowns)
+  const idsToMembers = (ids: Iterable<string>) =>
+    [...ids]
+      .map((id) => allMembers.find((m: any) => m.id === id))
+      .filter(Boolean) as any[];
+
+  // Siblings via shared explicit parents (excluding the viewer / target self).
+  const siblingsViaSharedParents = (selfId: string, parentIds: Set<string>): any[] => {
+    const sibIds = new Set<string>();
+    for (const pid of parentIds) {
+      const kids = childrenByParent.get(pid) ?? new Set<string>();
+      for (const k of kids) if (k !== selfId) sibIds.add(k);
+    }
+    return idsToMembers(sibIds);
+  };
+
+  // Grandparents = parents of parents in the explicit graph.
+  const grandparentsViaExplicit = (parentIds: Set<string>): any[] => {
+    const gpIds = new Set<string>();
+    for (const pid of parentIds) {
+      const gps = parentsByChild.get(pid) ?? new Set<string>();
+      for (const g of gps) gpIds.add(g);
+    }
+    return idsToMembers(gpIds);
+  };
 
   const viewerIsFamilyHead =
     isParentRole(viewerLabel) &&
@@ -1374,11 +1405,27 @@ function layoutLayeredView(
       viewerExplicitChildIds.size > 0
     );
 
+  // True matriarch / patriarch: has explicit children AND no explicit parents
+  // in the family. Their "parents", "siblings", "grandparents", and in-law
+  // pill should all be EMPTY rather than falling back to admin-relative labels.
+  const viewerIsTrueFamilyHead =
+    viewerExplicitChildIds.size > 0 && viewerExplicitParentIds.size === 0;
+
   // ── Family identification ──────────────────────────────────────────────────
 
   // Viewer's parents
   let viewerParents: any[] = [];
-  if (viewerPerson.parentPersonId) {
+  if (viewerExplicitParentIds.size > 0) {
+    // Primary source: explicit biological_parent edges. This is viewer-relative
+    // and correct regardless of admin-frame labels. Works for everyone whose
+    // parent edges have been encoded (e.g. Tanner → Deborah/Steven).
+    viewerParents = idsToMembers(viewerExplicitParentIds);
+  } else if (viewerIsTrueFamilyHead) {
+    // Matriarch / patriarch with no encoded parents — their parents are
+    // external to this family unit. DON'T fall back to label heuristic
+    // (which would incorrectly pick up the spouse, etc.).
+    viewerParents = [];
+  } else if (viewerPerson.parentPersonId) {
     const dp = allMembers.find((m: any) => m.id === viewerPerson.parentPersonId);
     if (dp) {
       const psId = spouseMap.get(dp.id);
@@ -1392,7 +1439,9 @@ function layoutLayeredView(
       !isExplicitPartner(m.relationshipLabel ?? "") &&
       !isInlawParent(m.relationshipLabel ?? "") &&
       m.id !== viewerId &&
-      !allMembers.some((c: any) => c.parentPersonId === m.id),
+      m.id !== viewerSpouseId &&
+      !allMembers.some((c: any) => c.parentPersonId === m.id) &&
+      (childrenByParent.get(m.id)?.size ?? 0) === 0,
     );
   } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
     viewerParents = allMembers.filter((m: any) =>
@@ -1403,7 +1452,15 @@ function layoutLayeredView(
       !allMembers.some((c: any) => c.parentPersonId === m.id),
     );
   } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
-    viewerParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
+    // Disambiguate: if we know spouse's parents from the explicit graph, the
+    // viewer is "married into" the family (e.g. Anna married Tanner). Her own
+    // parents are external — DON'T pick up admin-frame "mother-in-law" labels,
+    // which belong to admin's spouse's parents, not viewer's parents.
+    if (spouseExplicitParentIds.size > 0) {
+      viewerParents = [];
+    } else {
+      viewerParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
+    }
   } else if (isExplicitPartner(viewerLabel)) {
     viewerParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
   } else {
@@ -1422,12 +1479,21 @@ function layoutLayeredView(
     );
   }
 
-  // Grandparents on the viewer's side — shown one level above viewerParents.
-  // Collected across all viewer-label branches: anyone with a grandparent label
-  // who isn't already the viewer or their spouse.
-  const viewerGrandparents = allMembers.filter((m: any) =>
-    isGrandparentRole(m.relationshipLabel ?? "") && !excludeIds.has(m.id),
-  );
+  // Grandparents on the viewer's side. Prefer explicit graph (parents of the
+  // viewer's parents); fall back to label-based ONLY when the viewer has no
+  // explicit parents AND isn't a true family head — otherwise the admin-frame
+  // "grandparent" label can't be trusted (e.g. James is Spencer's grandfather,
+  // not Deborah's).
+  let viewerGrandparents: any[];
+  if (viewerExplicitParentIds.size > 0) {
+    viewerGrandparents = grandparentsViaExplicit(viewerExplicitParentIds);
+  } else if (viewerIsTrueFamilyHead) {
+    viewerGrandparents = [];
+  } else {
+    viewerGrandparents = allMembers.filter((m: any) =>
+      isGrandparentRole(m.relationshipLabel ?? "") && !excludeIds.has(m.id),
+    );
+  }
 
   // Viewer's children (Layer 0 — always visible)
   let viewerChildren: any[] = [];
@@ -1450,7 +1516,15 @@ function layoutLayeredView(
 
   // Viewer's siblings
   let viewerSiblings: any[] = [];
-  if (viewerPerson.parentPersonId) {
+  if (viewerExplicitParentIds.size > 0) {
+    // Primary source: siblings = others who share at least one explicit parent.
+    viewerSiblings = siblingsViaSharedParents(viewerId, viewerExplicitParentIds)
+      .filter((m: any) => !excludeIds.has(m.id));
+  } else if (viewerIsTrueFamilyHead) {
+    // Matriarch / patriarch — their siblings are external to this unit.
+    // Don't pick up children-labeled-as-siblings via the admin frame.
+    viewerSiblings = [];
+  } else if (viewerPerson.parentPersonId) {
     viewerSiblings = allMembers.filter((m: any) =>
       m.parentPersonId === viewerPerson.parentPersonId && !excludeIds.has(m.id),
     );
@@ -1468,15 +1542,23 @@ function layoutLayeredView(
     if (familyHead && !excludeIds.has(familyHead.id)) viewerSiblings.push(familyHead);
     viewerSiblings.push(...otherSibs);
   } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
-    const miranda = allMembers.find((m: any) => isExplicitPartner(m.relationshipLabel ?? ""));
-    if (miranda) viewerSiblings.push(miranda);
-    viewerSiblings.push(
-      ...allMembers.filter((m: any) =>
-        (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
-          m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
-        !excludeIds.has(m.id),
-      ),
-    );
+    // Same disambiguation as viewerParents: if spouse's family is known from
+    // the explicit graph, the viewer married INTO that family — their own
+    // siblings are external, and admin-frame in-law labels point at a
+    // different clan. Sibling-by-marriage shows up via spouseSiblings instead.
+    if (spouseExplicitParentIds.size > 0) {
+      viewerSiblings = [];
+    } else {
+      const miranda = allMembers.find((m: any) => isExplicitPartner(m.relationshipLabel ?? ""));
+      if (miranda) viewerSiblings.push(miranda);
+      viewerSiblings.push(
+        ...allMembers.filter((m: any) =>
+          (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
+            m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
+          !excludeIds.has(m.id),
+        ),
+      );
+    }
   } else if (isExplicitPartner(viewerLabel)) {
     viewerSiblings = allMembers.filter((m: any) =>
       (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
@@ -1500,11 +1582,24 @@ function layoutLayeredView(
     }
   }
 
-  // Spouse's parents and siblings
+  // Spouse's parents and siblings.
+  // Prefer explicit edges: spouseParents = parents of viewerSpouse, spouseSiblings
+  // = others who share at least one parent with viewerSpouse. This is correct
+  // regardless of admin-frame labels.
   let spouseParents: any[] = [];
   let spouseSiblings: any[] = [];
   if (viewerSpouse) {
-    if (viewerIsFamilyHead) {
+    if (spouseExplicitParentIds.size > 0) {
+      spouseParents = idsToMembers(spouseExplicitParentIds);
+      spouseSiblings = siblingsViaSharedParents(viewerSpouse.id, spouseExplicitParentIds)
+        .filter((m: any) => !excludeIds.has(m.id));
+    } else if (viewerIsTrueFamilyHead) {
+      // Spouse's parents aren't in this unit, and we cannot trust admin-frame
+      // "mother-in-law" labels — those belong to admin's spouse's clan, not
+      // this viewer's spouse's clan.
+      spouseParents = [];
+      spouseSiblings = [];
+    } else if (viewerIsFamilyHead) {
       spouseParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
 
       // Exclude people who are already the spouse of one of viewer's own siblings —
@@ -1853,6 +1948,10 @@ export default function Tree() {
   // recognise matriarchs / patriarchs (e.g. Deborah) who have no parentPersonId
   // children on the persons table.
   const [childrenByParent, setChildrenByParent] = useState<Map<string, Set<string>>>(new Map());
+  // Inverse: childId → Set<parentId>. Used by the layered view to derive a
+  // viewer's parents, siblings, and grandparents from the explicit graph
+  // instead of admin-relative labels (which are wrong for matriarchs / in-laws).
+  const [parentsByChild, setParentsByChild] = useState<Map<string, Set<string>>>(new Map());
 
   const togglePill = (pillId: string) => {
     setExpandedPills((prev) => {
@@ -1876,6 +1975,7 @@ export default function Tree() {
       .then((rows: Array<{ fromPerson: string; toPerson: string; type: string }>) => {
         const spouseMap = new Map<string, string>();
         const childrenMap = new Map<string, Set<string>>();
+        const parentsMap = new Map<string, Set<string>>();
         for (const row of rows) {
           if (row.type === "spouse") {
             spouseMap.set(row.fromPerson, row.toPerson);
@@ -1890,10 +1990,13 @@ export default function Tree() {
             const childId = row.fromPerson;
             if (!childrenMap.has(parentId)) childrenMap.set(parentId, new Set());
             childrenMap.get(parentId)!.add(childId);
+            if (!parentsMap.has(childId)) parentsMap.set(childId, new Set());
+            parentsMap.get(childId)!.add(parentId);
           }
         }
         setExplicitPairs(spouseMap);
         setChildrenByParent(childrenMap);
+        setParentsByChild(parentsMap);
       })
       .catch(() => {/* best-effort; fall back to heuristic */});
   }, [unitId]);
@@ -1906,14 +2009,14 @@ export default function Tree() {
     // viewAs overrides the viewer when an admin passes ?viewAs=personId
     const viewerPerson = allMembers.find((m: any) => m.id === (viewAsId ?? user.id));
     if (viewerPerson) {
-      ({ nodes: n, edges: e } = layoutLayeredView(viewerPerson, allMembers, 0, 0, expandedPills, explicitPairs, childrenByParent));
+      ({ nodes: n, edges: e } = layoutLayeredView(viewerPerson, allMembers, 0, 0, expandedPills, explicitPairs, childrenByParent, parentsByChild));
     } else {
       ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
     }
 
     setNodes(n);
     setEdges(e);
-  }, [treeData, user, viewAsId, expandedPills, explicitPairs, childrenByParent, setNodes, setEdges]);
+  }, [treeData, user, viewAsId, expandedPills, explicitPairs, childrenByParent, parentsByChild, setNodes, setEdges]);
 
   if (isLoading) {
     return (
