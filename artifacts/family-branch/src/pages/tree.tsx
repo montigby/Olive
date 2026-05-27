@@ -1336,6 +1336,7 @@ function layoutLayeredView(
   y: number,
   expandedPills: Set<string>,
   explicitPairs: Map<string, string> = new Map(),
+  childrenByParent: Map<string, Set<string>> = new Map(),
 ): { nodes: any[]; edges: any[] } {
   const nodes: any[] = [];
   const edges: any[] = [];
@@ -1352,13 +1353,22 @@ function layoutLayeredView(
     ...(viewerSpouseId ? [viewerSpouseId] : []),
   ]);
 
+  // Children of the viewer from explicit biological_parent / adoptive_parent /
+  // step_parent edges in the relationships table. Used alongside the existing
+  // parentPersonId-based logic so matriarchs / patriarchs whose kids weren't
+  // linked via parentPersonId on persons still show up correctly.
+  const viewerExplicitChildIds = childrenByParent.get(viewerId) ?? new Set<string>();
+
   const viewerIsFamilyHead =
     isParentRole(viewerLabel) &&
     !isExplicitPartner(viewerLabel) &&
     !isInlawParent(viewerLabel) &&
     !isSiblingRole(viewerLabel) &&
     !isNephewNieceRole(viewerLabel) &&
-    allMembers.some((c: any) => c.parentPersonId === viewerId);
+    (
+      allMembers.some((c: any) => c.parentPersonId === viewerId) ||
+      viewerExplicitChildIds.size > 0
+    );
 
   // ── Family identification ──────────────────────────────────────────────────
 
@@ -1427,7 +1437,11 @@ function layoutLayeredView(
       !excludeIds.has(m.id),
     );
   } else {
-    viewerChildren = allMembers.filter((m: any) => m.parentPersonId === viewerId);
+    // Match either by parentPersonId on the persons row OR by an explicit
+    // biological_parent edge in the relationships table targeting the viewer.
+    viewerChildren = allMembers.filter((m: any) =>
+      m.parentPersonId === viewerId || viewerExplicitChildIds.has(m.id),
+    );
   }
 
   // Viewer's siblings
@@ -1817,6 +1831,11 @@ export default function Tree() {
 
   // Explicit spouse pairs from the relationship DB (personId → spouseId, bidirectional)
   const [explicitPairs, setExplicitPairs] = useState<Map<string, string>>(new Map());
+  // Map of parentId → Set<childId> seeded from biological_parent / adoptive_parent
+  // / step_parent edges in the relationships table. Lets the layered view
+  // recognise matriarchs / patriarchs (e.g. Deborah) who have no parentPersonId
+  // children on the persons table.
+  const [childrenByParent, setChildrenByParent] = useState<Map<string, Set<string>>>(new Map());
 
   const togglePill = (pillId: string) => {
     setExpandedPills((prev) => {
@@ -1838,14 +1857,26 @@ export default function Tree() {
     })
       .then((r) => r.ok ? r.json() : [])
       .then((rows: Array<{ fromPerson: string; toPerson: string; type: string }>) => {
-        const map = new Map<string, string>();
+        const spouseMap = new Map<string, string>();
+        const childrenMap = new Map<string, Set<string>>();
         for (const row of rows) {
           if (row.type === "spouse") {
-            map.set(row.fromPerson, row.toPerson);
-            map.set(row.toPerson, row.fromPerson);
+            spouseMap.set(row.fromPerson, row.toPerson);
+            spouseMap.set(row.toPerson, row.fromPerson);
+          } else if (
+            row.type === "biological_parent" ||
+            row.type === "adoptive_parent" ||
+            row.type === "step_parent"
+          ) {
+            // from_person = child, to_person = parent
+            const parentId = row.toPerson;
+            const childId = row.fromPerson;
+            if (!childrenMap.has(parentId)) childrenMap.set(parentId, new Set());
+            childrenMap.get(parentId)!.add(childId);
           }
         }
-        setExplicitPairs(map);
+        setExplicitPairs(spouseMap);
+        setChildrenByParent(childrenMap);
       })
       .catch(() => {/* best-effort; fall back to heuristic */});
   }, [unitId]);
@@ -1857,7 +1888,7 @@ export default function Tree() {
     let n: any[], e: any[];
     const viewerPerson = allMembers.find((m: any) => m.id === user.id);
     if (viewerPerson) {
-      ({ nodes: n, edges: e } = layoutLayeredView(viewerPerson, allMembers, 0, 0, expandedPills, explicitPairs));
+      ({ nodes: n, edges: e } = layoutLayeredView(viewerPerson, allMembers, 0, 0, expandedPills, explicitPairs, childrenByParent));
     } else if (user.isAdmin) {
       ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
     } else {
@@ -1866,7 +1897,7 @@ export default function Tree() {
 
     setNodes(n);
     setEdges(e);
-  }, [treeData, user, expandedPills, explicitPairs, setNodes, setEdges]);
+  }, [treeData, user, expandedPills, explicitPairs, childrenByParent, setNodes, setEdges]);
 
   if (isLoading) {
     return (
