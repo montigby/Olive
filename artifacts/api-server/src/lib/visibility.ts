@@ -283,13 +283,43 @@ export function computeVisibleSet(
     if (!result.has(edge.to)) result.set(edge.to, 1);
   }
 
-  // Tier 2: from each tier-1 neighbor, expand only via couple + downward parent-child
+  // Tier 2: from each tier-1 neighbor, expand via couple, parent-child (both
+  // directions), and sibling. This gives in-laws their full "in-law family"
+  // (spouse's parents, spouse's siblings, etc.).
+  //
+  // Additionally: when an edge to a tier-2 target is a sibling edge, also add
+  // that target's spouse at tier 2 — this surfaces "sibling's spouse" (e.g.
+  // for Anna viewing, Madeline's husband Sam) without creating a tier-3 walk.
+  //
+  // The silo across the Spencer↔Miranda bridge still holds because we do NOT
+  // recurse from tier 2 → tier 3; only one sibling-then-couple hop is allowed
+  // and only from a tier-1 neighbor's outgoing sibling edge.
   for (const edge of viewerEdges) {
     const neighborEdges = graph.get(edge.to) ?? [];
     for (const e2 of neighborEdges) {
+      if (e2.to === viewerPerson.id) continue;
+
+      const isExpandable =
+        e2.kind === "couple" ||
+        e2.kind === "parent-child" ||
+        e2.kind === "sibling";
+      if (!isExpandable) continue;
+
       if (!result.has(e2.to)) {
-        if (e2.kind === "couple" || (e2.kind === "parent-child" && e2.isDown)) {
-          result.set(e2.to, 2);
+        result.set(e2.to, 2);
+      }
+
+      // Sibling-then-couple: also add the sibling's spouse at tier 2.
+      if (e2.kind === "sibling") {
+        const sibEdges = graph.get(e2.to) ?? [];
+        for (const e3 of sibEdges) {
+          if (
+            e3.kind === "couple" &&
+            e3.to !== viewerPerson.id &&
+            !result.has(e3.to)
+          ) {
+            result.set(e3.to, 2);
+          }
         }
       }
     }
