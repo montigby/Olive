@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users } from "lucide-react";
+import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -374,6 +374,24 @@ export default function Members() {
                             <LinkIcon className="w-3 h-3 mr-2" /> Invite
                           </Button>
                         ))}
+
+                      {/* Admin-only: preview tree from this member's perspective */}
+                      {user?.isAdmin && (
+                        <a
+                          href={`/tree?viewAs=${member.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`Preview tree as ${member.firstName}`}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
 
                       <Link href={`/members/${member.id}`}>
                         <Button

@@ -1828,6 +1828,11 @@ export default function Tree() {
   const unitId = user?.familyUnit.id || "";
   const [, navigate] = useLocation();
 
+  // Admin-only: ?viewAs=personId lets the admin preview the tree from any member's POV
+  const viewAsId = user?.isAdmin
+    ? (new URLSearchParams(window.location.search).get("viewAs") ?? null)
+    : null;
+
   const { data: treeData, isLoading } = useGetFamilyTree(unitId, {
     query: {
       enabled: !!unitId,
@@ -1898,18 +1903,17 @@ export default function Tree() {
     const allMembers: any[] = treeData.rootUnit.members ?? [];
 
     let n: any[], e: any[];
-    const viewerPerson = allMembers.find((m: any) => m.id === user.id);
+    // viewAs overrides the viewer when an admin passes ?viewAs=personId
+    const viewerPerson = allMembers.find((m: any) => m.id === (viewAsId ?? user.id));
     if (viewerPerson) {
       ({ nodes: n, edges: e } = layoutLayeredView(viewerPerson, allMembers, 0, 0, expandedPills, explicitPairs, childrenByParent));
-    } else if (user.isAdmin) {
-      ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
     } else {
       ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
     }
 
     setNodes(n);
     setEdges(e);
-  }, [treeData, user, expandedPills, explicitPairs, childrenByParent, setNodes, setEdges]);
+  }, [treeData, user, viewAsId, expandedPills, explicitPairs, childrenByParent, setNodes, setEdges]);
 
   if (isLoading) {
     return (
@@ -1919,8 +1923,26 @@ export default function Tree() {
     );
   }
 
+  const allMembers: any[] = treeData?.rootUnit?.members ?? [];
+  const viewAsPerson = viewAsId ? allMembers.find((m: any) => m.id === viewAsId) : null;
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] space-y-4">
+      {/* Preview banner — only visible when an admin is using ?viewAs= */}
+      {viewAsPerson && (
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-sm text-amber-900">
+          <span>
+            👁 Previewing tree as <strong>{viewAsPerson.firstName} {viewAsPerson.lastName}</strong>
+          </span>
+          <button
+            onClick={() => navigate("/tree")}
+            className="font-medium underline underline-offset-2 hover:text-amber-700 transition-colors whitespace-nowrap"
+          >
+            Exit preview
+          </button>
+        </div>
+      )}
+
       <div>
         <h1 className="text-4xl font-serif font-bold text-foreground">Family Tree</h1>
         <p className="text-muted-foreground mt-1">Click any person to view their profile.</p>
