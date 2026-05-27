@@ -6,6 +6,7 @@ import { UpdatePersonBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { computeTier, applyVisibility } from "../lib/visibility";
+import { areUnitsLinked } from "../lib/unitAccess";
 
 const router = Router();
 
@@ -39,13 +40,24 @@ router.get("/persons/:personId", requireAuth, async (req, res) => {
 
   const viewer = viewers[0];
 
-  // Load all members of the target's family unit (for potential future use)
+  // Cross-unit access: require an accepted parent-link in either direction.
+  // Without this gate, anyone could fetch any personId and get tier 1-2 data
+  // (including birthday) for admins/close-family in unlinked families.
+  if (
+    viewer.familyUnitId !== target.familyUnitId &&
+    !(await areUnitsLinked(viewer.familyUnitId, target.familyUnitId))
+  ) {
+    res.status(403).json({ error: "Forbidden", message: "Profile not visible" });
+    return;
+  }
+
+  // computeTier uses allMembers only when viewer and target are in the same
+  // unit (it builds the family graph there); for cross-unit it ignores the list.
   const allMembers = await db
     .select()
     .from(personsTable)
     .where(eq(personsTable.familyUnitId, target.familyUnitId));
 
-  // If viewer is in a different unit, use tier logic; if same unit, computeTier handles it
   const tier = computeTier(viewer, target, allMembers);
   const formatted = formatPerson(target);
   const filtered = applyVisibility(formatted, tier);

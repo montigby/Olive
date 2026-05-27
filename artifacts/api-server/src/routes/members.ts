@@ -6,7 +6,8 @@ import { eq, and, ilike } from "drizzle-orm";
 import { AddMemberBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
-import { computeVisibleSet, applyVisibility } from "../lib/visibility";
+import { computeVisibleSet, computeTier, applyVisibility } from "../lib/visibility";
+import { areUnitsLinked } from "../lib/unitAccess";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
@@ -33,15 +34,41 @@ router.get("/family-units/:unitId/members", requireAuth, async (req, res) => {
 
   const viewer = viewers[0];
 
-  // Admin or viewer not in this unit: return all (admin sees all; cross-unit access untouched)
-  if (viewer.isAdmin || viewer.familyUnitId !== unitId) {
+  // Cross-unit access: require an accepted parent-link in either direction.
+  if (viewer.familyUnitId !== unitId) {
+    if (!(await areUnitsLinked(viewer.familyUnitId, unitId))) {
+      res.status(403).json({ error: "Forbidden", message: "Not authorized to view this unit" });
+      return;
+    }
+
+    // Linked: tier-filter via label-based fallback in computeTier.
+    const viewerUnitMembers = viewer.isAdmin
+      ? []
+      : await db
+          .select()
+          .from(personsTable)
+          .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
+
+    const linkedResult = members
+      .map((m) => {
+        const tier = computeTier(viewer, m, viewerUnitMembers);
+        if (tier === 4) return null;
+        return applyVisibility(formatPerson(m), tier);
+      })
+      .filter(Boolean);
+
+    res.json(linkedResult);
+    return;
+  }
+
+  // Same-unit admin: full data.
+  if (viewer.isAdmin) {
     res.json(members.map(formatPerson));
     return;
   }
 
-  // Non-admin viewer in their own unit: apply social graph visibility
+  // Same-unit non-admin: apply social graph visibility.
   const visibleSet = computeVisibleSet(viewer, members);
-
   const result = members
     .map((m) => {
       const tier = visibleSet.get(m.id) ?? 4;

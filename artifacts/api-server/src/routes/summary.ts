@@ -8,19 +8,25 @@ import {
 import { eq, or, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
-import { computeVisibleSet, applyVisibility } from "../lib/visibility";
+import { computeTier, applyVisibility } from "../lib/visibility";
 
 const router = Router();
+
+type PersonRow = typeof personsTable.$inferSelect;
+type MemberDecorator = (m: PersonRow) => unknown | null;
 
 interface TreeNode {
   unitId: string;
   unitName: string;
   parentUnitId: string | null;
-  members: ReturnType<typeof formatPerson>[];
+  members: unknown[];
   children: TreeNode[];
 }
 
-async function buildTree(unitId: string): Promise<TreeNode> {
+async function buildTree(
+  unitId: string,
+  decorate: MemberDecorator,
+): Promise<TreeNode> {
   const [unit] = await db
     .select()
     .from(familyUnitsTable)
@@ -42,13 +48,19 @@ async function buildTree(unitId: string): Promise<TreeNode> {
       ),
     );
 
-  const children = await Promise.all(childUnits.map((c) => buildTree(c.id)));
+  const children = await Promise.all(
+    childUnits.map((c) => buildTree(c.id, decorate)),
+  );
+
+  const visibleMembers = members
+    .map(decorate)
+    .filter((m): m is NonNullable<typeof m> => m !== null);
 
   return {
     unitId: unit.id,
     unitName: unit.unitName,
     parentUnitId: unit.parentUnitId ?? null,
-    members: members.map(formatPerson),
+    members: visibleMembers,
     children,
   };
 }
@@ -90,30 +102,34 @@ router.get("/family-units/:unitId/tree", requireAuth, async (req, res) => {
     current = parent;
   }
 
-  const rootNode = await buildTree(rootId);
-
-  // Apply visibility filtering for non-admin viewers in their own root unit
-  const viewerPersons = await db
+  const [viewer] = await db
     .select()
     .from(personsTable)
     .where(eq(personsTable.id, req.auth!.personId))
     .limit(1);
 
-  if (viewerPersons.length && !viewerPersons[0].isAdmin) {
-    const viewer = viewerPersons[0];
-    // Only filter if viewer is in the root unit (personal view)
-    if (viewer.familyUnitId === rootNode.unitId) {
-      const allMembers = rootNode.members; // already formatPerson'd
-      const visibleSet = computeVisibleSet(viewer, allMembers);
-      rootNode.members = allMembers
-        .map((m: any) => {
-          const tier = visibleSet.get(m.id) ?? 4;
-          if (tier === 4) return null;
-          return applyVisibility(m, tier);
-        })
-        .filter(Boolean) as any[];
-    }
+  if (!viewer) {
+    res.status(401).json({ error: "Unauthorized", message: "Viewer not found" });
+    return;
   }
+
+  // Pre-fetch the viewer's unit members for graph-based tier computation.
+  // computeTier uses this only when target is in the same unit as viewer;
+  // cross-unit comparisons fall back to label-based tiering inside computeTier.
+  const viewerUnitMembers = viewer.isAdmin
+    ? []
+    : await db
+        .select()
+        .from(personsTable)
+        .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
+
+  const decorate: MemberDecorator = (m) => {
+    const tier = computeTier(viewer, m, viewerUnitMembers);
+    if (tier === 4) return null;
+    return applyVisibility(formatPerson(m), tier);
+  };
+
+  const rootNode = await buildTree(rootId, decorate);
 
   const { units, members } = countTree(rootNode);
 
@@ -188,6 +204,22 @@ router.get("/family-units/:unitId/summary", requireAuth, async (req, res) => {
 router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
   const unitId = String(req.params.unitId);
 
+  const [viewer] = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.id, req.auth!.personId))
+    .limit(1);
+
+  if (!viewer) {
+    res.status(401).json({ error: "Unauthorized", message: "Viewer not found" });
+    return;
+  }
+
+  if (viewer.familyUnitId !== unitId) {
+    res.status(403).json({ error: "Forbidden", message: "Not authorized to view this unit" });
+    return;
+  }
+
   const childUnits = await db
     .select()
     .from(familyUnitsTable)
@@ -199,6 +231,15 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
     );
 
   const unitIds: string[] = [unitId, ...childUnits.map((u) => u.id)];
+
+  // Pre-fetch viewer's unit members for graph-based tier computation
+  // (used by computeTier when target is same-unit; ignored for cross-unit).
+  const viewerUnitMembers = viewer.isAdmin
+    ? []
+    : await db
+        .select()
+        .from(personsTable)
+        .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
 
   const allMembers: Array<{ person: typeof personsTable.$inferSelect; unitName: string }> = [];
 
@@ -215,9 +256,11 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
       .where(eq(personsTable.familyUnitId, uid));
 
     for (const m of members) {
-      if (m.birthday) {
-        allMembers.push({ person: m, unitName: u.unitName });
-      }
+      if (!m.birthday) continue;
+      const tier = computeTier(viewer, m, viewerUnitMembers);
+      // Birthday is only visible at tiers 0-2; drop tier 3 and 4.
+      if (tier > 2) continue;
+      allMembers.push({ person: m, unitName: u.unitName });
     }
   }
 

@@ -6,6 +6,8 @@ import { eq, ilike, count } from "drizzle-orm";
 import { CreateFamilyUnitBody, UpdateFamilyUnitBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson, formatUnit } from "./auth";
+import { computeVisibleSet, computeTier, applyVisibility } from "../lib/visibility";
+import { areUnitsLinked } from "../lib/unitAccess";
 
 const router = Router();
 
@@ -78,9 +80,73 @@ router.get("/family-units/:unitId", requireAuth, async (req, res) => {
     .from(personsTable)
     .where(eq(personsTable.familyUnitId, unit.id));
 
+  const totalMembers = members.length;
+  const claimedMembers = members.filter((m) => m.claimed).length;
+
+  const viewers = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.id, req.auth!.personId))
+    .limit(1);
+
+  if (!viewers.length) {
+    res.status(401).json({ error: "Unauthorized", message: "Viewer not found" });
+    return;
+  }
+
+  const viewer = viewers[0];
+
+  // Cross-unit access: require an accepted parent-link in either direction.
+  if (viewer.familyUnitId !== unit.id) {
+    if (!(await areUnitsLinked(viewer.familyUnitId, unit.id))) {
+      res.status(403).json({ error: "Forbidden", message: "Not authorized to view this unit" });
+      return;
+    }
+
+    const viewerUnitMembers = viewer.isAdmin
+      ? []
+      : await db
+          .select()
+          .from(personsTable)
+          .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
+
+    const linkedMembers = members
+      .map((m) => {
+        const tier = computeTier(viewer, m, viewerUnitMembers);
+        if (tier === 4) return null;
+        return applyVisibility(formatPerson(m), tier);
+      })
+      .filter(Boolean);
+
+    res.json({
+      ...formatUnit(unit, totalMembers, claimedMembers),
+      members: linkedMembers,
+    });
+    return;
+  }
+
+  // Same-unit admin: full data.
+  if (viewer.isAdmin) {
+    res.json({
+      ...formatUnit(unit, totalMembers, claimedMembers),
+      members: members.map(formatPerson),
+    });
+    return;
+  }
+
+  // Same-unit non-admin: apply social graph visibility.
+  const visibleSet = computeVisibleSet(viewer, members);
+  const filteredMembers = members
+    .map((m) => {
+      const tier = visibleSet.get(m.id) ?? 4;
+      if (tier === 4) return null;
+      return applyVisibility(formatPerson(m), tier);
+    })
+    .filter(Boolean);
+
   res.json({
-    ...formatUnit(unit, members.length, members.filter((m) => m.claimed).length),
-    members: members.map(formatPerson),
+    ...formatUnit(unit, totalMembers, claimedMembers),
+    members: filteredMembers,
   });
 });
 
