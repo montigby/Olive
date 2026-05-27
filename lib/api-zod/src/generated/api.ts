@@ -211,6 +211,8 @@ export const UpdatePersonBody = zod.object({
   parentPersonId: zod.string().uuid().nullish(),
   tier2ContactField: zod.enum(["phone", "email"]).optional(),
   confirmedMembersOnly: zod.boolean().optional(),
+  hideAddress: zod.boolean().optional(),
+  hideSocials: zod.boolean().optional(),
 });
 
 export const UpdatePersonResponse = zod.object({

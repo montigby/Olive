@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { personsTable, accountsTable } from "@workspace/db";
+import { personsTable, accountsTable, relationshipsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdatePersonBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
@@ -51,14 +51,24 @@ router.get("/persons/:personId", requireAuth, async (req, res) => {
     return;
   }
 
-  // computeTier uses allMembers only when viewer and target are in the same
-  // unit (it builds the family graph there); for cross-unit it ignores the list.
+  // computeTier uses allMembers + relationships only when viewer and target
+  // are in the same unit (it builds the family graph there); for cross-unit
+  // it ignores both and falls back to label-based tiering.
   const allMembers = await db
     .select()
     .from(personsTable)
     .where(eq(personsTable.familyUnitId, target.familyUnitId));
 
-  const tier = computeTier(viewer, target, allMembers);
+  const relationships = await db
+    .select({
+      fromPerson: relationshipsTable.fromPerson,
+      toPerson: relationshipsTable.toPerson,
+      type: relationshipsTable.type,
+    })
+    .from(relationshipsTable)
+    .where(eq(relationshipsTable.familyId, target.familyUnitId));
+
+  const tier = computeTier(viewer, target, allMembers, relationships);
   const formatted = formatPerson(target);
   const filtered = applyVisibility(formatted, tier);
 
@@ -74,7 +84,23 @@ router.get("/persons/:personId", requireAuth, async (req, res) => {
 router.patch("/persons/:personId", requireAuth, async (req, res) => {
   const personId = String(req.params.personId);
 
-  if (req.auth!.personId !== personId && !req.auth!.isAdmin) {
+  // Look up target to verify same-family admin permission.
+  const [target] = await db
+    .select({ id: personsTable.id, familyUnitId: personsTable.familyUnitId })
+    .from(personsTable)
+    .where(eq(personsTable.id, personId))
+    .limit(1);
+
+  if (!target) {
+    res.status(404).json({ error: "Not found", message: "Person not found" });
+    return;
+  }
+
+  const isSelf = req.auth!.personId === personId;
+  const isSameFamilyAdmin =
+    req.auth!.isAdmin && req.auth!.familyUnitId === target.familyUnitId;
+
+  if (!isSelf && !isSameFamilyAdmin) {
     res.status(403).json({ error: "Forbidden", message: "Cannot edit another person's profile" });
     return;
   }
@@ -112,6 +138,8 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
   }
   if (data.tier2ContactField !== undefined) updateData.tier2ContactField = data.tier2ContactField;
   if (data.confirmedMembersOnly !== undefined) updateData.confirmedMembersOnly = data.confirmedMembersOnly;
+  if ((data as any).hideAddress !== undefined) updateData.hideAddress = (data as any).hideAddress;
+  if ((data as any).hideSocials !== undefined) updateData.hideSocials = (data as any).hideSocials;
   updateData.updatedAt = new Date();
 
   const updated = await db
@@ -132,7 +160,23 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
 router.delete("/persons/:personId", requireAuth, async (req, res) => {
   const personId = String(req.params.personId);
 
-  if (req.auth!.personId !== personId && !req.auth!.isAdmin) {
+  // Look up target to verify same-family admin permission.
+  const [target] = await db
+    .select({ id: personsTable.id, familyUnitId: personsTable.familyUnitId })
+    .from(personsTable)
+    .where(eq(personsTable.id, personId))
+    .limit(1);
+
+  if (!target) {
+    res.status(404).json({ error: "Not found", message: "Person not found" });
+    return;
+  }
+
+  const isSelf = req.auth!.personId === personId;
+  const isSameFamilyAdmin =
+    req.auth!.isAdmin && req.auth!.familyUnitId === target.familyUnitId;
+
+  if (!isSelf && !isSameFamilyAdmin) {
     res.status(403).json({ error: "Forbidden", message: "Cannot remove another person" });
     return;
   }

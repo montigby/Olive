@@ -8,6 +8,27 @@ interface FamilyEdge {
 
 type FamilyGraph = Map<string, FamilyEdge[]>;
 
+/**
+ * Shape of a row from the `relationships` table that we care about for
+ * graph building. Loosely typed to avoid pulling in @workspace/db types here;
+ * routes that fetch from the table just need to project these three fields.
+ *
+ * Edge direction convention (matches the DB): for parent-type edges,
+ * from_person = child and to_person = parent.
+ */
+export interface RelationshipEdge {
+  fromPerson: string;
+  toPerson: string;
+  type: string;
+}
+
+const COUPLE_EDGE_TYPES = new Set(["spouse", "partner"]);
+const PARENT_EDGE_TYPES = new Set([
+  "biological_parent",
+  "adoptive_parent",
+  "step_parent",
+]);
+
 // Label sets
 const COUPLE_LABELS = new Set(["husband", "wife", "spouse", "partner"]);
 const PARENT_OF_ADMIN = new Set(["mom", "mother", "dad", "father"]);
@@ -40,7 +61,10 @@ function nl(label: string | null | undefined): string {
   return (label ?? "").toLowerCase().trim();
 }
 
-function buildFamilyGraph(allMembers: any[]): FamilyGraph {
+function buildFamilyGraph(
+  allMembers: any[],
+  relationships?: RelationshipEdge[],
+): FamilyGraph {
   const graph: FamilyGraph = new Map();
   for (const m of allMembers) graph.set(m.id, []);
 
@@ -73,6 +97,37 @@ function buildFamilyGraph(allMembers: any[]): FamilyGraph {
       graph.get(bId)!.push({ to: aId, kind: "sibling", isDown: false });
     }
   };
+
+  // Seed from explicit `relationships` edges first (high confidence).
+  // The label heuristic below dedupes against these via the .some() checks
+  // in addParentChild / addCouple / addSibling.
+  if (relationships && relationships.length > 0) {
+    const childrenByParent = new Map<string, Set<string>>();
+
+    for (const r of relationships) {
+      if (COUPLE_EDGE_TYPES.has(r.type)) {
+        addCouple(r.fromPerson, r.toPerson);
+      } else if (PARENT_EDGE_TYPES.has(r.type)) {
+        // from_person = child, to_person = parent
+        addParentChild(r.toPerson, r.fromPerson);
+        if (!childrenByParent.has(r.toPerson)) {
+          childrenByParent.set(r.toPerson, new Set());
+        }
+        childrenByParent.get(r.toPerson)!.add(r.fromPerson);
+      }
+      // ex_spouse intentionally excluded from couple tier.
+    }
+
+    // Derive sibling edges from shared parents.
+    for (const childIds of childrenByParent.values()) {
+      const ids = [...childIds];
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          addSibling(ids[i], ids[j]);
+        }
+      }
+    }
+  }
 
   const admin = allMembers.find(m => m.isAdmin);
   if (!admin) return graph;
@@ -174,6 +229,7 @@ function buildFamilyGraph(allMembers: any[]): FamilyGraph {
 export function computeVisibleSet(
   viewerPerson: any,
   allMembers: any[],
+  relationships?: RelationshipEdge[],
 ): Map<string, 0 | 1 | 2 | 3 | 4> {
   const result = new Map<string, 0 | 1 | 2 | 3 | 4>();
 
@@ -182,7 +238,7 @@ export function computeVisibleSet(
     return result;
   }
 
-  const graph = buildFamilyGraph(allMembers);
+  const graph = buildFamilyGraph(allMembers, relationships);
 
   // Self = tier 0
   result.set(viewerPerson.id, 0);
@@ -217,13 +273,14 @@ export function computeTier(
   viewerPerson: any,
   targetPerson: any,
   allMembers: any[],
+  relationships?: RelationshipEdge[],
 ): 0 | 1 | 2 | 3 | 4 {
   if (viewerPerson.isAdmin) return 0;
   if (viewerPerson.id === targetPerson.id) return 0;
 
   // Same family unit: use graph-based visibility
   if (viewerPerson.familyUnitId === targetPerson.familyUnitId) {
-    const visibleSet = computeVisibleSet(viewerPerson, allMembers);
+    const visibleSet = computeVisibleSet(viewerPerson, allMembers, relationships);
     return visibleSet.get(targetPerson.id) ?? 4;
   }
 
@@ -237,6 +294,12 @@ export function computeTier(
 
 export function applyVisibility(person: any, tier: 0 | 1 | 2 | 3 | 4): any {
   if (tier === 4) return null; // not visible
+
+  // Target's "Restrict to direct & close family" preference:
+  // when set, only tier 0 / 1 / 2 viewers see the profile at all.
+  // Tier 3 viewers are dropped entirely. Tier 0 (self / admin) still
+  // sees the target — admins manage the directory and self always wins.
+  if (person.confirmedMembersOnly && tier === 3) return null;
 
   // Base visible fields for all tiers
   const base: any = {
@@ -253,7 +316,7 @@ export function applyVisibility(person: any, tier: 0 | 1 | 2 | 3 | 4): any {
 
   if (tier <= 1) {
     // Full profile
-    return {
+    const full: any = {
       ...base,
       birthday: person.birthday,
       showBirthYear: person.showBirthYear,
@@ -274,11 +337,37 @@ export function applyVisibility(person: any, tier: 0 | 1 | 2 | 3 | 4): any {
       otherSocial: person.otherSocial,
       tier2ContactField: person.tier2ContactField,
       confirmedMembersOnly: person.confirmedMembersOnly,
+      hideAddress: person.hideAddress,
+      hideSocials: person.hideSocials,
       claimedAt: person.claimedAt,
       inviteExpiresAt: person.inviteExpiresAt,
       createdAt: person.createdAt,
       updatedAt: person.updatedAt,
     };
+
+    // Tier 0 (self / admin) always sees everything, regardless of toggles.
+    // Tier 1 respects the target's per-user privacy toggles.
+    if (tier === 1) {
+      if (person.hideAddress) {
+        full.addressLine1 = null;
+        full.addressCity = null;
+        full.addressState = null;
+        full.addressZip = null;
+        full.addressCountry = null;
+      }
+      if (person.hideSocials) {
+        full.instagram = null;
+        full.facebook = null;
+        full.tiktok = null;
+        full.linkedin = null;
+        full.snapchat = null;
+        full.venmo = null;
+        full.bereal = null;
+        full.otherSocial = null;
+      }
+    }
+
+    return full;
   }
 
   if (tier === 2) {

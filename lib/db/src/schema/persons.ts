@@ -50,6 +50,8 @@ export const personsTable = pgTable(
     inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
     tier2ContactField: varchar("tier2_contact_field", { length: 10 }).notNull().default("phone"),
     confirmedMembersOnly: boolean("confirmed_members_only").notNull().default(false),
+    hideAddress: boolean("hide_address").notNull().default(false),
+    hideSocials: boolean("hide_socials").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

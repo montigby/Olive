@@ -65,6 +65,8 @@ export interface Person {
   inviteExpiresAt?: string | null;
   tier2ContactField?: string | null;
   confirmedMembersOnly?: boolean | null;
+  hideAddress?: boolean | null;
+  hideSocials?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -125,6 +127,8 @@ export interface UpdatePersonBody {
   parentPersonId?: string | null;
   tier2ContactField?: "phone" | "email";
   confirmedMembersOnly?: boolean;
+  hideAddress?: boolean;
+  hideSocials?: boolean;
 }
 
 export interface FamilyUnitSummary {

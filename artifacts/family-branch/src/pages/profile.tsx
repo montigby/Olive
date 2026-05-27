@@ -73,6 +73,8 @@ const profileSchema = z.object({
   otherSocial: z.string().nullable().optional(),
   tier2ContactField: z.enum(["phone", "email"]).default("phone"),
   confirmedMembersOnly: z.boolean().default(false),
+  hideAddress: z.boolean().default(false),
+  hideSocials: z.boolean().default(false),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -540,6 +542,8 @@ function ProfileEditForm({
       otherSocial: person?.otherSocial ?? "",
       tier2ContactField: (person?.tier2ContactField as "phone" | "email") ?? "phone",
       confirmedMembersOnly: person?.confirmedMembersOnly ?? false,
+      hideAddress: person?.hideAddress ?? false,
+      hideSocials: person?.hideSocials ?? false,
     },
   });
 
@@ -574,6 +578,8 @@ function ProfileEditForm({
       otherSocial: data.otherSocial || null,
       tier2ContactField: data.tier2ContactField,
       confirmedMembersOnly: data.confirmedMembersOnly,
+      hideAddress: data.hideAddress,
+      hideSocials: data.hideSocials,
     };
 
     updateMutation.mutate(
@@ -852,6 +858,80 @@ function ProfileEditForm({
                         </FormLabel>
                         <p className="text-xs text-muted-foreground mt-1">
                           Only Tier 1 &amp; 2 family members (e.g. parents, siblings, grandparents) can view your full profile.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={field.value}
+                        onClick={() => field.onChange(!field.value)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                          field.value ? "bg-primary" : "bg-muted"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            field.value ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Hide address */}
+              <FormField
+                control={form.control}
+                name="hideAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+                      <div>
+                        <FormLabel className="text-sm font-medium leading-none">
+                          Hide my address
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Don&apos;t show your address to anyone in the family directory. You and admins can still see it.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={field.value}
+                        onClick={() => field.onChange(!field.value)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                          field.value ? "bg-primary" : "bg-muted"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            field.value ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Hide socials */}
+              <FormField
+                control={form.control}
+                name="hideSocials"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+                      <div>
+                        <FormLabel className="text-sm font-medium leading-none">
+                          Hide my social handles
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Don&apos;t show your social media handles (Instagram, Facebook, etc.) to anyone in the family directory. You and admins can still see them.
                         </p>
                       </div>
                       <button

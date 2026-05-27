@@ -748,6 +748,15 @@ components:
           type: string
           format: uuid
           nullable: true
+        tier2ContactField:
+          type: string
+          enum: [phone, email]
+        confirmedMembersOnly:
+          type: boolean
+        hideAddress:
+          type: boolean
+        hideSocials:
+          type: boolean
 
     # ─── Family Unit ───────────────────────────────────────────────
     FamilyUnit:

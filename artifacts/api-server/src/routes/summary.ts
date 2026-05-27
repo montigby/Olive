@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import {
   familyUnitsTable,
   personsTable,
+  relationshipsTable,
   unitLinkRequestsTable,
 } from "@workspace/db";
 import { eq, or, and } from "drizzle-orm";
@@ -113,9 +114,9 @@ router.get("/family-units/:unitId/tree", requireAuth, async (req, res) => {
     return;
   }
 
-  // Pre-fetch the viewer's unit members for graph-based tier computation.
-  // computeTier uses this only when target is in the same unit as viewer;
-  // cross-unit comparisons fall back to label-based tiering inside computeTier.
+  // Pre-fetch the viewer's unit members AND relationships for graph-based
+  // tier computation. computeTier uses both only when target is in the same
+  // unit as viewer; cross-unit comparisons fall back to label-based tiering.
   const viewerUnitMembers = viewer.isAdmin
     ? []
     : await db
@@ -123,8 +124,19 @@ router.get("/family-units/:unitId/tree", requireAuth, async (req, res) => {
         .from(personsTable)
         .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
 
+  const viewerUnitRelationships = viewer.isAdmin
+    ? []
+    : await db
+        .select({
+          fromPerson: relationshipsTable.fromPerson,
+          toPerson: relationshipsTable.toPerson,
+          type: relationshipsTable.type,
+        })
+        .from(relationshipsTable)
+        .where(eq(relationshipsTable.familyId, viewer.familyUnitId));
+
   const decorate: MemberDecorator = (m) => {
-    const tier = computeTier(viewer, m, viewerUnitMembers);
+    const tier = computeTier(viewer, m, viewerUnitMembers, viewerUnitRelationships);
     if (tier === 4) return null;
     return applyVisibility(formatPerson(m), tier);
   };
@@ -232,14 +244,26 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
 
   const unitIds: string[] = [unitId, ...childUnits.map((u) => u.id)];
 
-  // Pre-fetch viewer's unit members for graph-based tier computation
-  // (used by computeTier when target is same-unit; ignored for cross-unit).
+  // Pre-fetch viewer's unit members AND relationships for graph-based tier
+  // computation (used by computeTier when target is same-unit; cross-unit
+  // members fall back to label-based tiering and ignore both lists).
   const viewerUnitMembers = viewer.isAdmin
     ? []
     : await db
         .select()
         .from(personsTable)
         .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
+
+  const viewerUnitRelationships = viewer.isAdmin
+    ? []
+    : await db
+        .select({
+          fromPerson: relationshipsTable.fromPerson,
+          toPerson: relationshipsTable.toPerson,
+          type: relationshipsTable.type,
+        })
+        .from(relationshipsTable)
+        .where(eq(relationshipsTable.familyId, viewer.familyUnitId));
 
   const allMembers: Array<{ person: typeof personsTable.$inferSelect; unitName: string }> = [];
 
@@ -257,7 +281,7 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
 
     for (const m of members) {
       if (!m.birthday) continue;
-      const tier = computeTier(viewer, m, viewerUnitMembers);
+      const tier = computeTier(viewer, m, viewerUnitMembers, viewerUnitRelationships);
       // Birthday is only visible at tiers 0-2; drop tier 3 and 4.
       if (tier > 2) continue;
       allMembers.push({ person: m, unitName: u.unitName });

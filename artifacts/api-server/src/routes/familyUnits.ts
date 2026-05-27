@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { db } from "@workspace/db";
-import { familyUnitsTable, personsTable } from "@workspace/db";
+import { familyUnitsTable, personsTable, relationshipsTable } from "@workspace/db";
 import { eq, ilike, count } from "drizzle-orm";
 import { CreateFamilyUnitBody, UpdateFamilyUnitBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
@@ -134,8 +134,18 @@ router.get("/family-units/:unitId", requireAuth, async (req, res) => {
     return;
   }
 
-  // Same-unit non-admin: apply social graph visibility.
-  const visibleSet = computeVisibleSet(viewer, members);
+  // Same-unit non-admin: apply social graph visibility, seeded from the
+  // explicit relationships table for accuracy, with label heuristic fallback.
+  const relationships = await db
+    .select({
+      fromPerson: relationshipsTable.fromPerson,
+      toPerson: relationshipsTable.toPerson,
+      type: relationshipsTable.type,
+    })
+    .from(relationshipsTable)
+    .where(eq(relationshipsTable.familyId, unit.id));
+
+  const visibleSet = computeVisibleSet(viewer, members, relationships);
   const filteredMembers = members
     .map((m) => {
       const tier = visibleSet.get(m.id) ?? 4;

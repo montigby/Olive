@@ -45,6 +45,8 @@ function formatPerson(p: typeof personsTable.$inferSelect) {
     inviteExpiresAt: p.inviteExpiresAt?.toISOString() ?? null,
     tier2ContactField: p.tier2ContactField,
     confirmedMembersOnly: p.confirmedMembersOnly,
+    hideAddress: p.hideAddress,
+    hideSocials: p.hideSocials,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };

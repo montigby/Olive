@@ -67,8 +67,18 @@ router.get("/family-units/:unitId/members", requireAuth, async (req, res) => {
     return;
   }
 
-  // Same-unit non-admin: apply social graph visibility.
-  const visibleSet = computeVisibleSet(viewer, members);
+  // Same-unit non-admin: apply social graph visibility, seeded from the
+  // explicit relationships table for accuracy, with label heuristic fallback.
+  const relationships = await db
+    .select({
+      fromPerson: relationshipsTable.fromPerson,
+      toPerson: relationshipsTable.toPerson,
+      type: relationshipsTable.type,
+    })
+    .from(relationshipsTable)
+    .where(eq(relationshipsTable.familyId, unitId));
+
+  const visibleSet = computeVisibleSet(viewer, members, relationships);
   const result = members
     .map((m) => {
       const tier = visibleSet.get(m.id) ?? 4;

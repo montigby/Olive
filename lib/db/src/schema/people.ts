@@ -19,5 +19,7 @@ export const peopleTable = pgTable("people", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export type Person = typeof peopleTable.$inferSelect;
-export type InsertPerson = typeof peopleTable.$inferInsert;
+// Note: Person/InsertPerson types intentionally NOT exported here.
+// Those names are exported from ./persons (the rich display table).
+// Use `typeof peopleTable.$inferSelect` directly if you need the
+// lightweight graph-node row type.
