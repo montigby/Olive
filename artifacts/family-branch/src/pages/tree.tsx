@@ -36,10 +36,14 @@ const GRANDCHILD_LABELS = new Set([
   "grandson", "granddaughter", "grandchild",
 ]);
 
-// Siblings of the head (and their spouses) — rendered at the same Y as the couple, not below it
+// Siblings of the head (and their spouses) — rendered at the same Y as the couple, not below it.
+// "uncle" and "aunt" are treated as parent-generation siblings: they appear in the sibling row
+// but are connected from the grandparent node (not from the parents couple) when their
+// parentPersonId points to a grandparent.
 const SIBLING_LABELS = new Set([
   "brother", "sister", "sibling",
   "brother-in-law", "sister-in-law",
+  "uncle", "aunt",
 ]);
 
 // Parents of the spouse — rendered above the couple on the RIGHT side
@@ -1744,8 +1748,16 @@ function layoutLayeredView(
         data: { parents: sibMems, unitName: "", pillId: kidsExpanded ? slot.kidsId : undefined },
       });
 
-      // Connect sibling to parents (if any) or to core couple as fallback
-      const sibEdgeSrc = parentsArr.length > 0 ? `${groupPillId}-parents` : coupleId;
+      // Connect sibling to grandparents (if their parentPersonId matches a grandparent),
+      // else to parents (if any), else to core couple as fallback.
+      const connectsToGp =
+        grandparentsArr.length > 0 &&
+        grandparentsArr.some((gp: any) => slot.primary.parentPersonId === gp.id);
+      const sibEdgeSrc = connectsToGp
+        ? `${groupPillId}-grandparents`
+        : parentsArr.length > 0
+          ? `${groupPillId}-parents`
+          : coupleId;
       addEdge(sibEdgeSrc, sibNodeId, 0.4);
 
       // Kids below this sibling (if any)
