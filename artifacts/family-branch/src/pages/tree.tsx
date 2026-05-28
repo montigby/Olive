@@ -1325,6 +1325,115 @@ function layoutPersonalView(
 }
 
 // ---------------------------------------------------------------------------
+// Absolute family graph.
+//
+// Builds a viewer-INDEPENDENT parent→child graph from every available signal:
+//   1. explicit biological_parent / adoptive_parent / step_parent edges
+//   2. persons.parentPersonId
+//   3. admin-relative relationship labels, converted to absolute facts using
+//      the admin's identity (e.g. a member labeled "mom" is the ADMIN's mother,
+//      so admin → that member is a child→parent edge — true no matter who views)
+//
+// The layered view then derives EACH viewer's parents / siblings / grandparents
+// / children by traversing this graph from the viewer. This is what makes the
+// tree correct for every member: labels stored relative to the admin are only
+// used to build absolute edges once, never to position a non-admin viewer.
+// ---------------------------------------------------------------------------
+function buildAbsoluteGraph(
+  allMembers: any[],
+  spouseMap: Map<string, string>,
+  explicitParentsByChild: Map<string, Set<string>>,
+): { parentsOf: Map<string, Set<string>>; childrenOf: Map<string, Set<string>> } {
+  const parentsOf = new Map<string, Set<string>>();
+  const childrenOf = new Map<string, Set<string>>();
+  const ids = new Set<string>(allMembers.map((m: any) => m.id));
+  const nl = (l: string | null | undefined) => (l ?? "").toLowerCase().trim();
+
+  const link = (childId: string, parentId: string) => {
+    if (!childId || !parentId || childId === parentId) return;
+    if (!ids.has(childId) || !ids.has(parentId)) return;
+    if (!parentsOf.has(childId)) parentsOf.set(childId, new Set());
+    parentsOf.get(childId)!.add(parentId);
+    if (!childrenOf.has(parentId)) childrenOf.set(parentId, new Set());
+    childrenOf.get(parentId)!.add(childId);
+  };
+
+  // 1. Explicit parent edges.
+  for (const [childId, parentIds] of explicitParentsByChild) {
+    for (const pid of parentIds) link(childId, pid);
+  }
+
+  // 2. persons.parentPersonId.
+  for (const m of allMembers) {
+    if (m.parentPersonId) link(m.id, m.parentPersonId);
+  }
+
+  // 3. Admin-relative labels → absolute facts.
+  const admin = allMembers.find((m: any) => m.isAdmin);
+  if (!admin) return { parentsOf, childrenOf };
+  const adminSpouseId = spouseMap.get(admin.id);
+
+  const isParentOfAdminLabel = (l: string) =>
+    isParentRole(l) && !isGrandparentRole(l) && !isInlawParent(l) && !isExplicitPartner(l);
+
+  const adminParentIds: string[] = [];
+  const inlawParentIds: string[] = [];
+  for (const m of allMembers) {
+    if (m.id === admin.id) continue;
+    const l = nl(m.relationshipLabel);
+    if (isParentOfAdminLabel(l)) {
+      link(admin.id, m.id);          // m is the admin's parent
+      adminParentIds.push(m.id);
+    } else if (isInlawParent(l) && adminSpouseId) {
+      link(adminSpouseId, m.id);     // m is the admin-spouse's parent
+      inlawParentIds.push(m.id);
+    }
+  }
+
+  // 4. Admin's siblings share the admin's parents.
+  const adminSiblingIds = new Set<string>();
+  for (const m of allMembers) {
+    const l = nl(m.relationshipLabel);
+    if (l === "brother" || l === "sister" || l === "sibling") {
+      adminSiblingIds.add(m.id);
+      for (const pid of adminParentIds) link(m.id, pid);
+    }
+  }
+
+  // 5. In-law siblings share the admin-spouse's parents — UNLESS their explicit
+  //    spouse is admin-side (admin or admin's sibling). In that case they
+  //    married INTO the family (e.g. Anna ↔ Tanner, Sam ↔ Madeline) and are
+  //    connected only through their spouse, not as the admin-spouse's sibling.
+  const adminSideCore = new Set<string>([admin.id, ...adminSiblingIds]);
+  for (const m of allMembers) {
+    const l = nl(m.relationshipLabel);
+    if ((l === "brother-in-law" || l === "sister-in-law") && adminSpouseId) {
+      const theirSpouse = spouseMap.get(m.id);
+      if (theirSpouse && adminSideCore.has(theirSpouse)) continue;
+      for (const pid of inlawParentIds) link(m.id, pid);
+    }
+  }
+
+  // 6. Grandparent labels = "parent of the admin's parent". Use parentPersonId
+  //    when present; otherwise attach to the admin's first parent (a bare
+  //    "grandfather" label doesn't say maternal vs paternal).
+  for (const m of allMembers) {
+    const l = nl(m.relationshipLabel);
+    if (isGrandparentRole(l)) {
+      if (m.parentPersonId && ids.has(m.parentPersonId)) {
+        link(m.parentPersonId, m.id);
+      } else if (adminParentIds.length > 0) {
+        link(adminParentIds[0], m.id);
+      } else {
+        link(admin.id, m.id);
+      }
+    }
+  }
+
+  return { parentsOf, childrenOf };
+}
+
+// ---------------------------------------------------------------------------
 // Layered drill-down view — group pill design.
 // Layer 0 (core): viewer + spouse + their children — always rendered as nodes.
 // Layer 1: ONE "grp:viewer" pill for viewer's whole side (parents + siblings),
@@ -1358,294 +1467,71 @@ function layoutLayeredView(
     ...(viewerSpouseId ? [viewerSpouseId] : []),
   ]);
 
-  // Children of the viewer from explicit biological_parent / adoptive_parent /
-  // step_parent edges in the relationships table. Used alongside the existing
-  // parentPersonId-based logic so matriarchs / patriarchs whose kids weren't
-  // linked via parentPersonId on persons still show up correctly.
-  const viewerExplicitChildIds = childrenByParent.get(viewerId) ?? new Set<string>();
-  const viewerExplicitParentIds = parentsByChild.get(viewerId) ?? new Set<string>();
-  const spouseExplicitParentIds = viewerSpouseId
-    ? (parentsByChild.get(viewerSpouseId) ?? new Set<string>())
-    : new Set<string>();
-
-  // Helpers: turn an id-set into a member array (filtering out unknowns)
+  // Helper: turn an id-set into a member array (filtering out unknowns).
   const idsToMembers = (ids: Iterable<string>) =>
     [...ids]
       .map((id) => allMembers.find((m: any) => m.id === id))
       .filter(Boolean) as any[];
 
-  // Siblings via shared explicit parents (excluding the viewer / target self).
-  const siblingsViaSharedParents = (selfId: string, parentIds: Set<string>): any[] => {
-    const sibIds = new Set<string>();
-    for (const pid of parentIds) {
-      const kids = childrenByParent.get(pid) ?? new Set<string>();
-      for (const k of kids) if (k !== selfId) sibIds.add(k);
+  // ── Family identification (absolute-graph based) ────────────────────────────
+  // Build a viewer-INDEPENDENT family graph once, then derive THIS viewer's
+  // relatives by traversing it. This replaces the old per-label branches that
+  // were correct only when the admin was the viewer.
+  const { parentsOf, childrenOf } = buildAbsoluteGraph(allMembers, spouseMap, parentsByChild);
+
+  // Add each parent's spouse (the co-parent by marriage) so a viewer with only
+  // one parent edge encoded still gets their other parent (e.g. Tagen → Ryan
+  // explicit, Ryan ↔ Jackie spouse ⇒ Jackie shown too).
+  const withSpouses = (idSet: Set<string>): Set<string> => {
+    const out = new Set<string>(idSet);
+    for (const id of idSet) {
+      const sp = spouseMap.get(id);
+      if (sp) out.add(sp);
     }
-    return idsToMembers(sibIds);
+    return out;
   };
 
-  // Grandparents = parents of parents in the explicit graph.
-  const grandparentsViaExplicit = (parentIds: Set<string>): any[] => {
-    const gpIds = new Set<string>();
-    for (const pid of parentIds) {
-      const gps = parentsByChild.get(pid) ?? new Set<string>();
-      for (const g of gps) gpIds.add(g);
-    }
-    return idsToMembers(gpIds);
-  };
+  const viewerParentIds = parentsOf.get(viewerId) ?? new Set<string>();
+  const viewerParents = idsToMembers(withSpouses(viewerParentIds));
 
-  const viewerIsFamilyHead =
-    isParentRole(viewerLabel) &&
-    !isExplicitPartner(viewerLabel) &&
-    !isInlawParent(viewerLabel) &&
-    !isSiblingRole(viewerLabel) &&
-    !isNephewNieceRole(viewerLabel) &&
-    (
-      allMembers.some((c: any) => c.parentPersonId === viewerId) ||
-      viewerExplicitChildIds.size > 0
-    );
-
-  // True matriarch / patriarch: has explicit children AND no explicit parents
-  // in the family. Their "parents", "siblings", "grandparents", and in-law
-  // pill should all be EMPTY rather than falling back to admin-relative labels.
-  const viewerIsTrueFamilyHead =
-    viewerExplicitChildIds.size > 0 && viewerExplicitParentIds.size === 0;
-
-  // ── Family identification ──────────────────────────────────────────────────
-
-  // Viewer's parents
-  let viewerParents: any[] = [];
-  if (viewerExplicitParentIds.size > 0) {
-    // Primary source: explicit biological_parent edges. This is viewer-relative
-    // and correct regardless of admin-frame labels. Works for everyone whose
-    // parent edges have been encoded (e.g. Tanner → Deborah/Steven).
-    //
-    // Also include each explicit parent's spouse (the "co-parent by marriage"),
-    // so a viewer who only has one biological_parent edge encoded still gets
-    // their other parent through the spouse graph (e.g. Tagen → Ryan explicit,
-    // Ryan ↔ Jackie spouse ⇒ Jackie shown alongside Ryan).
-    const parentIds = new Set<string>(viewerExplicitParentIds);
-    for (const pid of viewerExplicitParentIds) {
-      const spId = spouseMap.get(pid);
-      if (spId) parentIds.add(spId);
-    }
-    viewerParents = idsToMembers(parentIds);
-  } else if (viewerIsTrueFamilyHead) {
-    // Matriarch / patriarch with no encoded parents — their parents are
-    // external to this family unit. DON'T fall back to label heuristic
-    // (which would incorrectly pick up the spouse, etc.).
-    viewerParents = [];
-  } else if (viewerPerson.parentPersonId) {
-    const dp = allMembers.find((m: any) => m.id === viewerPerson.parentPersonId);
-    if (dp) {
-      const psId = spouseMap.get(dp.id);
-      const ps = psId ? allMembers.find((m: any) => m.id === psId) : null;
-      viewerParents = [dp, ...(ps ? [ps] : [])];
-    }
-  } else if (viewerIsFamilyHead) {
-    viewerParents = allMembers.filter((m: any) =>
-      isParentRole(m.relationshipLabel ?? "") &&
-      !isGrandparentRole(m.relationshipLabel ?? "") &&
-      !isExplicitPartner(m.relationshipLabel ?? "") &&
-      !isInlawParent(m.relationshipLabel ?? "") &&
-      m.id !== viewerId &&
-      m.id !== viewerSpouseId &&
-      !allMembers.some((c: any) => c.parentPersonId === m.id) &&
-      (childrenByParent.get(m.id)?.size ?? 0) === 0,
-    );
-  } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
-    viewerParents = allMembers.filter((m: any) =>
-      isParentRole(m.relationshipLabel ?? "") &&
-      !isGrandparentRole(m.relationshipLabel ?? "") &&
-      !isExplicitPartner(m.relationshipLabel ?? "") &&
-      !m.isAdmin &&
-      !allMembers.some((c: any) => c.parentPersonId === m.id),
-    );
-  } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
-    // Disambiguate: if we know spouse's parents from the explicit graph, the
-    // viewer is "married into" the family (e.g. Anna married Tanner). Her own
-    // parents are external — DON'T pick up admin-frame "mother-in-law" labels,
-    // which belong to admin's spouse's parents, not viewer's parents.
-    if (spouseExplicitParentIds.size > 0) {
-      viewerParents = [];
-    } else {
-      viewerParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
-    }
-  } else if (isExplicitPartner(viewerLabel)) {
-    viewerParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
-  } else {
-    // Fallback for any unhandled label (son, daughter, etc.).
-    // Labels in this unit are relative to the viewer, so any member with a
-    // parent-role label (mother, father, etc.) IS the viewer's parent.
-    // We deliberately avoid findFamilyHead() here because when the viewer IS
-    // the admin (e.g. Tyler is admin but labeled "son"), findFamilyHead returns
-    // the viewer themselves, and head.id === viewerId is always in excludeIds.
-    viewerParents = allMembers.filter((m: any) =>
-      isParentRole(m.relationshipLabel ?? "") &&
-      !isGrandparentRole(m.relationshipLabel ?? "") &&
-      !isExplicitPartner(m.relationshipLabel ?? "") &&
-      !isInlawParent(m.relationshipLabel ?? "") &&
-      !excludeIds.has(m.id),
-    );
-  }
-
-  // Grandparents on the viewer's side. Prefer explicit graph (parents of the
-  // viewer's parents); fall back to label-based ONLY when the viewer has no
-  // explicit parents AND isn't a true family head — otherwise the admin-frame
-  // "grandparent" label can't be trusted (e.g. James is Spencer's grandfather,
-  // not Deborah's).
-  let viewerGrandparents: any[];
-  if (viewerExplicitParentIds.size > 0) {
-    viewerGrandparents = grandparentsViaExplicit(viewerExplicitParentIds);
-  } else if (viewerIsTrueFamilyHead) {
-    viewerGrandparents = [];
-  } else {
-    viewerGrandparents = allMembers.filter((m: any) =>
-      isGrandparentRole(m.relationshipLabel ?? "") && !excludeIds.has(m.id),
-    );
-  }
-
-  // Viewer's children (Layer 0 — always visible)
-  let viewerChildren: any[] = [];
-  if (isExplicitPartner(viewerLabel)) {
-    viewerChildren = allMembers.filter((m: any) =>
-      !isParentRole(m.relationshipLabel ?? "") &&
-      !isSiblingRole(m.relationshipLabel ?? "") &&
-      !isInlawParent(m.relationshipLabel ?? "") &&
-      !isNephewNieceRole(m.relationshipLabel ?? "") &&
-      !isGrandchildRole(m.relationshipLabel ?? "") &&
-      !excludeIds.has(m.id),
-    );
-  } else {
-    // Match either by parentPersonId on the persons row OR by an explicit
-    // biological_parent edge in the relationships table targeting the viewer.
-    viewerChildren = allMembers.filter((m: any) =>
-      m.parentPersonId === viewerId || viewerExplicitChildIds.has(m.id),
-    );
-  }
-
-  // Viewer's siblings
-  let viewerSiblings: any[] = [];
-  if (viewerExplicitParentIds.size > 0) {
-    // Primary source: siblings = others who share at least one explicit parent.
-    viewerSiblings = siblingsViaSharedParents(viewerId, viewerExplicitParentIds)
-      .filter((m: any) => !excludeIds.has(m.id));
-  } else if (viewerIsTrueFamilyHead) {
-    // Matriarch / patriarch — their siblings are external to this unit.
-    // Don't pick up children-labeled-as-siblings via the admin frame.
-    viewerSiblings = [];
-  } else if (viewerPerson.parentPersonId) {
-    viewerSiblings = allMembers.filter((m: any) =>
-      m.parentPersonId === viewerPerson.parentPersonId && !excludeIds.has(m.id),
-    );
-  } else if (viewerIsFamilyHead) {
-    viewerSiblings = allMembers.filter((m: any) =>
-      ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
-      !excludeIds.has(m.id),
-    );
-  } else if (viewerLabel === "brother" || viewerLabel === "sister" || viewerLabel === "sibling") {
-    const otherSibs = allMembers.filter((m: any) =>
-      ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
-      !excludeIds.has(m.id),
-    );
-    const familyHead = findFamilyHead(allMembers);
-    if (familyHead && !excludeIds.has(familyHead.id)) viewerSiblings.push(familyHead);
-    viewerSiblings.push(...otherSibs);
-  } else if (viewerLabel === "brother-in-law" || viewerLabel === "sister-in-law") {
-    // Same disambiguation as viewerParents: if spouse's family is known from
-    // the explicit graph, the viewer married INTO that family — their own
-    // siblings are external, and admin-frame in-law labels point at a
-    // different clan. Sibling-by-marriage shows up via spouseSiblings instead.
-    if (spouseExplicitParentIds.size > 0) {
-      viewerSiblings = [];
-    } else {
-      const miranda = allMembers.find((m: any) => isExplicitPartner(m.relationshipLabel ?? ""));
-      if (miranda) viewerSiblings.push(miranda);
-      viewerSiblings.push(
-        ...allMembers.filter((m: any) =>
-          (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
-            m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
-          !excludeIds.has(m.id),
-        ),
-      );
-    }
-  } else if (isExplicitPartner(viewerLabel)) {
-    viewerSiblings = allMembers.filter((m: any) =>
-      (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
-        m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
-      !excludeIds.has(m.id),
-    );
-  } else {
-    // Fallback siblings for unhandled labels (son, daughter, etc.):
-    // If the viewer has parentPersonId set, siblings share the same parentPersonId.
-    // Otherwise, treat sibling-role labeled members as siblings (they were added
-    // relative to the viewer), plus any others sharing the viewer's own label.
-    if (viewerPerson.parentPersonId) {
-      viewerSiblings = allMembers.filter((m: any) =>
-        m.parentPersonId === viewerPerson.parentPersonId && !excludeIds.has(m.id),
-      );
-    } else {
-      viewerSiblings = allMembers.filter((m: any) => {
-        const l = (m.relationshipLabel ?? "").toLowerCase();
-        return !excludeIds.has(m.id) && (isSiblingRole(l) || l === viewerLabel);
-      });
+  // Siblings = others who share at least one parent with the viewer.
+  const viewerSiblingIds = new Set<string>();
+  for (const pid of viewerParentIds) {
+    for (const c of (childrenOf.get(pid) ?? new Set<string>())) {
+      if (c !== viewerId) viewerSiblingIds.add(c);
     }
   }
+  const viewerSiblings = idsToMembers(viewerSiblingIds).filter((m: any) => !excludeIds.has(m.id));
 
-  // Spouse's parents and siblings.
-  // Prefer explicit edges: spouseParents = parents of viewerSpouse, spouseSiblings
-  // = others who share at least one parent with viewerSpouse. This is correct
-  // regardless of admin-frame labels.
-  let spouseParents: any[] = [];
-  let spouseSiblings: any[] = [];
-  if (viewerSpouse) {
-    if (spouseExplicitParentIds.size > 0) {
-      // Mirror the viewerParents logic: also include each explicit parent's
-      // spouse so a missing co-parent edge still surfaces the other parent.
-      const sParentIds = new Set<string>(spouseExplicitParentIds);
-      for (const pid of spouseExplicitParentIds) {
-        const spId = spouseMap.get(pid);
-        if (spId) sParentIds.add(spId);
+  // Grandparents = parents of the viewer's parents.
+  const viewerGrandparentIds = new Set<string>();
+  for (const pid of viewerParentIds) {
+    for (const g of (parentsOf.get(pid) ?? new Set<string>())) viewerGrandparentIds.add(g);
+  }
+  const viewerGrandparents = idsToMembers(viewerGrandparentIds).filter((m: any) => !excludeIds.has(m.id));
+
+  // Children = the viewer's own children.
+  const viewerChildren = idsToMembers(childrenOf.get(viewerId) ?? new Set<string>());
+
+  // Spouse's parents + siblings (same derivation, anchored on the spouse).
+  const spouseParentIds = viewerSpouseId
+    ? (parentsOf.get(viewerSpouseId) ?? new Set<string>())
+    : new Set<string>();
+  const spouseParents = viewerSpouseId ? idsToMembers(withSpouses(spouseParentIds)) : [];
+  const spouseSiblingIds = new Set<string>();
+  if (viewerSpouseId) {
+    for (const pid of spouseParentIds) {
+      for (const c of (childrenOf.get(pid) ?? new Set<string>())) {
+        if (c !== viewerSpouseId) spouseSiblingIds.add(c);
       }
-      spouseParents = idsToMembers(sParentIds);
-      spouseSiblings = siblingsViaSharedParents(viewerSpouse.id, spouseExplicitParentIds)
-        .filter((m: any) => !excludeIds.has(m.id));
-    } else if (viewerIsTrueFamilyHead) {
-      // Spouse's parents aren't in this unit, and we cannot trust admin-frame
-      // "mother-in-law" labels — those belong to admin's spouse's clan, not
-      // this viewer's spouse's clan.
-      spouseParents = [];
-      spouseSiblings = [];
-    } else if (viewerIsFamilyHead) {
-      spouseParents = allMembers.filter((m: any) => isInlawParent(m.relationshipLabel ?? ""));
-
-      // Exclude people who are already the spouse of one of viewer's own siblings —
-      // those in-laws belong to viewer's group, not the spouse's group.
-      const viewerSibSpouseIds = new Set<string>();
-      for (const sib of viewerSiblings) {
-        const spId = spouseMap.get(sib.id);
-        if (spId) viewerSibSpouseIds.add(spId);
-      }
-
-      spouseSiblings = allMembers.filter((m: any) =>
-        (m.relationshipLabel?.toLowerCase() === "brother-in-law" ||
-          m.relationshipLabel?.toLowerCase() === "sister-in-law") &&
-        !excludeIds.has(m.id) &&
-        !viewerSibSpouseIds.has(m.id),
-      );
-    } else if (isExplicitPartner(viewerLabel)) {
-      spouseParents = allMembers.filter((m: any) =>
-        isParentRole(m.relationshipLabel ?? "") &&
-        !isExplicitPartner(m.relationshipLabel ?? "") &&
-        !isInlawParent(m.relationshipLabel ?? "") &&
-        !allMembers.some((c: any) => c.parentPersonId === m.id),
-      );
-      spouseSiblings = allMembers.filter((m: any) =>
-        ["brother", "sister", "sibling"].includes((m.relationshipLabel ?? "").toLowerCase()) &&
-        !excludeIds.has(m.id),
-      );
     }
   }
+  const spouseSiblings = idsToMembers(spouseSiblingIds).filter((m: any) => !excludeIds.has(m.id));
+
+  // "Family head" for rendering purposes (couple ordering + which side the
+  // viewer's family extends): a viewer who has children of their own. The
+  // couple is drawn [spouse, viewer] with the viewer's family on the right.
+  const viewerIsFamilyHead = (childrenOf.get(viewerId)?.size ?? 0) > 0;
 
   // ── Layout constants ───────────────────────────────────────────────────────
 
@@ -1837,17 +1723,16 @@ function layoutLayeredView(
       });
       // Connect parents → core couple when the relevant member (viewer for
       // grp:viewer, spouse for grp:spouse) is actually a child of these parents.
-      // The historical condition (skip when siblings exist) leaves the viewer
-      // visually disconnected from their parents when they're single + childless.
-      // For family heads (matriarchs/patriarchs), the parents on this row are
-      // external and shouldn't have a child-edge into the couple node.
+      // viewerParentIds / spouseParentIds come from the absolute graph, so this
+      // is correct for everyone: true matriarchs have no parents (empty set →
+      // no edge), children always get the connecting edge even when siblings
+      // are present (which previously left the viewer visually disconnected).
       const groupIsForViewer = groupPillId === "grp:viewer";
       const isChildOfTheseParents = groupIsForViewer
-        ? (viewerExplicitParentIds.size > 0 || !!viewerPerson.parentPersonId)
-        : (!!viewerSpouse &&
-            (spouseExplicitParentIds.size > 0 || !!viewerSpouse.parentPersonId));
+        ? viewerParentIds.size > 0
+        : spouseParentIds.size > 0;
 
-      if (isChildOfTheseParents && !viewerIsFamilyHead) {
+      if (isChildOfTheseParents) {
         addEdge(parentNodeId, coupleId, 0.5);
       } else if (sibSlots.length === 0 && grandparentsArr.length === 0) {
         addEdge(parentNodeId, coupleId, 0.5);
