@@ -1430,6 +1430,26 @@ function buildAbsoluteGraph(
     }
   }
 
+  // 7. Aunt / uncle labels = the admin's parent's sibling. Link them as a child
+  //    of the admin's grandparent so they become a sibling of the admin's
+  //    parent. parentPersonId wins when present; otherwise attach to the first
+  //    known grandparent.
+  const adminGrandparentIds = new Set<string>();
+  for (const pid of adminParentIds) {
+    for (const g of (parentsOf.get(pid) ?? new Set<string>())) adminGrandparentIds.add(g);
+  }
+  const firstGrandparent = [...adminGrandparentIds][0];
+  for (const m of allMembers) {
+    const l = nl(m.relationshipLabel);
+    if (l === "aunt" || l === "uncle") {
+      if (m.parentPersonId && ids.has(m.parentPersonId)) {
+        link(m.id, m.parentPersonId);
+      } else if (firstGrandparent) {
+        link(m.id, firstGrandparent);
+      }
+    }
+  }
+
   return { parentsOf, childrenOf };
 }
 
@@ -1510,6 +1530,22 @@ function layoutLayeredView(
   }
   const viewerGrandparents = idsToMembers(viewerGrandparentIds).filter((m: any) => !excludeIds.has(m.id));
 
+  // Aunts / uncles = the viewer's parents' siblings (others who share a parent
+  // with one of the viewer's parents). These live in the "ancestors" pill above
+  // the parents alongside the grandparents, collapsed by default.
+  const auntsUnclesOf = (parentIds: Set<string>): any[] => {
+    const out = new Set<string>();
+    for (const pid of parentIds) {
+      for (const gpid of (parentsOf.get(pid) ?? new Set<string>())) {
+        for (const c of (childrenOf.get(gpid) ?? new Set<string>())) {
+          if (!parentIds.has(c)) out.add(c);
+        }
+      }
+    }
+    return idsToMembers(out).filter((m: any) => !excludeIds.has(m.id));
+  };
+  const viewerAuntsUncles = auntsUnclesOf(viewerParentIds);
+
   // Children = the viewer's own children.
   const viewerChildren = idsToMembers(childrenOf.get(viewerId) ?? new Set<string>());
 
@@ -1527,6 +1563,12 @@ function layoutLayeredView(
     }
   }
   const spouseSiblings = idsToMembers(spouseSiblingIds).filter((m: any) => !excludeIds.has(m.id));
+  const spouseGrandparentIds = new Set<string>();
+  for (const pid of spouseParentIds) {
+    for (const g of (parentsOf.get(pid) ?? new Set<string>())) spouseGrandparentIds.add(g);
+  }
+  const spouseGrandparents = idsToMembers(spouseGrandparentIds).filter((m: any) => !excludeIds.has(m.id));
+  const spouseAuntsUncles = viewerSpouseId ? auntsUnclesOf(spouseParentIds) : [];
 
   // "Family head" for rendering purposes (couple ordering + which side the
   // viewer's family extends): a viewer who has children of their own. The
@@ -1596,6 +1638,8 @@ function layoutLayeredView(
 
   const viewerSibSlots = buildSibSlots(viewerSiblings);
   const spouseSibSlots = buildSibSlots(spouseSiblings);
+  const viewerAuntUncleSlots = buildSibSlots(viewerAuntsUncles);
+  const spouseAuntUncleSlots = buildSibSlots(spouseAuntsUncles);
 
   // ── Core couple (Layer 0) ──────────────────────────────────────────────────
 
@@ -1643,6 +1687,7 @@ function layoutLayeredView(
     sibSlots: SibSlot[],
     groupPillId: string,
     side: "left" | "right",
+    auntUncleSlots: SibSlot[] = [],
   ) => {
     if (grandparentsArr.length === 0 && parentsArr.length === 0 && sibSlots.length === 0) return;
 
@@ -1660,8 +1705,12 @@ function layoutLayeredView(
 
     if (!isExpanded) {
       // ── Collapsed: single group pill ──────────────────────────────────────
+      // NOTE: only the viewer's PARENTS + SIBLINGS go in this top-level pill.
+      // The grandparent generation (parents' parents + parents' siblings) is a
+      // SEPARATE nested "ancestors" pill rendered above the parents once this
+      // group is expanded — so expanding your side does not immediately reveal
+      // your grandparents / aunts / uncles.
       const allPeople = [
-        ...grandparentsArr,
         ...parentsArr,
         ...sibSlots.flatMap(s => [s.primary, ...(s.spouse ? [s.spouse] : [])]),
       ];
@@ -1689,22 +1738,69 @@ function layoutLayeredView(
     const sibRowCx = totalSibW > 0 ? sibRowStartX + totalSibW / 2 : anchorX;
     const parentsY = y - V_GAP;
     const parentsNodeW = parentsArr.length >= 2 ? COUPLE_W : parentsArr.length === 1 ? PERSON_W : 0;
+    const parentTargetId = parentsArr.length > 0 ? `${groupPillId}-parents` : coupleId;
 
-    // Grandparents node (one level above parents)
-    if (grandparentsArr.length > 0) {
-      const gpMems = grandparentsArr.map((p: any) => relabeled(p, "parent"));
-      const gpW = gpMems.length >= 2 ? COUPLE_W : PERSON_W;
-      const gpNodeId = `${groupPillId}-grandparents`;
-      const gpY = parentsY - V_GAP;
+    // ── Ancestors pill: parents' parents (grandparents) + parents' siblings
+    //    (aunts / uncles). Collapsed by default so expanding YOUR side does not
+    //    immediately surface the grandparent generation. Click it to expand.
+    const ancestorsPillId = `${groupPillId}-ancestors`;
+    const ancestorsExpanded = expandedPills.has(ancestorsPillId);
+    const ancestorsPeople = [
+      ...grandparentsArr,
+      ...auntUncleSlots.flatMap(s => [s.primary, ...(s.spouse ? [s.spouse] : [])]),
+    ];
+    const ancestorsY = parentsY - V_GAP;
+
+    if (ancestorsPeople.length > 0 && !ancestorsExpanded) {
+      // Collapsed nested pill above the parents.
+      const names = ancestorsPeople.map((p: any) => p.firstName);
+      const ancLabel =
+        names.slice(0, 3).join(", ") + (names.length > 3 ? ` +${names.length - 3}` : "");
       nodes.push({
-        id: gpNodeId,
-        type: "couple",
-        position: { x: sibRowCx - gpW / 2, y: gpY },
-        data: { parents: gpMems, unitName: "" },
+        id: ancestorsPillId,
+        type: "pill",
+        position: { x: sibRowCx - PILL_W / 2, y: ancestorsY },
+        data: { members: ancestorsPeople, label: ancLabel, pillId: ancestorsPillId },
       });
-      // Connect grandparents → parents (if parents exist) else → core couple
-      const gpTarget = parentsArr.length > 0 ? `${groupPillId}-parents` : coupleId;
-      addEdge(gpNodeId, gpTarget, 0.4);
+      addEdge(ancestorsPillId, parentTargetId, 0.4);
+    } else if (ancestorsPeople.length > 0 && ancestorsExpanded) {
+      // Expanded: grandparents couple at the top, parents' siblings (aunts /
+      // uncles) in a row at the parents' generation extending away from centre.
+      let gpAnchorId = parentTargetId;
+      if (grandparentsArr.length > 0) {
+        const gpMems = grandparentsArr.map((p: any) => relabeled(p, "parent"));
+        const gpW = gpMems.length >= 2 ? COUPLE_W : PERSON_W;
+        const gpNodeId = `${groupPillId}-grandparents`;
+        nodes.push({
+          id: gpNodeId,
+          type: "couple",
+          position: { x: sibRowCx - gpW / 2, y: ancestorsY },
+          data: { parents: gpMems, unitName: "", pillId: ancestorsPillId },
+        });
+        addEdge(gpNodeId, parentTargetId, 0.4);
+        gpAnchorId = gpNodeId;
+      }
+      // Aunts / uncles at the parents' generation, beside the parents couple.
+      let auX = side === "left"
+        ? sibRowCx - parentsNodeW / 2 - SIB_GAP
+        : sibRowCx + parentsNodeW / 2 + SIB_GAP;
+      for (const slot of auntUncleSlots) {
+        const sw = sibSlotW(slot);
+        const auMems = [
+          relabeled(slot.primary, "sibling"),
+          ...(slot.spouse ? [relabeled(slot.spouse, "sibling-spouse")] : []),
+        ];
+        const auNodeId = `grpn-au-${slot.primary.id}`;
+        const auPosX = side === "left" ? auX - sw : auX;
+        nodes.push({
+          id: auNodeId,
+          type: "couple",
+          position: { x: auPosX, y: parentsY },
+          data: { parents: auMems, unitName: "" },
+        });
+        addEdge(gpAnchorId, auNodeId, 0.4);
+        auX = side === "left" ? auPosX - SIB_GAP : auPosX + sw + SIB_GAP;
+      }
     }
 
     // Parents couple node (above sibling row)
@@ -1759,10 +1855,13 @@ function layoutLayeredView(
         data: { parents: sibMems, unitName: "", pillId: kidsExpanded ? slot.kidsId : undefined },
       });
 
-      // Connect sibling to grandparents (if their parentPersonId matches a grandparent),
-      // else to parents (if any), else to core couple as fallback.
+      // Connect sibling to the grandparents node ONLY when it's actually
+      // rendered (ancestors pill expanded) and the sibling's parentPersonId
+      // matches a grandparent; else to parents, else to core couple.
+      const gpNodeRendered =
+        grandparentsArr.length > 0 && expandedPills.has(`${groupPillId}-ancestors`);
       const connectsToGp =
-        grandparentsArr.length > 0 &&
+        gpNodeRendered &&
         grandparentsArr.some((gp: any) => slot.primary.parentPersonId === gp.id);
       const sibEdgeSrc = connectsToGp
         ? `${groupPillId}-grandparents`
@@ -1820,11 +1919,21 @@ function layoutLayeredView(
   const viewerSide: "left" | "right" = viewerIsFamilyHead ? "right" : "left";
   const spouseSide: "left" | "right" = viewerIsFamilyHead ? "left"  : "right";
 
-  if (viewerGrandparents.length > 0 || viewerParents.length > 0 || viewerSiblings.length > 0) {
-    renderGroup(viewerGrandparents, viewerParents, viewerSibSlots, "grp:viewer", viewerSide);
+  if (
+    viewerGrandparents.length > 0 ||
+    viewerParents.length > 0 ||
+    viewerSiblings.length > 0 ||
+    viewerAuntsUncles.length > 0
+  ) {
+    renderGroup(viewerGrandparents, viewerParents, viewerSibSlots, "grp:viewer", viewerSide, viewerAuntUncleSlots);
   }
-  if (spouseParents.length > 0 || spouseSiblings.length > 0) {
-    renderGroup([], spouseParents, spouseSibSlots, "grp:spouse", spouseSide);
+  if (
+    spouseParents.length > 0 ||
+    spouseSiblings.length > 0 ||
+    spouseGrandparents.length > 0 ||
+    spouseAuntsUncles.length > 0
+  ) {
+    renderGroup(spouseGrandparents, spouseParents, spouseSibSlots, "grp:spouse", spouseSide, spouseAuntUncleSlots);
   }
 
   return { nodes, edges };
