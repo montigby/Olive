@@ -1751,6 +1751,20 @@ function layoutLayeredView(
     ];
     const ancestorsY = parentsY - V_GAP;
 
+    // Center of the full parents-generation row: parents couple + all aunt/uncle
+    // slots that extend to one side of the parents. sibRowCx is the center of the
+    // SIBLING row (generation below), which is also where the parents couple is
+    // centered. But the grandparent must be centered over the wider parents row.
+    //   For left side: row goes [aunts …] [gap] [parents couple]
+    //     right edge = sibRowCx + parentsNodeW/2, left edge = sibRowCx - parentsNodeW/2 - SIB_GAP - totalAuW
+    //     center = sibRowCx - (SIB_GAP + totalAuW) / 2  (parentsNodeW cancels)
+    //   For right side: mirrored → center = sibRowCx + (SIB_GAP + totalAuW) / 2
+    const totalAuW =
+      auntUncleSlots.reduce((s: number, sl: SibSlot) => s + sibSlotW(sl), 0) +
+      Math.max(0, auntUncleSlots.length - 1) * SIB_GAP;
+    const auShift = auntUncleSlots.length > 0 ? (SIB_GAP + totalAuW) / 2 : 0;
+    const parentsRowCx = side === "left" ? sibRowCx - auShift : sibRowCx + auShift;
+
     if (ancestorsPeople.length > 0 && !ancestorsExpanded) {
       // Collapsed nested pill above the parents.
       const names = ancestorsPeople.map((p: any) => p.firstName);
@@ -1759,7 +1773,7 @@ function layoutLayeredView(
       nodes.push({
         id: ancestorsPillId,
         type: "pill",
-        position: { x: sibRowCx - PILL_W / 2, y: ancestorsY },
+        position: { x: parentsRowCx - PILL_W / 2, y: ancestorsY },
         data: { members: ancestorsPeople, label: ancLabel, pillId: ancestorsPillId },
       });
       addEdge(ancestorsPillId, parentTargetId, 0.4);
@@ -1774,7 +1788,7 @@ function layoutLayeredView(
         nodes.push({
           id: gpNodeId,
           type: "couple",
-          position: { x: sibRowCx - gpW / 2, y: ancestorsY },
+          position: { x: parentsRowCx - gpW / 2, y: ancestorsY },
           data: { parents: gpMems, unitName: "", pillId: ancestorsPillId },
         });
         addEdge(gpNodeId, parentTargetId, 0.4);
