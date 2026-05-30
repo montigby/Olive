@@ -724,8 +724,16 @@ function layoutUnit(
 // ---------------------------------------------------------------------------
 function inferGender(member: any): "male" | "female" | "unknown" {
   const label = (member.relationshipLabel ?? "").toLowerCase().trim();
-  const female = ["wife","mother","mom","sister","niece","granddaughter","daughter","grandmother","grandma","mother-in-law","sister-in-law"];
-  const male   = ["husband","father","dad","brother","nephew","grandson","son","grandfather","grandpa","father-in-law","brother-in-law"];
+  const female = [
+    "wife","mother","mom","sister","niece","granddaughter","daughter",
+    "grandmother","grandma","mother-in-law","sister-in-law",
+    "aunt","half-sister","stepsister","great-grandmother","niece-in-law",
+  ];
+  const male = [
+    "husband","father","dad","brother","nephew","grandson","son",
+    "grandfather","grandpa","father-in-law","brother-in-law",
+    "uncle","half-brother","stepbrother","great-grandfather","nephew-in-law",
+  ];
   if (female.includes(label)) return "female";
   if (male.includes(label))   return "male";
   return "unknown";
@@ -802,6 +810,11 @@ function buildSpouseMap(
   const sisters  = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "sister");
   const sisInLaw = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "sister-in-law");
   const broInLaw = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "brother-in-law");
+  // Uncle/aunt pairings: uncle = male sibling-generation relative, aunt = female.
+  // An "aunt" whose parentPersonId points to an uncle is that uncle's wife (by marriage).
+  // An "uncle" without a matching aunt-by-marriage is a blood relative (no spouse in tree).
+  const uncles = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "uncle");
+  const aunts  = sibs.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase() === "aunt");
   const used = new Set<string>(alreadyPaired);
 
   // Pass 1: pair using explicit parentPersonId links (strongest heuristic signal).
@@ -822,6 +835,13 @@ function buildSpouseMap(
     const p = sisInLaw.find((s: any) => !used.has(s.id) && s.parentPersonId === bro.id)
            ?? sisInLaw.find((s: any) => !used.has(s.id) && bro.parentPersonId === s.id);
     if (p) { pair(bro, p); used.add(p.id); used.add(bro.id); }
+  }
+  // Uncle + aunt pass 1: aunt whose parentPersonId === uncle.id is that uncle's wife.
+  for (const uncle of uncles) {
+    if (used.has(uncle.id)) continue;
+    const p = aunts.find((a: any) => !used.has(a.id) && a.parentPersonId === uncle.id)
+           ?? aunts.find((a: any) => !used.has(a.id) && uncle.parentPersonId === a.id);
+    if (p) { pair(uncle, p); used.add(p.id); used.add(uncle.id); }
   }
 
   // Pass 2: sisters + brothers-in-law (run BEFORE brothers + sisters-in-law).
@@ -844,6 +864,16 @@ function buildSpouseMap(
     pair(remBros[i], remSisInLaw[i]);
     used.add(remBros[i].id);
     used.add(remSisInLaw[i].id);
+  }
+  // Uncle + aunt pass 3: blind order-based fallback for any remaining unpaired.
+  // Assumes remaining aunts are wives of remaining uncles (by insertion order).
+  const remUncles = uncles.filter((u: any) => !used.has(u.id));
+  const remAunts  = aunts.filter((a: any) => !used.has(a.id));
+  const uCount = Math.min(remUncles.length, remAunts.length);
+  for (let i = 0; i < uCount; i++) {
+    pair(remUncles[i], remAunts[i]);
+    used.add(remUncles[i].id);
+    used.add(remAunts[i].id);
   }
 
   return map;
