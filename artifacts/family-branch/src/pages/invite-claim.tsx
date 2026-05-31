@@ -71,7 +71,7 @@ function CreateAccountTab({
         onSuccess: (response: any) => {
           if (response?.token) {
             setAuthToken(response.token);
-            setLocation("/dashboard");
+            setLocation("/welcome");
           }
         },
         onError: (error: any) => {
@@ -187,7 +187,7 @@ function LinkExistingTab({
         onSuccess: (response: any) => {
           if (response?.token) {
             setAuthToken(response.token);
-            setLocation("/dashboard");
+            setLocation("/welcome");
           }
         },
         onError: (error: any) => {

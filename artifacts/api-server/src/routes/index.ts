@@ -9,6 +9,7 @@ import linkRequestsRouter from "./linkRequests";
 import summaryRouter from "./summary";
 import aiRouter from "./ai";
 import adminRouter from "./admin";
+import homeFeedRouter from "./homeFeed";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(linkRequestsRouter);
 router.use(summaryRouter);
 router.use(aiRouter);
 router.use(adminRouter);
+router.use(homeFeedRouter);
 
 export default router;

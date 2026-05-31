@@ -13,6 +13,7 @@ import Register from "@/pages/register";
 import InviteClaim from "@/pages/invite-claim";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Welcome   = lazy(() => import("@/pages/welcome"));
 const Tree = lazy(() => import("@/pages/tree"));
 const Members = lazy(() => import("@/pages/members"));
 const Profile = lazy(() => import("@/pages/profile"));
@@ -44,6 +45,7 @@ function makePage(Component: React.ComponentType) {
 }
 
 const DashboardPage = makePage(Dashboard);
+const WelcomePage   = makePage(Welcome);
 const TreePage     = makePage(Tree);
 const MembersPage  = makePage(Members);
 const ProfilePage  = makePage(Profile);
@@ -62,6 +64,7 @@ function AppRouter() {
       <Route path="/invite/:token"   component={InviteClaim} />
 
       {/* Protected — order matters: more-specific paths first */}
+      <Route path="/welcome"           component={WelcomePage}  />
       <Route path="/members/:personId" component={ProfilePage}  />
       <Route path="/members"           component={MembersPage}  />
       <Route path="/dashboard"         component={DashboardPage}/>
