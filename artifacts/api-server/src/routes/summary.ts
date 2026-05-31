@@ -175,6 +175,8 @@ router.get("/family-units/:unitId/summary", requireAuth, async (req, res) => {
   const pendingInvites = members.filter(
     (m) => !m.claimed && m.inviteToken && m.inviteExpiresAt && m.inviteExpiresAt > new Date(),
   ).length;
+  const birthdayCount = members.filter((m) => !!m.birthday).length;
+  const phoneCount = members.filter((m) => !!m.phone).length;
 
   const linkedUnits = await db
     .select()
@@ -209,6 +211,8 @@ router.get("/family-units/:unitId/summary", requireAuth, async (req, res) => {
     linkedUnits: linkedUnits.length,
     pendingInvites,
     pendingLinkRequests: pendingRequests.length,
+    birthdayCount,
+    phoneCount,
   });
 });
 

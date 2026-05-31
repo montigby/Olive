@@ -2,7 +2,7 @@ import { useGetUnitSummary, getGetUnitSummaryQueryKey, useGetUpcomingBirthdays, 
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Link as LinkIcon, Gift, MailPlus } from "lucide-react";
+import { Users, Link as LinkIcon, Gift, MailPlus, Cake, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,9 +12,52 @@ function parseDateLocal(s: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
+// A single connection-progress stat card.
+// Shows the count prominently, a label, and a subtle "X of N" fraction
+// to communicate how complete the family data is.
+function StatCard({
+  icon: Icon,
+  iconColor,
+  label,
+  value,
+  total,
+  hint,
+}: {
+  icon: React.ElementType;
+  iconColor: string;
+  label: string;
+  value: number;
+  total?: number;
+  hint?: string;
+}) {
+  const fraction = total !== undefined && total > 0
+    ? `${value} of ${total}`
+    : null;
+
+  return (
+    <Card className="bg-[#FAF7F2] border-none shadow-sm">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+            <Icon className="w-5 h-5" />
+          </div>
+          {fraction && (
+            <span className="text-[11px] text-muted-foreground font-medium mt-1">{fraction}</span>
+          )}
+        </div>
+        <div className="mt-3">
+          <h3 className="text-3xl font-serif font-bold leading-none">{value}</h3>
+          <p className="text-sm font-medium text-muted-foreground mt-1">{label}</p>
+          {hint && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{hint}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
-  
+
   const unitId = user?.familyUnit.id || "";
 
   const { data: summary, isLoading: isSummaryLoading } = useGetUnitSummary(unitId, {
@@ -31,7 +74,7 @@ export default function Dashboard() {
     }
   });
 
-  const { data: linkRequests, isLoading: isLinksLoading } = useListLinkRequests(unitId, {
+  const { data: linkRequests } = useListLinkRequests(unitId, {
     query: {
       enabled: !!unitId,
       queryKey: getListLinkRequestsQueryKey(unitId)
@@ -52,9 +95,14 @@ export default function Dashboard() {
   }
 
   const incomingRequests = linkRequests?.incoming.filter(r => r.status === 'pending') || [];
+  const total = summary.totalMembers;
+  // These come from the updated summary endpoint; fall back to 0 until deployed.
+  const birthdayCount = (summary as any).birthdayCount ?? 0;
+  const phoneCount = (summary as any).phoneCount ?? 0;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-serif font-bold text-foreground">Welcome back, {user?.firstName}</h1>
@@ -70,47 +118,36 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className={`grid gap-6 ${user?.isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-        {user?.isAdmin && (
-          <Card className="bg-[#FAF7F2] border-none shadow-sm">
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <Users className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Members</p>
-                <h3 className="text-3xl font-serif font-bold">{summary.totalMembers}</h3>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="bg-[#FAF7F2] border-none shadow-sm">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent">
-              <LinkIcon className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Linked Units</p>
-              <h3 className="text-3xl font-serif font-bold">{summary.linkedUnits}</h3>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#FAF7F2] border-none shadow-sm">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <MailPlus className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Pending Invites</p>
-              <h3 className="text-3xl font-serif font-bold">{summary.pendingInvites}</h3>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Connection-progress stats — visible to everyone */}
+      <div className="grid gap-4 grid-cols-3">
+        <StatCard
+          icon={Users}
+          iconColor="bg-primary/10 text-primary"
+          label="Family members"
+          value={total}
+          hint="People in your family"
+        />
+        <StatCard
+          icon={Cake}
+          iconColor="bg-accent/10 text-accent"
+          label="Birthdays on record"
+          value={birthdayCount}
+          total={total}
+          hint="Add more in profiles"
+        />
+        <StatCard
+          icon={Phone}
+          iconColor="bg-emerald-500/10 text-emerald-600"
+          label="Phone numbers"
+          value={phoneCount}
+          total={total}
+          hint="How many you can call"
+        />
       </div>
 
+      {/* Secondary content */}
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Upcoming birthdays */}
         <Card className="shadow-sm border-none bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="font-serif text-2xl flex items-center gap-2">
@@ -153,9 +190,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* Pending link requests (admin only, when present) */}
         {incomingRequests.length > 0 && (
-          <Card className="shadow-sm border-none bg-card border-accent/20">
-             <CardHeader className="pb-2">
+          <Card className="shadow-sm border-none bg-card">
+            <CardHeader className="pb-2">
               <CardTitle className="font-serif text-2xl flex items-center gap-2">
                 <LinkIcon className="w-5 h-5 text-primary" /> Link Requests
               </CardTitle>
@@ -163,15 +201,15 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4 mt-4">
                 {incomingRequests.map((req) => (
-                   <div key={req.id} className="flex items-center justify-between p-4 rounded-lg bg-[#FAF7F2]">
-                     <div>
-                       <p className="font-bold text-sm">{req.requestingUnitName}</p>
-                       <p className="text-xs text-muted-foreground mt-1">Wants to link through {req.connectorPersonName}</p>
-                     </div>
-                     <Link href="/settings">
-                       <Button size="sm" variant="outline">Review</Button>
-                     </Link>
-                   </div>
+                  <div key={req.id} className="flex items-center justify-between p-4 rounded-lg bg-[#FAF7F2]">
+                    <div>
+                      <p className="font-bold text-sm">{req.requestingUnitName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Wants to link through {req.connectorPersonName}</p>
+                    </div>
+                    <Link href="/settings">
+                      <Button size="sm" variant="outline">Review</Button>
+                    </Link>
+                  </div>
                 ))}
               </div>
             </CardContent>
