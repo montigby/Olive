@@ -1726,7 +1726,13 @@ function layoutLayeredView(
         childSpouseId && !usedChildIds.has(childSpouseId)
           ? allMembers.find((m: any) => m.id === childSpouseId)
           : null;
-      const grandkids = idsToMembers(childrenOf.get(child.id) ?? new Set<string>());
+      // Collect grandkids from BOTH sides of the couple — Evie may be stored
+      // under Spencer's ID (parentPersonId = admin) rather than Miranda's.
+      const grandkidIds = new Set<string>([
+        ...(childrenOf.get(child.id) ?? new Set<string>()),
+        ...(childSpouse ? (childrenOf.get(childSpouse.id) ?? new Set<string>()) : []),
+      ]);
+      const grandkids = idsToMembers(grandkidIds);
 
       childSlots.push({ child, spouse: childSpouse, grandkids, kidsId: `gc-pill:${child.id}` });
       usedChildIds.add(child.id);
