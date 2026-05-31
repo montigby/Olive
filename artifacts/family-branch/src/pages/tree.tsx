@@ -740,16 +740,17 @@ function inferGender(member: any): "male" | "female" | "unknown" {
 }
 
 // Relabel a member from the viewer's perspective
-function relabeled(member: any, role: "self" | "spouse" | "parent" | "child" | "sibling" | "sibling-spouse"): any {
+function relabeled(member: any, role: "self" | "spouse" | "parent" | "child" | "sibling" | "sibling-spouse" | "child-spouse"): any {
   const g = inferGender(member);
   const label = (() => {
     switch (role) {
       case "self":          return "self";
-      case "spouse":        return g === "female" ? "wife"          : g === "male" ? "husband"        : "spouse";
-      case "parent":        return g === "female" ? "mom"           : g === "male" ? "dad"             : "parent";
-      case "child":         return g === "female" ? "daughter"      : g === "male" ? "son"             : "child";
-      case "sibling":       return g === "female" ? "sister"        : g === "male" ? "brother"         : "sibling";
-      case "sibling-spouse":return g === "female" ? "sister-in-law" : g === "male" ? "brother-in-law"  : "in-law";
+      case "spouse":        return g === "female" ? "wife"            : g === "male" ? "husband"         : "spouse";
+      case "parent":        return g === "female" ? "mom"             : g === "male" ? "dad"              : "parent";
+      case "child":         return g === "female" ? "daughter"        : g === "male" ? "son"              : "child";
+      case "sibling":       return g === "female" ? "sister"          : g === "male" ? "brother"          : "sibling";
+      case "sibling-spouse":return g === "female" ? "sister-in-law"   : g === "male" ? "brother-in-law"   : "in-law";
+      case "child-spouse":  return g === "female" ? "daughter-in-law" : g === "male" ? "son-in-law"       : "in-law";
     }
   })();
   return { ...member, relationshipLabel: label };
@@ -842,6 +843,19 @@ function buildSpouseMap(
     const p = aunts.find((a: any) => !used.has(a.id) && a.parentPersonId === uncle.id)
            ?? aunts.find((a: any) => !used.has(a.id) && uncle.parentPersonId === a.id);
     if (p) { pair(uncle, p); used.add(p.id); used.add(uncle.id); }
+  }
+
+  // Father-in-law + mother-in-law pairing (e.g. Randy + Sandra).
+  // Explicit DB pairs already handled via explicitPairs; this is the heuristic fallback.
+  const fathersInLaw = allMembers.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase().trim() === "father-in-law");
+  const mothersInLaw = allMembers.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase().trim() === "mother-in-law");
+  const ilUsed = new Set<string>(alreadyPaired);
+  for (const fil of fathersInLaw) {
+    if (ilUsed.has(fil.id)) continue;
+    const mil =
+      mothersInLaw.find((m: any) => !ilUsed.has(m.id) && (m.parentPersonId === fil.id || fil.parentPersonId === m.id)) ??
+      mothersInLaw.find((m: any) => !ilUsed.has(m.id));
+    if (mil) { pair(fil, mil); ilUsed.add(fil.id); ilUsed.add(mil.id); }
   }
 
   // Pass 2: sisters + brothers-in-law (run BEFORE brothers + sisters-in-law).
@@ -1691,20 +1705,95 @@ function layoutLayeredView(
   });
 
   // Children row (Layer 0 — always visible)
+  // Each child is paired with their spouse (if any) and rendered as a couple node.
+  // Grandkids appear as a collapsible pill below each child couple.
   if (viewerChildren.length > 0) {
-    const childRowW = viewerChildren.length * PERSON_W + (viewerChildren.length - 1) * H_GAP;
-    const childStartX = cx - childRowW / 2;
     const childY = y + V_GAP;
-    viewerChildren.forEach((child: any, i: number) => {
-      const childId = `lv-child-${child.id}`;
+
+    // Build child slots — pair each child with their spouse
+    const usedChildIds = new Set<string>(excludeIds);
+    const childSlots: Array<{
+      child: any;
+      spouse: any | null;
+      grandkids: any[];
+      kidsId: string;
+    }> = [];
+
+    for (const child of viewerChildren) {
+      if (usedChildIds.has(child.id)) continue;
+      const childSpouseId = spouseMap.get(child.id);
+      const childSpouse =
+        childSpouseId && !usedChildIds.has(childSpouseId)
+          ? allMembers.find((m: any) => m.id === childSpouseId)
+          : null;
+      const grandkids = idsToMembers(childrenOf.get(child.id) ?? new Set<string>());
+
+      childSlots.push({ child, spouse: childSpouse, grandkids, kidsId: `gc-pill:${child.id}` });
+      usedChildIds.add(child.id);
+      if (childSpouse) usedChildIds.add(childSpouse.id);
+    }
+
+    const childSlotW = (slot: { spouse: any | null }) => (slot.spouse ? COUPLE_W : PERSON_W);
+    const totalChildRowW =
+      childSlots.reduce((s, sl) => s + childSlotW(sl), 0) +
+      Math.max(0, childSlots.length - 1) * H_GAP;
+
+    let slotX = cx - totalChildRowW / 2;
+
+    for (const slot of childSlots) {
+      const sw = childSlotW(slot);
+      const slotCx = slotX + sw / 2;
+      const childNodeId = `lv-child-${slot.child.id}`;
+
+      const childMems = [
+        relabeled(slot.child, "child"),
+        ...(slot.spouse ? [relabeled(slot.spouse, "child-spouse")] : []),
+      ];
+
       nodes.push({
-        id: childId,
-        type: "child",
-        position: { x: childStartX + i * (PERSON_W + H_GAP), y: childY },
-        data: { member: relabeled(child, "child") },
+        id: childNodeId,
+        type: "couple",
+        position: { x: slotX, y: childY },
+        data: { parents: childMems, unitName: "" },
       });
-      addEdge(coupleId, childId, 0.5);
-    });
+      addEdge(coupleId, childNodeId, 0.5);
+
+      // Grandkids below this child slot — collapsed to a pill by default
+      if (slot.grandkids.length > 0) {
+        const gcY = childY + V_GAP;
+        const gcPillId = slot.kidsId;
+        const gcExpanded = expandedPills.has(gcPillId);
+
+        if (gcExpanded) {
+          const gcRowW = slot.grandkids.length * PERSON_W + (slot.grandkids.length - 1) * H_GAP;
+          const gcStartX = slotCx - gcRowW / 2;
+          slot.grandkids.forEach((gc: any, gi: number) => {
+            const gcId = `lv-gc-${gc.id}`;
+            nodes.push({
+              id: gcId,
+              type: "child",
+              position: { x: gcStartX + gi * (PERSON_W + H_GAP), y: gcY },
+              data: { member: relabeled(gc, "child") },
+            });
+            addEdge(childNodeId, gcId, 0.4);
+          });
+        } else {
+          const gcNames = slot.grandkids.map((k: any) => k.firstName as string);
+          const gcLabel =
+            gcNames.slice(0, 3).join(", ") +
+            (gcNames.length > 3 ? ` +${gcNames.length - 3}` : "");
+          nodes.push({
+            id: gcPillId,
+            type: "pill",
+            position: { x: slotCx - PILL_W / 2, y: gcY },
+            data: { members: slot.grandkids, label: gcLabel, pillId: gcPillId },
+          });
+          addEdge(childNodeId, gcPillId, 0.4);
+        }
+      }
+
+      slotX += sw + H_GAP;
+    }
   }
 
   // ── Group pill renderer ────────────────────────────────────────────────────

@@ -241,9 +241,11 @@ function ProfileView({
     ((person.firstName || " ")[0] + (person.lastName || " ")[0]).toUpperCase();
 
   const hasContact = !!(person.phone || person.email || address);
+  // Respect hideSocials — only the profile owner and admins can see hidden socials
   const hasSocial = !!(
-    person.instagram || person.facebook || person.tiktok || person.linkedin ||
-    person.snapchat || person.venmo || person.bereal || person.otherSocial
+    (person.instagram || person.facebook || person.tiktok || person.linkedin ||
+     person.snapchat || person.venmo || person.bereal || person.otherSocial) &&
+    (!person.hideSocials || canEdit)
   );
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

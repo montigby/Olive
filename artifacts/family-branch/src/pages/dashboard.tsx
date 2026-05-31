@@ -60,26 +60,30 @@ export default function Dashboard() {
           <h1 className="text-4xl font-serif font-bold text-foreground">Welcome back, {user?.firstName}</h1>
           <p className="text-muted-foreground mt-2 text-lg">Here's what's happening with {summary.unitName}.</p>
         </div>
-        <Link href="/members">
-          <Button className="rounded-full shadow-sm">
-            <MailPlus className="w-4 h-4 mr-2" />
-            Add Member
-          </Button>
-        </Link>
+        {user?.isAdmin && (
+          <Link href="/members">
+            <Button className="rounded-full shadow-sm">
+              <MailPlus className="w-4 h-4 mr-2" />
+              Add Member
+            </Button>
+          </Link>
+        )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="bg-[#FAF7F2] border-none shadow-sm">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Members</p>
-              <h3 className="text-3xl font-serif font-bold">{summary.totalMembers}</h3>
-            </div>
-          </CardContent>
-        </Card>
+      <div className={`grid gap-6 ${user?.isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+        {user?.isAdmin && (
+          <Card className="bg-[#FAF7F2] border-none shadow-sm">
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Members</p>
+                <h3 className="text-3xl font-serif font-bold">{summary.totalMembers}</h3>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="bg-[#FAF7F2] border-none shadow-sm">
           <CardContent className="p-6 flex items-center gap-4">
