@@ -30,8 +30,8 @@ function StatCard({
   total?: number;
   hint?: string;
 }) {
-  const fraction = total !== undefined && total > 0
-    ? `${value} of ${total}`
+  const pct = total !== undefined && total > 0
+    ? `${Math.round((value / total) * 100)}%`
     : null;
 
   return (
@@ -41,8 +41,8 @@ function StatCard({
           <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${iconColor}`}>
             <Icon className="w-5 h-5" />
           </div>
-          {fraction && (
-            <span className="text-[11px] text-muted-foreground font-medium mt-1">{fraction}</span>
+          {pct && (
+            <span className="text-sm text-foreground font-semibold mt-1">{pct}</span>
           )}
         </div>
         <div className="mt-3">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { Link } from "wouter";
 import {
@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye } from "lucide-react";
+import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -76,6 +76,7 @@ export default function Members() {
   const queryClient = useQueryClient();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [inviteTokenMap, setInviteTokenMap] = useState<Record<string, string>>({});
+  const [sortMode, setSortMode] = useState<"added" | "az" | "za" | "side">("added");
 
   const { data: members, isLoading } = useListMembers(unitId, {
     query: {
@@ -162,6 +163,53 @@ export default function Members() {
     ["Son", "Daughter", "Stepson", "Stepdaughter"].includes(m.relationshipLabel)
   );
 
+  // Sorted / grouped member list for display
+  type MemberSection = { heading: string | null; items: typeof members };
+  const sections = useMemo<MemberSection[]>(() => {
+    if (!members) return [];
+    const sorted = [...members];
+    if (sortMode === "az") {
+      sorted.sort((a, b) =>
+        `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+      );
+      return [{ heading: null, items: sorted }];
+    }
+    if (sortMode === "za") {
+      sorted.sort((a, b) =>
+        `${b.firstName} ${b.lastName}`.localeCompare(`${a.firstName} ${a.lastName}`)
+      );
+      return [{ heading: null, items: sorted }];
+    }
+    if (sortMode === "side") {
+      const myLastName = (user?.lastName ?? "").toLowerCase().trim();
+      const mySide = sorted
+        .filter((m) => m.lastName.toLowerCase().trim() === myLastName)
+        .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+      const otherSide = sorted
+        .filter((m) => m.lastName.toLowerCase().trim() !== myLastName)
+        .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+      // Detect spouse's last name from in-law labels as a section heading, fallback to generic
+      const spouseLastNames = [
+        ...new Set(otherSide.map((m) => m.lastName).filter(Boolean)),
+      ];
+      const otherHeading =
+        spouseLastNames.length === 1
+          ? `${spouseLastNames[0]} Family`
+          : spouseLastNames.length > 1
+          ? `${spouseLastNames[0]} & More`
+          : "Spouse's Family";
+      return [
+        { heading: `${user?.lastName ?? "Your"} Family`, items: mySide },
+        { heading: otherHeading, items: otherSide },
+      ].filter((s) => s.items && s.items.length > 0);
+    }
+    // Default: added order (createdAt ascending)
+    sorted.sort(
+      (a, b) => new Date((a as any).createdAt).getTime() - new Date((b as any).createdAt).getTime()
+    );
+    return [{ heading: null, items: sorted }];
+  }, [members, sortMode, user?.lastName]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -170,10 +218,25 @@ export default function Members() {
           <p className="text-muted-foreground mt-1">Manage the members in your family unit.</p>
         </div>
 
+        <div className="flex items-center gap-2">
+          {/* Sort control */}
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as typeof sortMode)}>
+            <SelectTrigger className="w-44 h-9 text-sm rounded-full border-border">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="added">Date added</SelectItem>
+              <SelectItem value="az">A → Z</SelectItem>
+              <SelectItem value="za">Z → A</SelectItem>
+              <SelectItem value="side">By family side</SelectItem>
+            </SelectContent>
+          </Select>
+
         {user?.isAdmin && (
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
-              <Button className="rounded-full shadow-sm">
+              <Button className="rounded-full shadow-sm whitespace-nowrap">
                 <UserPlus className="w-4 h-4 mr-2" />
                 Add Member
               </Button>
@@ -302,11 +365,12 @@ export default function Members() {
             </DialogContent>
           </Dialog>
         )}
+        </div>{/* end sort+actions row */}
       </div>
 
-      <div className="grid gap-4">
+      <div className="space-y-6">
         {isLoading
-          ? Array.from({ length: 3 }).map((_, i) => (
+          ? <div className="grid gap-4">{Array.from({ length: 3 }).map((_, i) => (
               <Card key={i} className="border-none shadow-sm">
                 <CardContent className="p-4 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-muted animate-pulse" />
@@ -316,8 +380,16 @@ export default function Members() {
                   </div>
                 </CardContent>
               </Card>
-            ))
-          : members?.map((member) => (
+            ))}</div>
+          : sections.map((section, si) => (
+            <div key={si} className="space-y-3">
+              {section.heading && (
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
+                  {section.heading}
+                </h2>
+              )}
+              <div className="grid gap-3">
+              {(section.items ?? []).map((member) => (
               <Card
                 key={member.id}
                 className="border-none shadow-sm bg-card hover:bg-secondary/20 transition-colors group overflow-hidden"
@@ -432,6 +504,9 @@ export default function Members() {
                 </CardContent>
               </Card>
             ))}
+              </div>{/* end grid */}
+            </div>
+          ))}
 
         {members?.length === 0 && (
           <div className="text-center py-12 px-4 rounded-2xl border border-dashed bg-[#FAF7F2]">
