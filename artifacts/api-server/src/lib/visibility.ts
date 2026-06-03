@@ -176,11 +176,12 @@ function buildFamilyGraph(
       addParentChild(m.id, admin.id);
       adminParents.push(m);
     } else if (GRANDPARENT_LABELS.has(l)) {
-      if (m.parentPersonId && graph.has(m.parentPersonId)) {
-        addParentChild(m.id, m.parentPersonId);
-      } else {
-        addParentChild(m.id, admin.id);
-      }
+      // Defer linking to the second pass below — we need adminParents to be
+      // fully populated first so we can attach the grandparent ABOVE the
+      // admin's parent (their proper generation) rather than directly above
+      // the admin. Without this, grandparents end up at tier 1 to the admin's
+      // descendants (one hop too close), letting them see two generations of
+      // family instead of one.
     } else if (CHILD_OF_ADMIN.has(l) || m.parentPersonId === admin.id) {
       addParentChild(admin.id, m.id);
     } else if (SIBLING_OF_ADMIN.has(l)) {
@@ -228,6 +229,24 @@ function buildFamilyGraph(
   // Infer couple edges within same-gen groups
   if (adminParents.length >= 2) addCouple(adminParents[0].id, adminParents[1].id);
   if (inlawParents.length >= 2) addCouple(inlawParents[0].id, inlawParents[1].id);
+
+  // Deferred grandparent pass: link grandparents as the PARENT of one of the
+  // admin's parents (their correct generation) rather than as a parent of the
+  // admin. Uses parentPersonId when set (specifies which side); otherwise
+  // attaches to the admin's first parent. Falls back to admin only if the
+  // admin has no parent in the unit (broken data, but at least connected).
+  for (const m of allMembers) {
+    if (m.id === admin.id) continue;
+    const l = nl(m.relationshipLabel);
+    if (!GRANDPARENT_LABELS.has(l)) continue;
+    if (m.parentPersonId && graph.has(m.parentPersonId)) {
+      addParentChild(m.id, m.parentPersonId);
+    } else if (adminParents.length > 0) {
+      addParentChild(m.id, adminParents[0].id);
+    } else {
+      addParentChild(m.id, admin.id);
+    }
+  }
 
   // Admin's parents are also parents of admin's siblings
   for (const parent of adminParents) {
@@ -287,13 +306,14 @@ export function computeVisibleSet(
   // directions), and sibling. This gives in-laws their full "in-law family"
   // (spouse's parents, spouse's siblings, etc.).
   //
-  // Additionally: when an edge to a tier-2 target is a sibling edge, also add
-  // that target's spouse at tier 2 — this surfaces "sibling's spouse" (e.g.
-  // for Anna viewing, Madeline's husband Sam) without creating a tier-3 walk.
-  //
-  // The silo across the Spencer↔Miranda bridge still holds because we do NOT
-  // recurse from tier 2 → tier 3; only one sibling-then-couple hop is allowed
-  // and only from a tier-1 neighbor's outgoing sibling edge.
+  // Additionally: whenever we add someone at tier 2, also add their spouse at
+  // tier 2. This surfaces:
+  //   • sibling-then-couple — Anna sees Sam (Madeline's husband)
+  //   • parent-child-down-then-couple — James sees Miranda (Spencer's wife)
+  //   • parent-child-up-then-couple — children see their parent-in-law
+  // without expanding to tier 3 in any direction, so the silo across the
+  // admin↔adminSpouse bridge holds: a tier-2 person's spouse-of-spouse is NOT
+  // reached because we never recurse from a tier-2 member's edges.
   for (const edge of viewerEdges) {
     const neighborEdges = graph.get(edge.to) ?? [];
     for (const e2 of neighborEdges) {
@@ -309,17 +329,15 @@ export function computeVisibleSet(
         result.set(e2.to, 2);
       }
 
-      // Sibling-then-couple: also add the sibling's spouse at tier 2.
-      if (e2.kind === "sibling") {
-        const sibEdges = graph.get(e2.to) ?? [];
-        for (const e3 of sibEdges) {
-          if (
-            e3.kind === "couple" &&
-            e3.to !== viewerPerson.id &&
-            !result.has(e3.to)
-          ) {
-            result.set(e3.to, 2);
-          }
+      // Spouse-of-tier-2: also surface the tier-2 target's spouse.
+      const t2Edges = graph.get(e2.to) ?? [];
+      for (const e3 of t2Edges) {
+        if (
+          e3.kind === "couple" &&
+          e3.to !== viewerPerson.id &&
+          !result.has(e3.to)
+        ) {
+          result.set(e3.to, 2);
         }
       }
     }

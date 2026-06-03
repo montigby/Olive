@@ -376,7 +376,7 @@ export default function Welcome() {
         <div className="flex items-center gap-2">
           <Leaf className="w-5 h-5 text-primary" />
           <h1 className="text-3xl font-serif font-bold text-foreground">
-            Welcome to the {family.unitName}
+            Welcome to Your Family
           </h1>
         </div>
         <p className="text-muted-foreground text-lg">
