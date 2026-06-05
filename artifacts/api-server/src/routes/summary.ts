@@ -9,7 +9,7 @@ import {
 import { eq, or, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
-import { computeTier, applyVisibility } from "../lib/visibility";
+import { computeTier, computeVisibleSet, applyVisibility } from "../lib/visibility";
 
 const router = Router();
 
@@ -152,6 +152,11 @@ router.get("/family-units/:unitId/tree", requireAuth, async (req, res) => {
 router.get("/family-units/:unitId/summary", requireAuth, async (req, res) => {
   const unitId = String(req.params.unitId);
 
+  if (req.auth?.familyUnitId !== unitId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
   const [unit] = await db
     .select()
     .from(familyUnitsTable)
@@ -168,15 +173,35 @@ router.get("/family-units/:unitId/summary", requireAuth, async (req, res) => {
     .from(personsTable)
     .where(eq(personsTable.familyUnitId, unitId));
 
-  const totalMembers = members.length;
-  const claimedMembers = members.filter((m) => m.claimed).length;
+  // Apply social-graph visibility so the dashboard counts reflect what the
+  // viewer can actually see in the directory / tree. Without this, every
+  // member (incl. admin-side viewers like James) saw the FULL unit's totals
+  // even though their directory only listed the visible subset. Admin gets
+  // tier 0 to everyone → counts the whole unit, as expected.
+  const viewer = members.find((m) => m.id === req.auth!.personId);
+  let countableMembers = members;
+  if (viewer && !viewer.isAdmin) {
+    const relationships = await db
+      .select({
+        fromPerson: relationshipsTable.fromPerson,
+        toPerson: relationshipsTable.toPerson,
+        type: relationshipsTable.type,
+      })
+      .from(relationshipsTable)
+      .where(eq(relationshipsTable.familyId, unitId));
+    const visibleSet = computeVisibleSet(viewer, members, relationships);
+    countableMembers = members.filter((m) => (visibleSet.get(m.id) ?? 4) <= 2);
+  }
+
+  const totalMembers = countableMembers.length;
+  const claimedMembers = countableMembers.filter((m) => m.claimed).length;
   const unclaimedMembers = totalMembers - claimedMembers;
   const claimRate = totalMembers > 0 ? Math.round((claimedMembers / totalMembers) * 100) : 0;
-  const pendingInvites = members.filter(
+  const pendingInvites = countableMembers.filter(
     (m) => !m.claimed && m.inviteToken && m.inviteExpiresAt && m.inviteExpiresAt > new Date(),
   ).length;
-  const birthdayCount = members.filter((m) => !!m.birthday).length;
-  const phoneCount = members.filter((m) => !!m.phone).length;
+  const birthdayCount = countableMembers.filter((m) => !!m.birthday).length;
+  const phoneCount = countableMembers.filter((m) => !!m.phone).length;
 
   const linkedUnits = await db
     .select()
