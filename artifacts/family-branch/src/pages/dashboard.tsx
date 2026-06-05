@@ -106,7 +106,6 @@ export default function Dashboard() {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-serif font-bold text-foreground">Welcome back, {user?.firstName}</h1>
-          <p className="text-muted-foreground mt-2 text-lg">Here's what's happening with {summary.unitName}.</p>
         </div>
         {user?.isAdmin && (
           <Link href="/members">

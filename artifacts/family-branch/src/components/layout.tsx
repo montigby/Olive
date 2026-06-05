@@ -63,7 +63,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
             <BookUser className="w-4 h-4" />
           </div>
-          <span className="font-serif font-bold text-xl">{user.familyUnit.unitName}</span>
+          <span className="font-serif font-bold text-xl">{user.lastName ? `${user.lastName} Family` : user.familyUnit.unitName}</span>
         </div>
         <Link href="/profile">
           <Avatar className="w-8 h-8 cursor-pointer">
@@ -83,7 +83,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <h1 className="font-serif font-bold text-2xl leading-none text-foreground">Olive</h1>
-            <p className="text-xs text-muted-foreground mt-1 truncate">{user.familyUnit.unitName}</p>
+            <p className="text-xs text-muted-foreground mt-1 truncate">{user.lastName ? `${user.lastName} Family` : user.familyUnit.unitName}</p>
           </div>
         </div>
 
