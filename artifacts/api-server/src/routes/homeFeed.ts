@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, personsTable, familyUnitsTable } from "@workspace/db";
+import { db, personsTable, familyUnitsTable, relationshipsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
+import { computeVisibleSet } from "../lib/visibility";
 
 const router = Router();
 
@@ -50,6 +51,26 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
     return;
   }
 
+  // Apply social-graph visibility so the welcome dashboard only surfaces
+  // members the viewer is actually allowed to see. Without this, every viewer
+  // sees the whole unit's birthdays / activity / contact counts, including
+  // people on the other side of the admin-spouse bridge (e.g. James sees
+  // Miranda's nieces). Admin gets tier 0 to everyone → no filtering.
+  const relationships = viewer.isAdmin
+    ? []
+    : await db
+        .select({
+          fromPerson: relationshipsTable.fromPerson,
+          toPerson: relationshipsTable.toPerson,
+          type: relationshipsTable.type,
+        })
+        .from(relationshipsTable)
+        .where(eq(relationshipsTable.familyId, unitId));
+
+  const visibleSet = computeVisibleSet(viewer, allMembers, relationships);
+  const isVisible = (memberId: string) => (visibleSet.get(memberId) ?? 4) <= 2;
+  const visibleMembers = allMembers.filter((m) => isVisible(m.id));
+
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const currentMonth = now.getMonth() + 1; // 1–12
@@ -72,7 +93,7 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
     null;
 
   // ── Upcoming birthdays ────────────────────────────────────────────────────
-  const upcomingBirthdays = allMembers
+  const upcomingBirthdays = visibleMembers
     .filter((m) => !!m.birthday)
     .map((m) => {
       const parts = m.birthday!.split("-");
@@ -106,13 +127,13 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
     .slice(0, 5);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
-  const birthdaysThisMonth = allMembers.filter((m) => {
+  const birthdaysThisMonth = visibleMembers.filter((m) => {
     if (!m.birthday) return false;
     return parseInt(m.birthday.split("-")[1]!, 10) === currentMonth;
   }).length;
 
   const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const newContactsCount = allMembers.filter(
+  const newContactsCount = visibleMembers.filter(
     (m) => m.id !== requesterId && m.createdAt >= thirtyDaysAgo,
   ).length;
 
@@ -120,7 +141,7 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
   // Members (excluding viewer) whose record changed within the last 14 days.
   // We classify the update type heuristically from which fields they filled.
   const fourteenDaysAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const recentUpdates = allMembers
+  const recentUpdates = visibleMembers
     .filter((m) => m.id !== requesterId && m.updatedAt >= fourteenDaysAgo)
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     .slice(0, 3)
