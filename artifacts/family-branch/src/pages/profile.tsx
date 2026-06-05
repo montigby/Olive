@@ -1,6 +1,6 @@
-import { useState, useRef, Component } from "react";
+import { useState, useRef, useEffect, Component } from "react";
 import type { ReactNode } from "react";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
   useGetPerson,
@@ -507,15 +507,18 @@ function ProfileEditForm({
   targetId,
   isOwnProfile,
   onCancel,
+  onboarding = false,
 }: {
   person: any;
   targetId: string;
   isOwnProfile: boolean;
   onCancel: () => void;
+  onboarding?: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateMutation = useUpdatePerson();
+  const [, setLocation] = useLocation();
 
   const bdParts = parseBirthdayParts(person?.birthday);
 
@@ -590,7 +593,13 @@ function ProfileEditForm({
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(targetId) });
           toast({ title: "Profile updated" });
-          onCancel();
+          if (onboarding) {
+            // First-claim flow: send them straight to the welcome dashboard
+            // (no ?onboarding so they won't be locked back in).
+            setLocation("/welcome");
+          } else {
+            onCancel();
+          }
         },
         onError: (error: any) => {
           toast({
@@ -603,10 +612,34 @@ function ProfileEditForm({
     );
   };
 
+  // Onboarding gate: phone AND birthday must both be filled before the user
+  // can save and continue. We watch the live form values so the Save button
+  // enables the instant they fill in the last missing field.
+  const watchedPhone = form.watch("phone");
+  const watchedBdMonth = form.watch("birthdayMonth");
+  const watchedBdDay = form.watch("birthdayDay");
+  const hasPhone = !!watchedPhone && watchedPhone.trim().length > 0;
+  const hasBirthday = !!watchedBdMonth && !!watchedBdDay;
+  const onboardingComplete = !onboarding || (hasPhone && hasBirthday);
+
   return (
     <div className="max-w-2xl mx-auto">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* First-claim onboarding banner */}
+          {onboarding && (
+            <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+              <p className="text-sm font-medium text-foreground">
+                Welcome — let's finish setting up your profile.
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Please add your <strong>phone number</strong> and <strong>birthday</strong>
+                {" "}so your family can reach you and celebrate with you. You can fill in
+                the rest later.
+              </p>
+            </div>
+          )}
+
           {/* Basic */}
           <section className="space-y-4">
             <h3 className="font-serif text-lg font-semibold border-b pb-2">Basic Info</h3>
@@ -963,15 +996,23 @@ function ProfileEditForm({
           <div className="flex gap-3 pt-2">
             <Button
               type="submit"
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || !onboardingComplete}
               className="flex-1 md:flex-none md:w-32"
             >
               <Save className="w-4 h-4 mr-2" />
-              {updateMutation.isPending ? "Saving..." : "Save"}
+              {updateMutation.isPending
+                ? "Saving..."
+                : onboarding
+                  ? "Save & continue"
+                  : "Save"}
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
+            {/* Hide Cancel during the first-claim onboarding so the user
+                can't escape without filling phone + birthday. */}
+            {!onboarding && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
           </div>
         </form>
       </Form>
@@ -989,7 +1030,18 @@ export default function Profile() {
   const personId = personIdFromUrl || paramPersonId;
 
   const { user } = useAuth();
-  const [editing, setEditing] = useState(false);
+
+  // First-claim onboarding: invite-claim.tsx redirects here with
+  // ?onboarding=1 so the user lands in edit mode and is forced to enter
+  // phone + birthday before they can save and continue. We read once at
+  // mount; navigating away later clears the flag naturally.
+  const onboarding =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("onboarding") === "1";
+  const [editing, setEditing] = useState(onboarding);
+  useEffect(() => {
+    if (onboarding) setEditing(true);
+  }, [onboarding]);
 
   const targetId = personId || user?.id;
   const isOwnProfile = !personId || user?.id === personId;
@@ -1050,11 +1102,13 @@ export default function Profile() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <Link href={backHref}>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        {!onboarding && (
+          <Link href={backHref}>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+        )}
         <h1 className="text-3xl font-serif font-bold text-foreground">
           {isOwnProfile ? "Your Profile" : `${person.firstName}'s Profile`}
         </h1>
@@ -1067,6 +1121,7 @@ export default function Profile() {
             targetId={targetId!}
             isOwnProfile={isOwnProfile}
             onCancel={() => setEditing(false)}
+            onboarding={onboarding && isOwnProfile}
           />
         </ProfileEditErrorBoundary>
       ) : (
