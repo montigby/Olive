@@ -16,6 +16,18 @@ export const peopleTable = pgTable("people", {
   deathDate: date("death_date"),
   gender: text("gender"),
   managedBy: uuid("managed_by").references((): AnyPgColumn => peopleTable.id),
+  // Ownership of this node by the user who claimed it (typically equals
+  // the node's own id once self-claimed). A partial unique index in the
+  // SQL migration enforces one node per owner.
+  claimedBy: uuid("claimed_by").references((): AnyPgColumn => peopleTable.id, {
+    onDelete: "set null",
+  }),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  // Auto-derived (GENERATED ALWAYS ... STORED in Postgres) — lowercased,
+  // trimmed concatenation of first + last name. Indexed with pg_trgm GIN
+  // for fuzzy matching in the shared-invite claim flow. Read-only from
+  // the application's perspective.
+  nameNormalized: text("name_normalized"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
