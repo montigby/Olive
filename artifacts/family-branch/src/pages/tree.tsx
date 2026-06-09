@@ -1764,26 +1764,120 @@ function layoutLayeredView(
       });
       addEdge(coupleId, childNodeId, 0.5);
 
-      // Grandkids below this child slot — collapsed to a pill by default
+      // Grandkids below this child slot — collapsed to a pill by default.
+      // When expanded, each grandkid renders as a couple (with their spouse
+      // if married), and any kids of THEIRS (the viewer's great-grandkids)
+      // show as a further collapsible pill beneath that couple.
       if (slot.grandkids.length > 0) {
         const gcY = childY + V_GAP;
         const gcPillId = slot.kidsId;
         const gcExpanded = expandedPills.has(gcPillId);
 
         if (gcExpanded) {
-          const gcRowW = slot.grandkids.length * PERSON_W + (slot.grandkids.length - 1) * H_GAP;
-          const gcStartX = slotCx - gcRowW / 2;
-          slot.grandkids.forEach((gc: any, gi: number) => {
-            const gcId = `lv-gc-${gc.id}`;
-            nodes.push({
-              id: gcId,
-              type: "child",
-              position: { x: gcStartX + gi * (PERSON_W + H_GAP), y: gcY },
-              data: { member: relabeled(gc, "child") },
+          // Build grandkid slots — pair each grandkid with their spouse and
+          // their kids (great-grandkids of the viewer).
+          const usedGcIds = new Set<string>();
+          const gcSlots: Array<{
+            grandkid: any;
+            spouse: any | null;
+            greatGrandkids: any[];
+            ggcPillId: string;
+          }> = [];
+          for (const gc of slot.grandkids) {
+            if (usedGcIds.has(gc.id)) continue;
+            const gcSpouseId = spouseMap.get(gc.id);
+            const gcSpouse =
+              gcSpouseId && !usedGcIds.has(gcSpouseId)
+                ? allMembers.find((m: any) => m.id === gcSpouseId)
+                : null;
+            // Pull great-grandkids from both sides of the couple — parent
+            // edges may be encoded against either grandkid.
+            const ggcIds = new Set<string>([
+              ...(childrenOf.get(gc.id) ?? new Set<string>()),
+              ...(gcSpouse ? (childrenOf.get(gcSpouse.id) ?? new Set<string>()) : []),
+            ]);
+            const greatGrandkids = idsToMembers(ggcIds);
+            gcSlots.push({
+              grandkid: gc,
+              spouse: gcSpouse,
+              greatGrandkids,
+              ggcPillId: `ggc-pill:${gc.id}`,
             });
-            addEdge(childNodeId, gcId, 0.4);
-          });
+            usedGcIds.add(gc.id);
+            if (gcSpouse) usedGcIds.add(gcSpouse.id);
+          }
+
+          const gcSlotW = (sl: { spouse: any | null }) =>
+            sl.spouse ? COUPLE_W : PERSON_W;
+          const totalGcRowW =
+            gcSlots.reduce((s, sl) => s + gcSlotW(sl), 0) +
+            Math.max(0, gcSlots.length - 1) * H_GAP;
+          let gcSlotX = slotCx - totalGcRowW / 2;
+
+          for (const gcSlot of gcSlots) {
+            const gsw = gcSlotW(gcSlot);
+            const gcSlotCx = gcSlotX + gsw / 2;
+            const gcNodeId = `lv-gc-${gcSlot.grandkid.id}`;
+            const gcMems = [
+              relabeled(gcSlot.grandkid, "child"),
+              ...(gcSlot.spouse
+                ? [relabeled(gcSlot.spouse, "child-spouse")]
+                : []),
+            ];
+
+            nodes.push({
+              id: gcNodeId,
+              type: "couple",
+              position: { x: gcSlotX, y: gcY },
+              data: { parents: gcMems, unitName: "" },
+            });
+            addEdge(childNodeId, gcNodeId, 0.4);
+
+            // Great-grandkids — collapsed to a pill by default
+            if (gcSlot.greatGrandkids.length > 0) {
+              const ggcY = gcY + V_GAP;
+              const ggcExpanded = expandedPills.has(gcSlot.ggcPillId);
+
+              if (ggcExpanded) {
+                const ggcRowW =
+                  gcSlot.greatGrandkids.length * PERSON_W +
+                  (gcSlot.greatGrandkids.length - 1) * H_GAP;
+                const ggcStartX = gcSlotCx - ggcRowW / 2;
+                gcSlot.greatGrandkids.forEach((ggc: any, gi: number) => {
+                  const ggcId = `lv-ggc-${ggc.id}`;
+                  nodes.push({
+                    id: ggcId,
+                    type: "child",
+                    position: { x: ggcStartX + gi * (PERSON_W + H_GAP), y: ggcY },
+                    data: { member: relabeled(ggc, "child") },
+                  });
+                  addEdge(gcNodeId, ggcId, 0.4);
+                });
+              } else {
+                const ggcNames = gcSlot.greatGrandkids.map(
+                  (k: any) => k.firstName as string,
+                );
+                const ggcLabel =
+                  ggcNames.slice(0, 3).join(", ") +
+                  (ggcNames.length > 3 ? ` +${ggcNames.length - 3}` : "");
+                nodes.push({
+                  id: gcSlot.ggcPillId,
+                  type: "pill",
+                  position: { x: gcSlotCx - PILL_W / 2, y: ggcY },
+                  data: {
+                    members: gcSlot.greatGrandkids,
+                    label: ggcLabel,
+                    pillId: gcSlot.ggcPillId,
+                  },
+                });
+                addEdge(gcNodeId, gcSlot.ggcPillId, 0.4);
+              }
+            }
+
+            gcSlotX += gsw + H_GAP;
+          }
         } else {
+          // Collapsed grandkid pill (default).
           const gcNames = slot.grandkids.map((k: any) => k.firstName as string);
           const gcLabel =
             gcNames.slice(0, 3).join(", ") +

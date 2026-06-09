@@ -343,6 +343,38 @@ export function computeVisibleSet(
     }
   }
 
+  // ── Descendants: walk DOWN from the viewer through parent-child edges to
+  //    surface ALL descendants (children, grandchildren, great-grandchildren,
+  //    ...) plus each descendant's spouse. Grandparents see their grandkids'
+  //    spouses and great-grandkids without needing tier 3 to be a real bucket.
+  //    The silo across the admin↔adminSpouse bridge still holds — this walk
+  //    only follows parent-child-DOWN, never sideways via siblings or couples,
+  //    so it cannot leak into the other clan.
+  const descendantsQueue: string[] = [viewerPerson.id];
+  const visitedDesc = new Set<string>([viewerPerson.id]);
+  while (descendantsQueue.length > 0) {
+    const cur = descendantsQueue.shift()!;
+    const curEdges = graph.get(cur) ?? [];
+    for (const e of curEdges) {
+      if (e.kind !== "parent-child" || !e.isDown) continue;
+      if (visitedDesc.has(e.to)) continue;
+      visitedDesc.add(e.to);
+      descendantsQueue.push(e.to);
+      if (!result.has(e.to)) result.set(e.to, 2);
+      // Spouse of the descendant is also tier 2.
+      const descEdges = graph.get(e.to) ?? [];
+      for (const de of descEdges) {
+        if (
+          de.kind === "couple" &&
+          de.to !== viewerPerson.id &&
+          !result.has(de.to)
+        ) {
+          result.set(de.to, 2);
+        }
+      }
+    }
+  }
+
   // Everyone else = tier 4
   for (const m of allMembers) {
     if (!result.has(m.id)) result.set(m.id, 4);
