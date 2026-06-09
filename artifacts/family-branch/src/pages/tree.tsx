@@ -845,6 +845,40 @@ function buildSpouseMap(
     if (p) { pair(uncle, p); used.add(p.id); used.add(uncle.id); }
   }
 
+  // Generic "X + X-in-law sharing the same parentPersonId" pairing.
+  // Catches cases like Megan ("cousin") + Spencer Witt ("cousin-in-law") who
+  // were both added with the same parent — the admin had no easier way to
+  // mark them as married, so they ended up looking like siblings. Runs BEFORE
+  // the specific brother-in-law / sister-in-law passes so it doesn't fight
+  // them; the loops below dedupe on `used`.
+  const sharedParentBuckets = new Map<string, any[]>();
+  for (const m of allMembers) {
+    if (used.has(m.id) || !m.parentPersonId) continue;
+    if (!sharedParentBuckets.has(m.parentPersonId)) {
+      sharedParentBuckets.set(m.parentPersonId, []);
+    }
+    sharedParentBuckets.get(m.parentPersonId)!.push(m);
+  }
+  for (const bucket of sharedParentBuckets.values()) {
+    if (bucket.length < 2) continue;
+    for (const a of bucket) {
+      if (used.has(a.id)) continue;
+      const al = (a.relationshipLabel ?? "").toLowerCase().trim();
+      if (!al.endsWith("-in-law")) continue;
+      const base = al.slice(0, -"-in-law".length);
+      const partner = bucket.find((b: any) =>
+        b.id !== a.id &&
+        !used.has(b.id) &&
+        (b.relationshipLabel ?? "").toLowerCase().trim() === base,
+      );
+      if (partner) {
+        pair(a, partner);
+        used.add(a.id);
+        used.add(partner.id);
+      }
+    }
+  }
+
   // Father-in-law + mother-in-law pairing (e.g. Randy + Sandra).
   // Explicit DB pairs already handled via explicitPairs; this is the heuristic fallback.
   const fathersInLaw = allMembers.filter((m: any) => (m.relationshipLabel ?? "").toLowerCase().trim() === "father-in-law");
@@ -1407,9 +1441,24 @@ function buildAbsoluteGraph(
     for (const pid of parentIds) link(childId, pid);
   }
 
-  // 2. persons.parentPersonId.
+  // 2. persons.parentPersonId — except when this row is an "[X]-in-law"
+  //    whose explicit spouse shares the same parentPersonId. In that case
+  //    the parent on file is the SPOUSE's parent, not the in-law's, and
+  //    following the edge would wrongly link them as a sibling of their
+  //    spouse. buildSpouseMap pairs these up in its shared-parent pass.
   for (const m of allMembers) {
-    if (m.parentPersonId) link(m.id, m.parentPersonId);
+    if (!m.parentPersonId) continue;
+    const l = (m.relationshipLabel ?? "").toLowerCase().trim();
+    if (l.endsWith("-in-law")) {
+      const spId = spouseMap.get(m.id);
+      if (spId) {
+        const spouse = allMembers.find((p: any) => p.id === spId);
+        if (spouse && spouse.parentPersonId === m.parentPersonId) {
+          continue;
+        }
+      }
+    }
+    link(m.id, m.parentPersonId);
   }
 
   // 3. Admin-relative labels → absolute facts.

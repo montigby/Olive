@@ -161,6 +161,40 @@ function buildFamilyGraph(
     }
   }
 
+  // Pre-pass: detect "[X]-in-law" + "[X]" pairs sharing the same
+  // parentPersonId — e.g. Megan ("cousin") and Spencer Witt ("cousin-in-law")
+  // both added under Uncle Jim. The admin had no clean way to express "they
+  // married each other" so the in-law row ended up with the spouse's parent
+  // on file. We:
+  //   • record the in-law id so the parentPersonId fallback below skips it
+  //     (it would otherwise look like a sibling of its actual spouse), and
+  //   • queue the couple to add once the graph is built.
+  const sharedParentInlawSkip = new Set<string>();
+  const sharedParentInlawCouples: Array<[string, string]> = [];
+  {
+    const buckets = new Map<string, any[]>();
+    for (const m of allMembers) {
+      if (!m.parentPersonId) continue;
+      if (!buckets.has(m.parentPersonId)) buckets.set(m.parentPersonId, []);
+      buckets.get(m.parentPersonId)!.push(m);
+    }
+    for (const bucket of buckets.values()) {
+      if (bucket.length < 2) continue;
+      for (const a of bucket) {
+        const al = nl(a.relationshipLabel);
+        if (!al.endsWith("-in-law")) continue;
+        const base = al.slice(0, -"-in-law".length);
+        const partner = bucket.find(
+          (b) => b.id !== a.id && nl(b.relationshipLabel) === base,
+        );
+        if (partner) {
+          sharedParentInlawSkip.add(a.id);
+          sharedParentInlawCouples.push([a.id, partner.id]);
+        }
+      }
+    }
+  }
+
   const adminParents: any[] = [];
   const adminSiblings: any[] = [];
   const inlawParents: any[] = [];
@@ -217,7 +251,8 @@ function buildFamilyGraph(
     if (
       m.parentPersonId &&
       m.parentPersonId !== admin.id &&
-      graph.has(m.parentPersonId)
+      graph.has(m.parentPersonId) &&
+      !sharedParentInlawSkip.has(m.id)
     ) {
       const edges = graph.get(m.id)!;
       if (!edges.some(e => e.to === m.parentPersonId)) {
@@ -274,6 +309,12 @@ function buildFamilyGraph(
     if (mIsSib && pIsSib) {
       addCouple(m.id, m.parentPersonId);
     }
+  }
+
+  // Couple edges from the shared-parent in-law detection at the top of this
+  // function (e.g. Megan ↔ Spencer Witt).
+  for (const [a, b] of sharedParentInlawCouples) {
+    addCouple(a, b);
   }
 
   return graph;
