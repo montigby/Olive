@@ -10,6 +10,7 @@ import summaryRouter from "./summary";
 import aiRouter from "./ai";
 import adminRouter from "./admin";
 import homeFeedRouter from "./homeFeed";
+import inviteFlowRouter from "./inviteFlow";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(summaryRouter);
 router.use(aiRouter);
 router.use(adminRouter);
 router.use(homeFeedRouter);
+router.use(inviteFlowRouter);
 
 export default router;
