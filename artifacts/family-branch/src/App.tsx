@@ -11,6 +11,7 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import InviteClaim from "@/pages/invite-claim";
+import Join from "@/pages/join";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Welcome   = lazy(() => import("@/pages/welcome"));
@@ -62,6 +63,7 @@ function AppRouter() {
       <Route path="/login"           component={Login}       />
       <Route path="/register"        component={Register}    />
       <Route path="/invite/:token"   component={InviteClaim} />
+      <Route path="/join/:token"     component={Join}        />
 
       {/* Protected — order matters: more-specific paths first */}
       <Route path="/welcome"           component={WelcomePage}  />

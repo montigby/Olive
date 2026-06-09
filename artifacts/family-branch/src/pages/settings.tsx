@@ -16,7 +16,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Network, Save, Check, X, Building2, User } from "lucide-react";
+import { Network, Save, Check, X, Building2, User, Link2, Copy, RefreshCw, UserCheck } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   Form,
   FormControl,
@@ -239,6 +240,240 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <SharedInviteCard unitId={unitId} />
+      <PendingClaimsCard unitId={unitId} />
     </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Shared invite token — Phase 4
+// ──────────────────────────────────────────────────────────────────────────
+function SharedInviteCard({ unitId }: { unitId: string }) {
+  const { toast } = useToast();
+  const [active, setActive] = useState<{ token: string; url: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const fetchActive = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/family-units/${unitId}/invite-tokens`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}` },
+      });
+      if (r.ok) {
+        const data = (await r.json()) as { active: { token: string; url: string } | null };
+        setActive(data.active);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void fetchActive(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [unitId]);
+
+  const regenerate = async () => {
+    setWorking(true);
+    try {
+      const r = await fetch(`/api/family-units/${unitId}/invite-tokens`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}` },
+      });
+      if (r.ok) {
+        const data = (await r.json()) as { token: string; url: string };
+        setActive({ token: data.token, url: data.url });
+        toast({ title: "New invite link created", description: "The old link is now invalid." });
+      } else {
+        toast({ variant: "destructive", title: "Couldn't regenerate", description: "Please try again." });
+      }
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!active?.url) return;
+    try {
+      await navigator.clipboard.writeText(active.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't copy", description: "Copy the URL manually." });
+    }
+  };
+
+  return (
+    <Card className="border-none shadow-sm bg-card">
+      <CardHeader>
+        <CardTitle className="font-serif text-xl flex items-center gap-2">
+          <Link2 className="w-5 h-5 text-primary" /> Family invite link
+        </CardTitle>
+        <CardDescription>
+          Share one link that any family member can use to claim their profile.
+          You'll review each claim before access is granted.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : active ? (
+          <>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-[#FAF7F2] border border-border/50">
+              <code className="flex-1 truncate font-mono text-sm">{active.url}</code>
+              <Button size="sm" variant="outline" onClick={copy}>
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span className="ml-2 hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+              </Button>
+            </div>
+            <Button variant="outline" onClick={regenerate} disabled={working}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${working ? "animate-spin" : ""}`} />
+              {working ? "Generating…" : "Regenerate link"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Regenerating immediately invalidates the previous link.
+            </p>
+          </>
+        ) : (
+          <Button onClick={regenerate} disabled={working}>
+            <Link2 className="w-4 h-4 mr-2" />
+            {working ? "Creating…" : "Create invite link"}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Pending claims inbox — Phase 4
+// ──────────────────────────────────────────────────────────────────────────
+type PendingClaim = {
+  id: string;
+  type: "claim_existing" | "create_new";
+  targetPersonId: string | null;
+  claimerDisplayName: string;
+  claimerContact: string | null;
+  claimerSignal: Record<string, unknown> & {
+    arrival?: { ua: string | null; ip: string | null };
+  };
+  status: string;
+  createdAt: string;
+};
+
+function PendingClaimsCard({ unitId }: { unitId: string }) {
+  const { toast } = useToast();
+  const [claims, setClaims] = useState<PendingClaim[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actingOn, setActingOn] = useState<string | null>(null);
+
+  const fetchClaims = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/family-units/${unitId}/claims?status=pending`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}` },
+      });
+      if (r.ok) {
+        const data = (await r.json()) as { claims: PendingClaim[] };
+        setClaims(data.claims);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void fetchClaims(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [unitId]);
+
+  const act = async (claim: PendingClaim, action: "approve" | "reject") => {
+    setActingOn(claim.id);
+    try {
+      const r = await fetch(`/api/family-units/${unitId}/claims/${claim.id}/${action}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}` },
+      });
+      if (r.ok) {
+        toast({
+          title: action === "approve" ? "Approved" : "Rejected",
+          description:
+            action === "approve"
+              ? `${claim.claimerDisplayName} can now sign in.`
+              : `${claim.claimerDisplayName}'s claim was rejected.`,
+        });
+        setClaims((cs) => cs.filter((c) => c.id !== claim.id));
+      } else {
+        const body = (await r.json().catch(() => ({}))) as { error?: string };
+        toast({
+          variant: "destructive",
+          title: "Couldn't act on claim",
+          description: body.error ?? "Please try again.",
+        });
+      }
+    } finally {
+      setActingOn(null);
+    }
+  };
+
+  return (
+    <Card className="border-none shadow-sm bg-card">
+      <CardHeader>
+        <CardTitle className="font-serif text-xl flex items-center gap-2">
+          <UserCheck className="w-5 h-5 text-primary" /> Pending claims
+          {claims.length > 0 && <Badge variant="secondary">{claims.length}</Badge>}
+        </CardTitle>
+        <CardDescription>
+          People who used the invite link and are waiting on your approval.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : claims.length === 0 ? (
+          <div className="p-4 text-center rounded-lg border border-dashed text-muted-foreground bg-[#FAF7F2]">
+            No pending claims.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {claims.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-col gap-3 p-4 rounded-lg bg-[#FAF7F2] border border-border/50 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{c.claimerDisplayName}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {c.type === "claim_existing"
+                      ? "Claiming an existing profile"
+                      : "Requesting a new profile"}
+                    {c.claimerContact ? ` · ${c.claimerContact}` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Submitted {new Date(c.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:bg-destructive hover:text-white"
+                    onClick={() => act(c, "reject")}
+                    disabled={actingOn === c.id}
+                  >
+                    <X className="w-4 h-4 mr-1" /> Reject
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => act(c, "approve")}
+                    disabled={actingOn === c.id}
+                  >
+                    <Check className="w-4 h-4 mr-1" /> Approve
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

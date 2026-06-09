@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Link } from "wouter";
 import {
@@ -212,6 +212,7 @@ export default function Members() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {user?.isAdmin && user.familyUnit?.id && <SharedInviteBanner unitId={user.familyUnit.id} />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-serif font-bold text-foreground">Family Directory</h1>
@@ -522,6 +523,95 @@ export default function Members() {
               Add First Member
             </Button>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Shared invite banner — Phase 5
+// Surfaces the family's shareable link at the top of the directory so admins
+// don't have to dig into Settings. Per-profile invite buttons (below) stay
+// as a secondary action for the cases where you want a pre-bound link.
+// ──────────────────────────────────────────────────────────────────────────
+function SharedInviteBanner({ unitId }: { unitId: string }) {
+  const { toast } = useToast();
+  const [active, setActive] = useState<{ token: string; url: string } | null>(null);
+  const [working, setWorking] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await fetch(`/api/family-units/${unitId}/invite-tokens`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}` },
+      });
+      if (cancelled || !r.ok) return;
+      const data = (await r.json()) as { active: { token: string; url: string } | null };
+      setActive(data.active);
+    })();
+    return () => { cancelled = true; };
+  }, [unitId]);
+
+  const regenerate = async () => {
+    setWorking(true);
+    try {
+      const r = await fetch(`/api/family-units/${unitId}/invite-tokens`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}` },
+      });
+      if (r.ok) {
+        const data = (await r.json()) as { token: string; url: string };
+        setActive({ token: data.token, url: data.url });
+        toast({ title: "New invite link created", description: "The old link is now invalid." });
+      }
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!active?.url) return;
+    try {
+      await navigator.clipboard.writeText(active.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* no-op */ }
+  };
+
+  return (
+    <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">Family invite link</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Share this once. Anyone in the family can claim their profile — you approve each one.
+          </p>
+        </div>
+        {active ? (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <code className="hidden sm:block flex-1 truncate font-mono text-xs px-3 py-1.5 rounded-md bg-background border border-border/60 max-w-xs">
+              {active.url}
+            </code>
+            <Button size="sm" onClick={copy} className="rounded-full shrink-0">
+              {copied ? "Copied" : "Copy link"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={regenerate}
+              disabled={working}
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              title="Regenerate (invalidates the old link)"
+            >
+              {working ? "…" : "↻"}
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" onClick={regenerate} disabled={working} className="rounded-full shrink-0">
+            {working ? "Creating…" : "Create invite link"}
+          </Button>
         )}
       </div>
     </div>
