@@ -38,7 +38,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { label: "Dashboard", href: "/dashboard", icon: Home },
     { label: "Family Tree", href: "/tree", icon: Network },
     { label: "Directory", href: "/members", icon: Users },
-    { label: "Birthdays", href: "/calendar", icon: Cake },
+    { label: "Birthdays", href: "/birthdays", icon: Cake },
     { label: "Settings", href: "/settings", icon: Settings },
   ];
 

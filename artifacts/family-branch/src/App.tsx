@@ -72,7 +72,7 @@ function AppRouter() {
       <Route path="/dashboard"         component={DashboardPage}/>
       <Route path="/tree"              component={TreePage}     />
       <Route path="/profile"           component={ProfilePage}  />
-      <Route path="/calendar"          component={CalendarPage} />
+      <Route path="/birthdays"          component={CalendarPage} />
       <Route path="/link"              component={LinkPageW}    />
       <Route path="/settings"          component={SettingsPage} />
 
