@@ -323,8 +323,13 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
     .map(({ person, unitName }) => {
       const bday = new Date(person.birthday!);
       const thisYear = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
-      if (thisYear.getTime() < today.getTime()) thisYear.setFullYear(now.getFullYear() + 1);
-      const daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      let daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      // Within past 7 days: keep negative daysUntil so callers can show "X days ago".
+      // Beyond 7 days ago: advance to next year as a future birthday.
+      if (daysUntil < -7) {
+        thisYear.setFullYear(now.getFullYear() + 1);
+        daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
       return {
         personId: person.id,
         firstName: person.firstName,
@@ -336,7 +341,7 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
       };
     })
     .sort((a, b) => a.daysUntil - b.daysUntil)
-    .slice(0, 20);
+    .slice(0, 30);
 
   res.json(results);
 });

@@ -95,6 +95,8 @@ export default function Dashboard() {
   }
 
   const incomingRequests = linkRequests?.incoming.filter(r => r.status === 'pending') || [];
+  const recentBirthdays = (birthdays ?? []).filter(b => b.daysUntil < 0).sort((a, b) => b.daysUntil - a.daysUntil);
+  const upcomingBirthdays = (birthdays ?? []).filter(b => b.daysUntil >= 0);
   const total = summary.totalMembers;
   // These come from the updated summary endpoint; fall back to 0 until deployed.
   const birthdayCount = (summary as any).birthdayCount ?? 0;
@@ -159,9 +161,9 @@ export default function Dashboard() {
                 <Skeleton className="h-12 w-full rounded" />
                 <Skeleton className="h-12 w-full rounded" />
               </div>
-            ) : birthdays && birthdays.length > 0 ? (
+            ) : upcomingBirthdays.length > 0 ? (
               <div className="space-y-4 mt-4">
-                {birthdays.map((b, i) => (
+                {upcomingBirthdays.map((b, i) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 border border-border">
@@ -188,6 +190,42 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Recent birthdays */}
+        {recentBirthdays.length > 0 && (
+          <Card className="shadow-sm border-none bg-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-serif text-2xl flex items-center gap-2">
+                <Cake className="w-5 h-5 text-accent" /> Recent Birthdays
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 mt-4">
+                {recentBirthdays.map((b, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 border border-border">
+                        <AvatarFallback className="bg-background text-foreground text-xs">
+                          {b.firstName[0]}{b.lastName[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{b.firstName} {b.lastName}</p>
+                        <p className="text-xs text-muted-foreground">{b.relationshipLabel} • {b.unitName}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-sm text-muted-foreground">
+                        {b.daysUntil === -1 ? 'Yesterday' : `${Math.abs(b.daysUntil)} days ago`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{parseDateLocal(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Pending link requests (admin only, when present) */}
         {incomingRequests.length > 0 && (

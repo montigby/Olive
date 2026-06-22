@@ -36,6 +36,20 @@ function DaysUntilBadge({ days }: { days: number }) {
       </Badge>
     );
   }
+  if (days === -1) {
+    return (
+      <Badge variant="secondary" className="text-[11px] font-semibold shrink-0">
+        Yesterday
+      </Badge>
+    );
+  }
+  if (days < 0) {
+    return (
+      <Badge variant="outline" className="text-[11px] font-semibold shrink-0">
+        {Math.abs(days)}d ago
+      </Badge>
+    );
+  }
   if (days <= 7) {
     return (
       <Badge className="bg-primary/15 text-primary text-[11px] font-semibold shrink-0">
@@ -57,6 +71,50 @@ function DaysUntilBadge({ days }: { days: number }) {
   );
 }
 
+type BirthdayEntry = {
+  personId: string;
+  firstName: string;
+  lastName: string;
+  relationshipLabel: string;
+  unitName: string;
+  birthday: string;
+  daysUntil: number;
+};
+
+function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
+  const initials = (entry.firstName[0] || "?") + (entry.lastName[0] || "?");
+  return (
+    <li key={entry.personId}>
+      <Link href={`/members/${entry.personId}`}>
+        <div className="flex items-center gap-4 px-5 py-4 hover:bg-secondary/40 transition-colors cursor-pointer">
+          <Avatar className="w-10 h-10 border border-primary/20 shrink-0">
+            <AvatarFallback className="bg-primary/10 text-primary font-serif text-sm">
+              {initials.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground leading-tight">
+              {entry.firstName} {entry.lastName}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {entry.relationshipLabel}
+              {entry.unitName && (
+                <span className="text-muted-foreground/60"> · {entry.unitName}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <p className="text-sm font-medium text-foreground">
+              {formatBirthdayDate(entry.birthday)}
+            </p>
+            <DaysUntilBadge days={entry.daysUntil} />
+          </div>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
 export default function Calendar() {
   const { user } = useAuth();
   const unitId = user?.familyUnit.id || "";
@@ -68,14 +126,18 @@ export default function Calendar() {
     },
   });
 
-  // Group by month label
+  const recentBirthdays = (birthdays ?? [])
+    .filter(b => b.daysUntil < 0)
+    .sort((a, b) => b.daysUntil - a.daysUntil); // most recent first
+
+  const upcomingBirthdays = (birthdays ?? []).filter(b => b.daysUntil >= 0);
+
+  // Group upcoming by month label
   const grouped: Record<string, typeof birthdays> = {};
-  if (birthdays) {
-    for (const entry of birthdays) {
-      const month = getMonthLabel(entry.birthday);
-      if (!grouped[month]) grouped[month] = [];
-      grouped[month]!.push(entry);
-    }
+  for (const entry of upcomingBirthdays) {
+    const month = getMonthLabel(entry.birthday);
+    if (!grouped[month]) grouped[month] = [];
+    grouped[month]!.push(entry);
   }
 
   const monthKeys = Object.keys(grouped);
@@ -102,7 +164,24 @@ export default function Calendar() {
         </div>
       )}
 
-      {!isLoading && monthKeys.length === 0 && (
+      {!isLoading && recentBirthdays.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground tracking-widest uppercase">
+            Recent
+          </h2>
+          <Card className="border border-border shadow-sm overflow-hidden">
+            <CardContent className="p-0">
+              <ul className="divide-y divide-border">
+                {recentBirthdays.map((entry) => (
+                  <BirthdayRow key={entry.personId} entry={entry} />
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {!isLoading && recentBirthdays.length === 0 && monthKeys.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground">
           <Cake className="w-12 h-12 opacity-30" />
           <div className="text-center">
@@ -122,43 +201,9 @@ export default function Calendar() {
           <Card className="border border-border shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <ul className="divide-y divide-border">
-                {grouped[month]!.map((entry) => {
-                  const initials =
-                    (entry.firstName[0] || "?") + (entry.lastName[0] || "?");
-
-                  return (
-                    <li key={entry.personId}>
-                      <Link href={`/members/${entry.personId}`}>
-                        <div className="flex items-center gap-4 px-5 py-4 hover:bg-secondary/40 transition-colors cursor-pointer">
-                          <Avatar className="w-10 h-10 border border-primary/20 shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary font-serif text-sm">
-                              {initials.toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-foreground leading-tight">
-                              {entry.firstName} {entry.lastName}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {entry.relationshipLabel}
-                              {entry.unitName && (
-                                <span className="text-muted-foreground/60">
-                                  {" "}· {entry.unitName}
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <p className="text-sm font-medium text-foreground">
-                              {formatBirthdayDate(entry.birthday)}
-                            </p>
-                            <DaysUntilBadge days={entry.daysUntil} />
-                          </div>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
+                {grouped[month]!.map((entry) => (
+                  <BirthdayRow key={entry.personId} entry={entry} />
+                ))}
               </ul>
             </CardContent>
           </Card>
