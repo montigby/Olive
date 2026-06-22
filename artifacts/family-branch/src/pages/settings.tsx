@@ -150,7 +150,7 @@ export default function Settings() {
               />
               
               <div className="pt-2">
-                <FormLabel>Unique Unit Code</FormLabel>
+                <label className="text-sm font-medium leading-none">Unique Unit Code</label>
                 <div className="flex items-center gap-4 mt-2">
                   <code className="px-4 py-2 bg-secondary rounded font-mono text-lg tracking-wider text-secondary-foreground">
                     {unit?.unitCode || "------"}
