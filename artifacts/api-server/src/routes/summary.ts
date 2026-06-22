@@ -318,12 +318,13 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
   }
 
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const results = allMembers
     .map(({ person, unitName }) => {
       const bday = new Date(person.birthday!);
       const thisYear = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
-      if (thisYear < now) thisYear.setFullYear(now.getFullYear() + 1);
-      const daysUntil = Math.ceil((thisYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (thisYear.getTime() < today.getTime()) thisYear.setFullYear(now.getFullYear() + 1);
+      const daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       return {
         personId: person.id,
         firstName: person.firstName,

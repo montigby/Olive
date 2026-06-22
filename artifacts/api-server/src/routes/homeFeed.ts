@@ -14,7 +14,7 @@ function daysUntilBirthday(birthday: string): number {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let next = new Date(today.getFullYear(), month - 1, day);
-  if (next.getTime() <= today.getTime()) {
+  if (next.getTime() < today.getTime()) {
     next = new Date(today.getFullYear() + 1, month - 1, day);
   }
   return Math.round((next.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
