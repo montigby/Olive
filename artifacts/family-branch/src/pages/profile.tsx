@@ -105,9 +105,14 @@ function parseDateLocal(s: string): Date | null {
 function formatBirthday(birthday: string | null | undefined): string | null {
   if (!birthday) return null;
   try {
-    const d = parseDateLocal(birthday.split("T")[0]!);
+    const dateStr = birthday.split("T")[0]!;
+    const d = parseDateLocal(dateStr);
     if (!d || isNaN(d.getTime())) return null;
-    return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    const year = parseInt(dateStr.split("-")[0]!, 10);
+    const options: Intl.DateTimeFormatOptions = year !== 2000
+      ? { month: "long", day: "numeric", year: "numeric" }
+      : { month: "long", day: "numeric" };
+    return d.toLocaleDateString("en-US", options);
   } catch {
     return null;
   }
@@ -123,7 +128,7 @@ function parseBirthdayParts(birthday: string | null | undefined): { month: strin
   const d = parseInt(parts[2]!, 10);
   const y = parseInt(parts[0]!, 10);
   if (isNaN(m) || isNaN(d)) return { month: "", day: "", year: "" };
-  return { month: String(m), day: String(d), year: y > 2000 ? String(y) : "" };
+  return { month: String(m), day: String(d), year: y !== 2000 ? String(y) : "" };
 }
 
 function TikTokIcon({ className }: { className?: string }) {
@@ -566,9 +571,7 @@ function ProfileEditForm({
     if (data.birthdayMonth && data.birthdayDay) {
       const m = String(parseInt(data.birthdayMonth, 10)).padStart(2, "0");
       const d = String(parseInt(data.birthdayDay, 10)).padStart(2, "0");
-      const y = data.birthdayYear && parseInt(data.birthdayYear, 10) > 2000
-        ? data.birthdayYear
-        : "2000";
+      const y = data.birthdayYear || "2000";
       birthday = `${y}-${m}-${d}`;
     }
 
@@ -584,7 +587,7 @@ function ProfileEditForm({
       addressZip: data.addressZip || null,
       addressCountry: data.addressCountry || null,
       birthday,
-      showBirthYear: data.showBirthYear,
+      showBirthYear: data.birthdayYear ? data.showBirthYear : false,
       instagram: data.instagram || null,
       facebook: data.facebook || null,
       tiktok: data.tiktok || null,
