@@ -538,6 +538,7 @@ export default function Members() {
 function SharedInviteBanner({ unitId }: { unitId: string }) {
   const { toast } = useToast();
   const [active, setActive] = useState<{ token: string; url: string } | null>(null);
+  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -547,9 +548,12 @@ function SharedInviteBanner({ unitId }: { unitId: string }) {
       const r = await fetch(`/api/family-units/${unitId}/invite-tokens`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}` },
       });
-      if (cancelled || !r.ok) return;
-      const data = (await r.json()) as { active: { token: string; url: string } | null };
-      setActive(data.active);
+      if (cancelled) return;
+      if (r.ok) {
+        const data = (await r.json()) as { active: { token: string; url: string } | null };
+        setActive(data.active);
+      }
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [unitId]);
@@ -589,7 +593,7 @@ function SharedInviteBanner({ unitId }: { unitId: string }) {
             Share this once. Anyone in the family can claim their profile — you approve each one.
           </p>
         </div>
-        {active ? (
+        {loading ? null : active ? (
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <code className="hidden sm:block flex-1 truncate font-mono text-xs px-3 py-1.5 rounded-md bg-background border border-border/60 max-w-xs">
               {active.url}
