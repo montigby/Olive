@@ -6,24 +6,7 @@ import { Users, Link as LinkIcon, Gift, MailPlus, Cake, Phone } from "lucide-rea
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-function parseDateLocal(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
-}
-
-function getAgeTurning(birthday: string, showBirthYear: boolean): number | null {
-  if (!showBirthYear) return null;
-  const parts = birthday.split("-");
-  const birthYear = parseInt(parts[0]!, 10);
-  if (birthYear === 2000) return null;
-  const birthMonth = parseInt(parts[1]!, 10);
-  const birthDay = parseInt(parts[2]!, 10);
-  const today = new Date();
-  const thisYearBirthday = new Date(today.getFullYear(), birthMonth - 1, birthDay);
-  const yearTurning = thisYearBirthday >= today ? today.getFullYear() : today.getFullYear() + 1;
-  return yearTurning - birthYear;
-}
+import { parseDateLocal, getAgeTurning } from "@/lib/birthday";
 
 // A single connection-progress stat card.
 // Shows the count prominently, a label, and a subtle "X of N" fraction
@@ -111,9 +94,8 @@ export default function Dashboard() {
   const recentBirthdays = (birthdays ?? []).filter(b => b.daysUntil < 0).sort((a, b) => b.daysUntil - a.daysUntil);
   const upcomingBirthdays = (birthdays ?? []).filter(b => b.daysUntil >= 0);
   const total = summary.totalMembers;
-  // These come from the updated summary endpoint; fall back to 0 until deployed.
-  const birthdayCount = (summary as any).birthdayCount ?? 0;
-  const phoneCount = (summary as any).phoneCount ?? 0;
+  const birthdayCount = summary.birthdayCount ?? 0;
+  const phoneCount = summary.phoneCount ?? 0;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -176,8 +158,8 @@ export default function Dashboard() {
               </div>
             ) : upcomingBirthdays.length > 0 ? (
               <div className="space-y-4 mt-4">
-                {upcomingBirthdays.map((b, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                {upcomingBirthdays.map((b) => (
+                  <div key={b.personId} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 border border-border">
                         <AvatarFallback className="bg-background text-foreground text-xs">
@@ -217,8 +199,8 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 mt-4">
-                {recentBirthdays.map((b, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                {recentBirthdays.map((b) => (
+                  <div key={b.personId} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 border border-border">
                         <AvatarFallback className="bg-background text-foreground text-xs">

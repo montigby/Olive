@@ -13,6 +13,8 @@ import { computeTier, computeVisibleSet, applyVisibility } from "../lib/visibili
 
 const router = Router();
 
+const BIRTHDAY_PLACEHOLDER_YEAR = 2000;
+
 type PersonRow = typeof personsTable.$inferSelect;
 type MemberDecorator = (m: PersonRow) => unknown | null;
 
@@ -335,7 +337,9 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
         firstName: person.firstName,
         lastName: person.lastName,
         relationshipLabel: person.relationshipLabel,
-        birthday: person.showBirthYear ? person.birthday! : `2000-${person.birthday!.split("-")[1]}-${person.birthday!.split("-")[2]}`,
+        birthday: person.showBirthYear
+          ? person.birthday!
+          : `${BIRTHDAY_PLACEHOLDER_YEAR}-${person.birthday!.split("-")[1]}-${person.birthday!.split("-")[2]}`,
         showBirthYear: person.showBirthYear,
         unitName,
         daysUntil,

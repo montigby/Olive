@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PLACEHOLDER_YEAR } from "@/lib/birthday";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,7 +110,7 @@ function formatBirthday(birthday: string | null | undefined): string | null {
     const d = parseDateLocal(dateStr);
     if (!d || isNaN(d.getTime())) return null;
     const year = parseInt(dateStr.split("-")[0]!, 10);
-    const options: Intl.DateTimeFormatOptions = year !== 2000
+    const options: Intl.DateTimeFormatOptions = year !== PLACEHOLDER_YEAR
       ? { month: "long", day: "numeric", year: "numeric" }
       : { month: "long", day: "numeric" };
     return d.toLocaleDateString("en-US", options);
@@ -128,7 +129,7 @@ function parseBirthdayParts(birthday: string | null | undefined): { month: strin
   const d = parseInt(parts[2]!, 10);
   const y = parseInt(parts[0]!, 10);
   if (isNaN(m) || isNaN(d)) return { month: "", day: "", year: "" };
-  return { month: String(m), day: String(d), year: y !== 2000 ? String(y) : "" };
+  return { month: String(m), day: String(d), year: y !== PLACEHOLDER_YEAR ? String(y) : "" };
 }
 
 function TikTokIcon({ className }: { className?: string }) {

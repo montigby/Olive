@@ -429,7 +429,7 @@ export function computeTier(
   targetPerson: any,
   allMembers: any[],
   relationships?: RelationshipEdge[],
-): 0 | 1 | 2 | 3 | 4 {
+): Tier {
   if (viewerPerson.isAdmin) return 0;
   if (viewerPerson.id === targetPerson.id) return 0;
 
@@ -447,12 +447,16 @@ export function computeTier(
   return 3;
 }
 
+const BIRTHDAY_PLACEHOLDER_YEAR = 2000;
+
+type Tier = 0 | 1 | 2 | 3 | 4;
+
 function maskBirthdayYear(birthday: string): string {
   const parts = birthday.split("-");
-  return `2000-${parts[1]}-${parts[2]}`;
+  return `${BIRTHDAY_PLACEHOLDER_YEAR}-${parts[1]}-${parts[2]}`;
 }
 
-export function applyVisibility(person: any, tier: 0 | 1 | 2 | 3 | 4): any {
+export function applyVisibility(person: any, tier: Tier): any {
   if (tier === 4) return null; // not visible
 
   // Target's "Restrict to direct & close family" preference:

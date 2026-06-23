@@ -235,6 +235,8 @@ export interface UnitSummary {
   linkedUnits: number;
   pendingInvites: number;
   pendingLinkRequests: number;
+  birthdayCount: number;
+  phoneCount: number;
 }
 
 export interface BirthdayEntry {

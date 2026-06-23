@@ -9,29 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Cake } from "lucide-react";
-
-function parseDateLocal(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
-}
-
-function formatBirthdayDate(birthday: string): string {
-  const d = parseDateLocal(birthday);
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-}
-
-function getAgeTurning(birthday: string, showBirthYear: boolean): number | null {
-  if (!showBirthYear) return null;
-  const parts = birthday.split("-");
-  const birthYear = parseInt(parts[0]!, 10);
-  if (birthYear === 2000) return null;
-  const birthMonth = parseInt(parts[1]!, 10);
-  const birthDay = parseInt(parts[2]!, 10);
-  const today = new Date();
-  const thisYearBirthday = new Date(today.getFullYear(), birthMonth - 1, birthDay);
-  const yearTurning = thisYearBirthday >= today ? today.getFullYear() : today.getFullYear() + 1;
-  return yearTurning - birthYear;
-}
+import { parseDateLocal, formatBirthdayDate, getAgeTurning } from "@/lib/birthday";
 
 function getMonthLabel(birthday: string): string {
   const d = parseDateLocal(birthday);

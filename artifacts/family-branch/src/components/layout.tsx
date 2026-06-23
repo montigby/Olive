@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
 import { BookUser, LogOut, Settings, Users, Network, Home, Cake } from "lucide-react";
@@ -11,19 +12,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const logoutMutation = useLogout();
 
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/login");
+    }
+  }, [isLoading, user, setLocation]);
+
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="animate-pulse flex flex-col items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-primary/20"></div>
-        <div className="h-4 w-32 bg-primary/20 rounded"></div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-primary/20" />
+          <div className="h-4 w-32 bg-primary/20 rounded" />
+        </div>
       </div>
-    </div>;
+    );
   }
 
-  if (!user) {
-    setLocation("/login");
-    return null;
-  }
+  if (!user) return null;
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
