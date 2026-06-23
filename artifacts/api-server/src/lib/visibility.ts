@@ -447,6 +447,11 @@ export function computeTier(
   return 3;
 }
 
+function maskBirthdayYear(birthday: string): string {
+  const parts = birthday.split("-");
+  return `2000-${parts[1]}-${parts[2]}`;
+}
+
 export function applyVisibility(person: any, tier: 0 | 1 | 2 | 3 | 4): any {
   if (tier === 4) return null; // not visible
 
@@ -520,6 +525,9 @@ export function applyVisibility(person: any, tier: 0 | 1 | 2 | 3 | 4): any {
         full.bereal = null;
         full.otherSocial = null;
       }
+      if (!person.showBirthYear && full.birthday) {
+        full.birthday = maskBirthdayYear(full.birthday);
+      }
     }
 
     return full;
@@ -531,7 +539,7 @@ export function applyVisibility(person: any, tier: 0 | 1 | 2 | 3 | 4): any {
       person.tier2ContactField === "email" ? "email" : "phone";
     return {
       ...base,
-      birthday: person.birthday,
+      birthday: person.birthday && !person.showBirthYear ? maskBirthdayYear(person.birthday) : person.birthday,
       showBirthYear: person.showBirthYear,
       [contactField]: person[contactField],
       claimedAt: person.claimedAt,
