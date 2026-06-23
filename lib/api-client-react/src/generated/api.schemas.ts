@@ -243,6 +243,7 @@ export interface BirthdayEntry {
   lastName: string;
   relationshipLabel: string;
   birthday: string;
+  showBirthYear: boolean;
   unitName: string;
   /** Days until their next birthday */
   daysUntil: number;

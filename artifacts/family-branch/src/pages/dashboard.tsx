@@ -12,6 +12,19 @@ function parseDateLocal(s: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
+function getAgeTurning(birthday: string, showBirthYear: boolean): number | null {
+  if (!showBirthYear) return null;
+  const parts = birthday.split("-");
+  const birthYear = parseInt(parts[0]!, 10);
+  if (birthYear === 2000) return null;
+  const birthMonth = parseInt(parts[1]!, 10);
+  const birthDay = parseInt(parts[2]!, 10);
+  const today = new Date();
+  const thisYearBirthday = new Date(today.getFullYear(), birthMonth - 1, birthDay);
+  const yearTurning = thisYearBirthday >= today ? today.getFullYear() : today.getFullYear() + 1;
+  return yearTurning - birthYear;
+}
+
 // A single connection-progress stat card.
 // Shows the count prominently, a label, and a subtle "X of N" fraction
 // to communicate how complete the family data is.
@@ -178,7 +191,10 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-sm text-accent">{b.daysUntil === 0 ? 'Today!' : `In ${b.daysUntil} days`}</p>
-                      <p className="text-xs text-muted-foreground">{parseDateLocal(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {parseDateLocal(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {getAgeTurning(b.birthday, b.showBirthYear) !== null && ` · Turns ${getAgeTurning(b.birthday, b.showBirthYear)}`}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -218,7 +234,10 @@ export default function Dashboard() {
                       <p className="font-medium text-sm text-muted-foreground">
                         {b.daysUntil === -1 ? 'Yesterday' : `${Math.abs(b.daysUntil)} days ago`}
                       </p>
-                      <p className="text-xs text-muted-foreground">{parseDateLocal(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {parseDateLocal(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {getAgeTurning(b.birthday, b.showBirthYear) !== null && ` · Turned ${getAgeTurning(b.birthday, b.showBirthYear)}`}
+                      </p>
                     </div>
                   </div>
                 ))}

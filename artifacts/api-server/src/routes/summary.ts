@@ -336,6 +336,7 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
         lastName: person.lastName,
         relationshipLabel: person.relationshipLabel,
         birthday: person.birthday!,
+        showBirthYear: person.showBirthYear,
         unitName,
         daysUntil,
       };

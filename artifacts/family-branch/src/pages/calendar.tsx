@@ -20,6 +20,19 @@ function formatBirthdayDate(birthday: string): string {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
+function getAgeTurning(birthday: string, showBirthYear: boolean): number | null {
+  if (!showBirthYear) return null;
+  const parts = birthday.split("-");
+  const birthYear = parseInt(parts[0]!, 10);
+  if (birthYear === 2000) return null;
+  const birthMonth = parseInt(parts[1]!, 10);
+  const birthDay = parseInt(parts[2]!, 10);
+  const today = new Date();
+  const thisYearBirthday = new Date(today.getFullYear(), birthMonth - 1, birthDay);
+  const yearTurning = thisYearBirthday >= today ? today.getFullYear() : today.getFullYear() + 1;
+  return yearTurning - birthYear;
+}
+
 function getMonthLabel(birthday: string): string {
   const d = parseDateLocal(birthday);
   const now = new Date();
@@ -106,6 +119,11 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
           <div className="flex flex-col items-end gap-1 shrink-0">
             <p className="text-sm font-medium text-foreground">
               {formatBirthdayDate(entry.birthday)}
+              {getAgeTurning(entry.birthday, entry.showBirthYear) !== null && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({entry.daysUntil >= 0 ? `Turns ${getAgeTurning(entry.birthday, entry.showBirthYear)}` : `Turned ${getAgeTurning(entry.birthday, entry.showBirthYear)}`})
+                </span>
+              )}
             </p>
             <DaysUntilBadge days={entry.daysUntil} />
           </div>

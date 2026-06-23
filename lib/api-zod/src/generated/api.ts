@@ -761,6 +761,7 @@ export const GetUpcomingBirthdaysResponseItem = zod.object({
   lastName: zod.string(),
   relationshipLabel: zod.string(),
   birthday: zod.string(),
+  showBirthYear: zod.boolean(),
   unitName: zod.string(),
   daysUntil: zod.number().describe("Days until their next birthday"),
 });
