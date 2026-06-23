@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { personsTable, accountsTable, relationshipsTable } from "@workspace/db";
+import { personsTable, accountsTable, relationshipsTable, peopleTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdatePersonBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
@@ -151,6 +151,13 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
   if (!updated.length) {
     res.status(404).json({ error: "Not found", message: "Person not found" });
     return;
+  }
+
+  if (updateData.firstName !== undefined || updateData.lastName !== undefined) {
+    const nameSync: Partial<typeof peopleTable.$inferInsert> = {};
+    if (updateData.firstName !== undefined) nameSync.firstName = updateData.firstName;
+    if (updateData.lastName !== undefined) nameSync.lastName = updateData.lastName;
+    await db.update(peopleTable).set(nameSync).where(eq(peopleTable.id, personId)).catch(() => {});
   }
 
   res.json(formatPerson(updated[0]));

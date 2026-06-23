@@ -6,6 +6,8 @@ import {
   useGetPerson,
   getGetPersonQueryKey,
   useUpdatePerson,
+  getGetMeQueryKey,
+  getListMembersQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -270,6 +272,7 @@ function ProfileView({
         { personId: targetId, data: { photoUrl: dataUrl } },
       );
       queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(targetId) });
+      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       toast({ title: "Photo updated!" });
     } catch {
       toast({ variant: "destructive", title: "Upload failed", description: "Please try again." });
@@ -592,6 +595,8 @@ function ProfileEditForm({
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(targetId) });
+          queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListMembersQueryKey(person.familyUnitId) });
           toast({ title: "Profile updated" });
           if (onboarding) {
             // First-claim flow: send them straight to the welcome dashboard
