@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft,
   Save,
@@ -65,6 +66,8 @@ const profileSchema = z.object({
   addressCountry: z.string().nullable().optional(),
   birthdayMonth: z.string().nullable().optional(),
   birthdayDay: z.string().nullable().optional(),
+  birthdayYear: z.string().nullable().optional(),
+  showBirthYear: z.boolean().default(false),
   instagram: z.string().nullable().optional(),
   facebook: z.string().nullable().optional(),
   tiktok: z.string().nullable().optional(),
@@ -110,16 +113,17 @@ function formatBirthday(birthday: string | null | undefined): string | null {
   }
 }
 
-/** Parse a stored birthday string into { month: "1"–"12", day: "1"–"31" } */
-function parseBirthdayParts(birthday: string | null | undefined): { month: string; day: string } {
-  if (!birthday) return { month: "", day: "" };
+/** Parse a stored birthday string into { month, day, year } — year is "" when stored as placeholder 2000 */
+function parseBirthdayParts(birthday: string | null | undefined): { month: string; day: string; year: string } {
+  if (!birthday) return { month: "", day: "", year: "" };
   const dateStr = birthday.split("T")[0]!;
   const parts = dateStr.split("-");
-  if (parts.length < 3) return { month: "", day: "" };
+  if (parts.length < 3) return { month: "", day: "", year: "" };
   const m = parseInt(parts[1]!, 10);
   const d = parseInt(parts[2]!, 10);
-  if (isNaN(m) || isNaN(d)) return { month: "", day: "" };
-  return { month: String(m), day: String(d) };
+  const y = parseInt(parts[0]!, 10);
+  if (isNaN(m) || isNaN(d)) return { month: "", day: "", year: "" };
+  return { month: String(m), day: String(d), year: y > 2000 ? String(y) : "" };
 }
 
 function TikTokIcon({ className }: { className?: string }) {
@@ -540,6 +544,8 @@ function ProfileEditForm({
       addressCountry: person?.addressCountry ?? "",
       birthdayMonth: bdParts.month,
       birthdayDay: bdParts.day,
+      birthdayYear: bdParts.year,
+      showBirthYear: person?.showBirthYear ?? false,
       instagram: person?.instagram ?? "",
       facebook: person?.facebook ?? "",
       tiktok: person?.tiktok ?? "",
@@ -556,12 +562,14 @@ function ProfileEditForm({
   });
 
   const onSubmit = (data: ProfileForm) => {
-    // Compose birthday as "2000-MM-DD" if both month and day are set
     let birthday: string | null = null;
     if (data.birthdayMonth && data.birthdayDay) {
       const m = String(parseInt(data.birthdayMonth, 10)).padStart(2, "0");
       const d = String(parseInt(data.birthdayDay, 10)).padStart(2, "0");
-      birthday = `2000-${m}-${d}`;
+      const y = data.birthdayYear && parseInt(data.birthdayYear, 10) > 2000
+        ? data.birthdayYear
+        : "2000";
+      birthday = `${y}-${m}-${d}`;
     }
 
     const cleaned = {
@@ -576,6 +584,7 @@ function ProfileEditForm({
       addressZip: data.addressZip || null,
       addressCountry: data.addressCountry || null,
       birthday,
+      showBirthYear: data.showBirthYear,
       instagram: data.instagram || null,
       facebook: data.facebook || null,
       tiktok: data.tiktok || null,
@@ -710,7 +719,43 @@ function ProfileEditForm({
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="birthdayYear"
+                    render={({ field }) => (
+                      <FormItem className="w-28">
+                        <FormControl>
+                          <select
+                            {...field}
+                            value={field.value ?? ""}
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="">Year</option>
+                            {Array.from({ length: new Date().getFullYear() - 1919 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                              <option key={y} value={String(y)}>{y}</option>
+                            ))}
+                          </select>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 </div>
+                {form.watch("birthdayYear") && (
+                  <FormField
+                    control={form.control}
+                    name="showBirthYear"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 mt-1">
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <label className="text-sm text-muted-foreground cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                          Show birth year to family
+                        </label>
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
             </div>
           </section>

@@ -104,7 +104,8 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
 
       // Year 2000 is the placeholder stored when the user doesn't supply a year.
       const realBirthYear = birthYear > 2000 ? birthYear : null;
-      const yearTurning = today.getFullYear() + (daysUntil === 0 ? 0 : 1);
+      const thisYearBirthday = new Date(today.getFullYear(), birthMonth - 1, birthDay);
+      const yearTurning = thisYearBirthday >= today ? today.getFullYear() : today.getFullYear() + 1;
       const ageTurning = realBirthYear && m.showBirthYear
         ? yearTurning - realBirthYear
         : null;
