@@ -10,7 +10,11 @@ import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET ?? "olive-admin-2026";
+const ADMIN_SECRET = process.env.ADMIN_SECRET ?? (
+  process.env.NODE_ENV === "production"
+    ? (() => { throw new Error("ADMIN_SECRET env var must be set in production"); })()
+    : "olive-admin-2026"
+);
 
 function checkSecret(req: any, res: any): boolean {
   const secret = req.headers["x-admin-secret"] ?? req.query["secret"];

@@ -79,8 +79,8 @@ export function AiChatWidget() {
       if (data.memberAdded) {
         const name = `${data.memberAdded.firstName} ${data.memberAdded.lastName}`;
         setMemberJustAdded(name);
-        // Invalidate all family tree and member queries
-        queryClient.invalidateQueries();
+        queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/members`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/home-feed`] });
       }
     } catch {
       setMessages((prev) => [
@@ -115,7 +115,7 @@ export function AiChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
+          className="fixed bottom-20 right-6 z-50 md:bottom-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
           aria-label="Open AI assistant"
         >
           <Sparkles className="w-6 h-6" />
