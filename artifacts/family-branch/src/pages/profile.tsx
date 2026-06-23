@@ -469,7 +469,7 @@ function ProfileView({
           {canEdit && (
             <>
               {" "}
-              <button onClick={onEdit} className="underline text-primary hover:opacity-80">
+              <button onClick={onEdit} className="underline text-primary hover:opacity-80 cursor-pointer">
                 Add some.
               </button>
             </>
@@ -500,7 +500,7 @@ class ProfileEditErrorBoundary extends Component<
           <p className="font-semibold">Something went wrong loading the edit form.</p>
           <p className="text-sm opacity-80 font-mono break-all">{this.state.error.message}</p>
           <button
-            className="text-sm underline"
+            className="text-sm underline cursor-pointer"
             onClick={() => this.setState({ error: null })}
           >
             Try again
@@ -691,7 +691,7 @@ function ProfileEditForm({
                           <select
                             {...field}
                             value={field.value ?? ""}
-                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                           >
                             <option value="">Month</option>
                             {MONTHS.map((m, i) => (
@@ -711,7 +711,7 @@ function ProfileEditForm({
                           <select
                             {...field}
                             value={field.value ?? ""}
-                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                           >
                             <option value="">Day</option>
                             {DAYS.map((d) => (
@@ -731,7 +731,7 @@ function ProfileEditForm({
                           <select
                             {...field}
                             value={field.value ?? ""}
-                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                           >
                             <option value="">Year</option>
                             {Array.from({ length: new Date().getFullYear() - 1919 }, (_, i) => new Date().getFullYear() - i).map((y) => (

@@ -221,7 +221,7 @@ function ProfileCompletion({
           <p className="text-sm font-semibold text-foreground">Your profile</p>
           <button
             onClick={onDismiss}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             aria-label="Dismiss"
           >
             Dismiss

@@ -447,7 +447,7 @@ function PickCandidate({
           <button
             key={c.id}
             onClick={() => onPick(c)}
-            className="w-full text-left p-4 rounded-xl border hover:border-primary hover:bg-primary/5 transition-colors"
+            className="w-full text-left p-4 rounded-xl border hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
           >
             <div className="font-medium">{fullName(c)}</div>
             {hint(c) && <div className="text-xs text-muted-foreground mt-1">{hint(c)}</div>}

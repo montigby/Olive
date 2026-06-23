@@ -115,7 +115,7 @@ export function AiChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 right-6 z-50 md:bottom-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
+          className="fixed bottom-20 right-6 z-50 md:bottom-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center cursor-pointer"
           aria-label="Open AI assistant"
         >
           <Sparkles className="w-6 h-6" />
@@ -139,14 +139,14 @@ export function AiChatWidget() {
             <div className="flex items-center gap-1">
               <button
                 onClick={handleReset}
-                className="w-7 h-7 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors"
+                className="w-7 h-7 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors cursor-pointer"
                 title="Start over"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-7 h-7 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors"
+                className="w-7 h-7 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
@@ -224,7 +224,7 @@ export function AiChatWidget() {
             <button
               onClick={() => sendMessage(input)}
               disabled={isLoading || !input.trim()}
-              className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+              className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all flex-shrink-0"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

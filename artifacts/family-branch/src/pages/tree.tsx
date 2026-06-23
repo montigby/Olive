@@ -2346,7 +2346,7 @@ export default function Tree() {
           </span>
           <button
             onClick={() => navigate("/tree")}
-            className="font-medium underline underline-offset-2 hover:text-amber-700 transition-colors whitespace-nowrap"
+            className="font-medium underline underline-offset-2 hover:text-amber-700 transition-colors whitespace-nowrap cursor-pointer"
           >
             Exit preview
           </button>
