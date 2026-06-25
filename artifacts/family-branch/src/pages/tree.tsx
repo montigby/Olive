@@ -1,14 +1,16 @@
 import { useGetFamilyTree, getGetFamilyTreeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
   ReactFlow,
+  ReactFlowProvider,
   MiniMap,
   Controls,
   Background,
   useNodesState,
   useEdgesState,
+  useNodesInitialized,
   MarkerType,
   Handle,
   Position,
@@ -324,6 +326,60 @@ const nodeTypes = {
   child: ChildNode,
   pill: PillNode,
 };
+
+// ---------------------------------------------------------------------------
+// TreeCanvas — owns the ReactFlow JSX and hides until nodes are measured.
+// Must live inside a ReactFlowProvider. Keeps the parent Tree component free
+// of ReactFlow context so useNodesInitialized() can be called here.
+// ---------------------------------------------------------------------------
+function TreeCanvas({
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  onNodeClick,
+}: {
+  nodes: any[];
+  edges: any[];
+  onNodesChange: any;
+  onEdgesChange: any;
+  onNodeClick: (event: React.MouseEvent, node: any) => void;
+}) {
+  const nodesInitialized = useNodesInitialized();
+  // Stay invisible until ReactFlow has measured all nodes — this ensures the
+  // fitView viewport correction happens before the first visible frame,
+  // eliminating the flash where nodes appear at raw coordinates.
+  const visible = nodesInitialized && nodes.length > 0;
+
+  return (
+    <div className="w-full h-full transition-opacity duration-150" style={{ opacity: visible ? 1 : 0 }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.1}
+        maxZoom={2}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
+        className="bg-[#FAF7F2]"
+        onNodeClick={onNodeClick}
+      >
+        <Background color="#c8ddd0" gap={24} size={1} />
+        <Controls className="bg-card border shadow-sm rounded-xl" />
+        <MiniMap
+          className="bg-card border rounded-xl overflow-hidden shadow-sm"
+          maskColor="rgba(74,124,89,0.08)"
+          nodeColor="hsl(var(--primary))"
+        />
+      </ReactFlow>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Layout engine
@@ -2277,6 +2333,25 @@ export default function Tree() {
     });
   };
 
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+    if (node.type === "pill") {
+      togglePill(node.data.pillId as string);
+      return;
+    }
+    if (node.data?.pillId) {
+      const card = (event.target as HTMLElement).closest("[data-person-id]");
+      if (!card) {
+        togglePill(node.data.pillId as string);
+        return;
+      }
+    }
+    const card = (event.target as HTMLElement).closest("[data-person-id]");
+    if (card) {
+      const personId = card.getAttribute("data-person-id");
+      if (personId) navigate(`/members/${personId}`);
+    }
+  }, [togglePill, navigate]);
+
   // Fetch explicit relationship edges and build a bidirectional spouse map
   useEffect(() => {
     if (!unitId) return;
@@ -2373,52 +2448,15 @@ export default function Tree() {
       </div>
 
       <div className="flex-1 rounded-2xl border overflow-hidden shadow-inner bg-[#FAF7F2] [&_.react-flow__node]:cursor-pointer">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.1}
-          maxZoom={2}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          elementsSelectable={false}
-          className="bg-[#FAF7F2]"
-          onNodeClick={(event, node) => {
-            // ── Pill: expand / collapse ──────────────────────────────────
-            if (node.type === "pill") {
-              togglePill(node.data.pillId as string);
-              return;
-            }
-
-            // ── Expanded pill root: collapse when clicking outside a card ──
-            if (node.data?.pillId) {
-              const card = (event.target as HTMLElement).closest("[data-person-id]");
-              if (!card) {
-                togglePill(node.data.pillId as string);
-                return;
-              }
-            }
-
-            // ── Normal node: navigate to person profile ──────────────────
-            const card = (event.target as HTMLElement).closest("[data-person-id]");
-            if (card) {
-              const personId = card.getAttribute("data-person-id");
-              if (personId) navigate(`/members/${personId}`);
-            }
-          }}
-        >
-          <Background color="#c8ddd0" gap={24} size={1} />
-          <Controls className="bg-card border shadow-sm rounded-xl" />
-          <MiniMap
-            className="bg-card border rounded-xl overflow-hidden shadow-sm"
-            maskColor="rgba(74,124,89,0.08)"
-            nodeColor="hsl(var(--primary))"
+        <ReactFlowProvider>
+          <TreeCanvas
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={handleNodeClick}
           />
-        </ReactFlow>
+        </ReactFlowProvider>
       </div>
     </div>
   );
