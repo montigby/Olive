@@ -2230,10 +2230,15 @@ export default function Tree() {
   const unitId = user?.familyUnit.id || "";
   const [, navigate] = useLocation();
 
-  // Admin-only: ?viewAs=personId lets the admin preview the tree from any member's POV
-  const viewAsId = user?.isAdmin
-    ? (new URLSearchParams(window.location.search).get("viewAs") ?? null)
-    : null;
+  // Admin-only: ?viewAs=personId lets the admin preview the tree from any member's POV.
+  // Stored as state (not derived from window.location.search directly) so that clearing
+  // it via setViewAsId triggers a re-render immediately — navigate() alone only changes
+  // the URL without re-rendering when the pathname stays the same.
+  const [viewAsId, setViewAsId] = useState<string | null>(() =>
+    user?.isAdmin
+      ? (new URLSearchParams(window.location.search).get("viewAs") ?? null)
+      : null
+  );
 
   const { data: treeData, isLoading } = useGetFamilyTree(unitId, {
     query: {
@@ -2354,7 +2359,7 @@ export default function Tree() {
             👁 Previewing tree as <strong>{viewAsPerson.firstName} {viewAsPerson.lastName}</strong>
           </span>
           <button
-            onClick={() => navigate("/tree")}
+            onClick={() => { setViewAsId(null); navigate("/tree"); }}
             className="font-medium underline underline-offset-2 hover:text-amber-700 transition-colors whitespace-nowrap cursor-pointer"
           >
             Exit preview

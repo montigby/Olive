@@ -450,12 +450,7 @@ export default function Members() {
 
                       {/* Admin-only: preview tree from this member's perspective */}
                       {user?.isAdmin && (
-                        <a
-                          href={`/tree?viewAs=${member.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`Preview tree as ${member.firstName}`}
-                        >
+                        <Link href={`/tree?viewAs=${member.id}`} title={`Preview tree as ${member.firstName}`}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -463,7 +458,7 @@ export default function Members() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                        </a>
+                        </Link>
                       )}
 
                       <Link href={`/members/${member.id}`}>
