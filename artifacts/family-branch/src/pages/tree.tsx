@@ -131,18 +131,15 @@ function generatePillLabel(members: any[], spouseFirstName?: string): string {
 // data-person-id lets onNodeClick detect which person was clicked
 // ---------------------------------------------------------------------------
 function PersonCard({ member }: { member: any }) {
-  const [hovered, setHovered] = useState(false);
   return (
     <div
       data-person-id={member.id}
       className="nopan flex flex-col items-center cursor-pointer select-none"
       style={{ width: PERSON_W }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       {/* Circle avatar */}
       <div className="relative flex-shrink-0">
-        <Avatar className={`h-16 w-16 border-2 shadow-sm transition-all pointer-events-none ${hovered ? "border-primary/60 shadow-md" : "border-border"}`}>
+        <Avatar className="av-ring h-16 w-16 border-2 border-border shadow-sm transition-all pointer-events-none">
           <AvatarImage src={member.photoUrl} />
           <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">
             {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
