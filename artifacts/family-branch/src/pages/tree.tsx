@@ -2250,6 +2250,9 @@ export default function Tree() {
 
   // Explicit spouse pairs from the relationship DB (personId → spouseId, bidirectional)
   const [explicitPairs, setExplicitPairs] = useState<Map<string, string>>(new Map());
+  // Cache the admin (layoutUnit) result so exiting preview is instant.
+  // Keyed by both treeData and explicitPairs references — invalidates on any refetch or spouse reload.
+  const adminLayoutCache = useRef<{ nodes: any[]; edges: any[]; forPairs: Map<string, string>; forTreeData: unknown } | null>(null);
   // Map of parentId → Set<childId> seeded from biological_parent / adoptive_parent
   // / step_parent edges in the relationships table. Lets the layered view
   // recognise matriarchs / patriarchs (e.g. Deborah) who have no parentPersonId
@@ -2318,7 +2321,13 @@ export default function Tree() {
     if (viewerPerson) {
       ({ nodes: n, edges: e } = layoutLayeredView(viewerPerson, allMembers, 0, 0, expandedPills, explicitPairs, childrenByParent, parentsByChild));
     } else {
-      ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
+      if (adminLayoutCache.current && adminLayoutCache.current.forPairs === explicitPairs && adminLayoutCache.current.forTreeData === treeData) {
+        n = adminLayoutCache.current.nodes;
+        e = adminLayoutCache.current.edges;
+      } else {
+        ({ nodes: n, edges: e } = layoutUnit(treeData.rootUnit, 0, 0, explicitPairs));
+        adminLayoutCache.current = { nodes: n, edges: e, forPairs: explicitPairs, forTreeData: treeData };
+      }
     }
 
     setNodes(n);
@@ -2358,7 +2367,7 @@ export default function Tree() {
         <p className="text-muted-foreground mt-1">Click any person to view their profile.</p>
       </div>
 
-      <div className="flex-1 rounded-2xl border overflow-hidden shadow-inner bg-[#FAF7F2]">
+      <div className="flex-1 rounded-2xl border overflow-hidden shadow-inner bg-[#FAF7F2] [&_.react-flow__node]:cursor-pointer">
         <ReactFlow
           nodes={nodes}
           edges={edges}

@@ -269,7 +269,37 @@ router.post("/invites/:token/merge/confirm", async (req, res) => {
     return;
   }
 
+  // Load the existing person to check for same-family conflict and to clear
+  // their email in the transaction (avoids unique constraint violation)
+  const existingPersonRows = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.id, account.personId))
+    .limit(1);
+
+  if (!existingPersonRows.length) {
+    res.status(500).json({ error: "Internal error", message: "Existing person not found" });
+    return;
+  }
+
+  const existingPerson = existingPersonRows[0];
+
+  if (existingPerson.familyUnitId === placeholder.familyUnitId) {
+    res.status(409).json({
+      error: "Conflict",
+      message: "Your account is already linked to a member in this family. You cannot link it to a different profile here.",
+    });
+    return;
+  }
+
   await db.transaction(async (tx) => {
+    // Remove the email from the old person record so the unique constraint
+    // doesn't fire when we set the same email on the placeholder below
+    await tx
+      .update(personsTable)
+      .set({ email: null, claimed: false, claimedAt: null, updatedAt: new Date() })
+      .where(eq(personsTable.id, existingPerson.id));
+
     // Mark the placeholder as claimed with the existing account's email
     const [updatedPlaceholder] = await tx
       .update(personsTable)
