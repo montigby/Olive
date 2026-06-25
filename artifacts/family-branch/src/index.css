@@ -267,13 +267,6 @@
 
   .no-default-active-elevate {}
 
-  /* Tree canvas avatar hover — targets the ReactFlow node wrapper so the effect
-     is browser-managed (cannot get stuck) and survives ReactFlow's internal
-     pointer-events changes during panning. */
-  .react-flow__node:hover .av-ring {
-    border-color: hsl(var(--primary) / 0.6);
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  }
 
 
   /**

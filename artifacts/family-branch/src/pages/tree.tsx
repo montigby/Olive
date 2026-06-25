@@ -139,7 +139,7 @@ function PersonCard({ member }: { member: any }) {
     >
       {/* Circle avatar */}
       <div className="relative flex-shrink-0">
-        <Avatar className="av-ring h-16 w-16 border-2 border-border shadow-sm transition-all pointer-events-none">
+        <Avatar className="h-16 w-16 border-2 border-primary/60 shadow-sm pointer-events-none">
           <AvatarImage src={member.photoUrl} />
           <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">
             {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
