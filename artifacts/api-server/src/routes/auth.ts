@@ -229,5 +229,43 @@ router.get("/auth/me", requireAuth, async (req, res) => {
   });
 });
 
+// POST /api/auth/change-password
+router.post("/auth/change-password", requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body as {
+    currentPassword?: string;
+    newPassword?: string;
+  };
+
+  if (!currentPassword || !newPassword || newPassword.length < 8) {
+    res.status(400).json({ error: "New password must be at least 8 characters." });
+    return;
+  }
+
+  const [account] = await db
+    .select()
+    .from(accountsTable)
+    .where(eq(accountsTable.personId, req.auth!.personId))
+    .limit(1);
+
+  if (!account) {
+    res.status(404).json({ error: "Account not found." });
+    return;
+  }
+
+  const valid = await bcrypt.compare(currentPassword, account.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Current password is incorrect." });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 12);
+  await db
+    .update(accountsTable)
+    .set({ passwordHash: newHash })
+    .where(eq(accountsTable.personId, req.auth!.personId));
+
+  res.json({ ok: true });
+});
+
 export { formatPerson, formatUnit };
 export default router;

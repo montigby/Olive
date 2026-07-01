@@ -95,6 +95,9 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
     null;
 
   // ── Upcoming birthdays ────────────────────────────────────────────────────
+  // Show birthdays within the next 30 days, plus any that happened in the
+  // past 7 days (daysUntil >= 358). Upcoming entries sort first (0→30),
+  // then recent-past sorted by most recent (364→358).
   const upcomingBirthdays = visibleMembers
     .filter((m) => !!m.birthday)
     .map((m) => {
@@ -104,7 +107,6 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
       const birthDay = parseInt(parts[2]!, 10);
       const daysUntil = daysUntilBirthday(m.birthday!);
 
-      // Year 2000 is the placeholder stored when the user doesn't supply a year.
       const realBirthYear = birthYear !== BIRTHDAY_PLACEHOLDER_YEAR ? birthYear : null;
       const thisYearBirthday = new Date(today.getFullYear(), birthMonth - 1, birthDay);
       const yearTurning = thisYearBirthday >= today ? today.getFullYear() : today.getFullYear() + 1;
@@ -126,8 +128,15 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
         email: m.email ?? null,
       };
     })
-    .sort((a, b) => a.daysUntil - b.daysUntil)
-    .slice(0, 5);
+    .filter((m) => m.daysUntil <= 30 || m.daysUntil >= 358)
+    .sort((a, b) => {
+      const aUpcoming = a.daysUntil <= 30;
+      const bUpcoming = b.daysUntil <= 30;
+      if (aUpcoming && !bUpcoming) return -1;
+      if (!aUpcoming && bUpcoming) return 1;
+      if (aUpcoming) return a.daysUntil - b.daysUntil;
+      return b.daysUntil - a.daysUntil; // recent-past: higher = more recent
+    });
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const birthdaysThisMonth = visibleMembers.filter((m) => {

@@ -150,14 +150,16 @@ function BirthdayRow({ entry, index, onWishClick }: {
           {birthdaySubline(entry)}
         </p>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="flex-shrink-0 h-8 text-xs rounded-full border-primary/30 text-primary hover:bg-primary/5"
-        onClick={() => onWishClick(entry)}
-      >
-        Wish
-      </Button>
+      {(entry.daysUntil <= 7 || entry.daysUntil >= 358) && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-shrink-0 h-8 text-xs rounded-full border-primary/30 text-primary hover:bg-primary/5"
+          onClick={() => onWishClick(entry)}
+        >
+          Wish
+        </Button>
+      )}
     </div>
   );
 }

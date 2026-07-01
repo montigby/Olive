@@ -97,6 +97,7 @@ export default function Settings() {
           <p className="text-muted-foreground mt-1">Manage your account and family unit.</p>
         </div>
         {canInvite && <SharedInviteCard unitId={unitId} readOnly />}
+        <ChangePasswordCard />
         <Card className="border-none shadow-sm bg-card">
           <CardContent className="p-8 flex flex-col items-center gap-4 text-center">
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
@@ -246,7 +247,79 @@ export default function Settings() {
       <MemberPermissionsCard unitId={unitId} membersCanInvite={(unit as any)?.membersCanInvite ?? true} />
       <SharedInviteCard unitId={unitId} />
       <PendingClaimsCard unitId={unitId} />
+      <ChangePasswordCard />
     </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Change password — available to all users
+// ──────────────────────────────────────────────────────────────────────────
+function ChangePasswordCard() {
+  const { toast } = useToast();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (next !== confirm) {
+      toast({ variant: "destructive", title: "Passwords don't match." });
+      return;
+    }
+    if (next.length < 8) {
+      toast({ variant: "destructive", title: "New password must be at least 8 characters." });
+      return;
+    }
+    setSaving(true);
+    try {
+      const r = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}`,
+        },
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      if (r.ok) {
+        toast({ title: "Password updated." });
+        setCurrent(""); setNext(""); setConfirm("");
+      } else {
+        const body = await r.json().catch(() => ({})) as { error?: string };
+        toast({ variant: "destructive", title: body.error ?? "Couldn't update password." });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="border-none shadow-sm bg-card">
+      <CardHeader>
+        <CardTitle className="font-serif text-xl">Change Password</CardTitle>
+        <CardDescription>Update your account password.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-3 max-w-sm">
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Current password</label>
+            <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} className="bg-background" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">New password</label>
+            <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} className="bg-background" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Confirm new password</label>
+            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="bg-background" />
+          </div>
+          <Button type="submit" disabled={saving || !current || !next || !confirm} className="mt-1">
+            {saving ? "Saving…" : "Update Password"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -260,8 +333,13 @@ function MemberPermissionsCard({ unitId, membersCanInvite }: { unitId: string; m
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [localValue, setLocalValue] = useState(membersCanInvite);
+
+  useEffect(() => { setLocalValue(membersCanInvite); }, [membersCanInvite]);
 
   const toggle = async () => {
+    const newValue = !localValue;
+    setLocalValue(newValue);
     setSaving(true);
     try {
       const r = await fetch(`/api/family-units/${unitId}`, {
@@ -270,12 +348,13 @@ function MemberPermissionsCard({ unitId, membersCanInvite }: { unitId: string; m
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}`,
         },
-        body: JSON.stringify({ membersCanInvite: !membersCanInvite }),
+        body: JSON.stringify({ membersCanInvite: newValue }),
       });
       if (r.ok) {
         queryClient.invalidateQueries({ queryKey: getGetFamilyUnitQueryKey(unitId) });
-        toast({ title: !membersCanInvite ? "Members can now share the invite link" : "Invite link restricted to admins" });
+        toast({ title: newValue ? "Members can now share the invite link" : "Invite link restricted to admins" });
       } else {
+        setLocalValue(!newValue);
         toast({ variant: "destructive", title: "Couldn't update setting" });
       }
     } finally {
@@ -300,13 +379,13 @@ function MemberPermissionsCard({ unitId, membersCanInvite }: { unitId: string; m
             </p>
           </div>
           <Button
-            variant={membersCanInvite ? "default" : "outline"}
+            variant={localValue ? "default" : "outline"}
             size="sm"
             onClick={toggle}
             disabled={saving}
             className="shrink-0 w-16"
           >
-            {membersCanInvite ? "On" : "Off"}
+            {localValue ? "On" : "Off"}
           </Button>
         </div>
       </CardContent>
