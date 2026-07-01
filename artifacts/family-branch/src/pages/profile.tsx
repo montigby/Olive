@@ -194,8 +194,11 @@ interface LifeEvent {
 
 function formatEventDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y!, m! - 1, d!);
-  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  if (m === 1 && d === 1) return String(y);
+  if (d === 1) {
+    return new Date(y!, m! - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }
+  return new Date(y!, m! - 1, d!).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 function useLifeEvents(personId: string) {
@@ -251,11 +254,9 @@ function AddEventForm({ onAdd, onCancel }: { onAdd: (data: any) => Promise<Respo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!month || !day || !year) {
-      toast({ variant: "destructive", title: "Please fill in the date." });
-      return;
-    }
-    const eventDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const m = month ? String(month).padStart(2, "0") : "01";
+    const d = month && day ? String(day).padStart(2, "0") : "01";
+    const eventDate = `${year}-${m}-${d}`;
     setSaving(true);
     const res = await onAdd({ eventType, eventDate, notes: notes || undefined });
     setSaving(false);
@@ -299,7 +300,7 @@ function AddEventForm({ onAdd, onCancel }: { onAdd: (data: any) => Promise<Respo
           <label className="text-xs text-muted-foreground font-medium">Month</label>
           <select
             value={month}
-            onChange={(e) => setMonth(e.target.value)}
+            onChange={(e) => { setMonth(e.target.value); setDay(""); }}
             className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
             <option value="">Month</option>
@@ -308,19 +309,21 @@ function AddEventForm({ onAdd, onCancel }: { onAdd: (data: any) => Promise<Respo
             ))}
           </select>
         </div>
-        <div className="w-24 space-y-1">
-          <label className="text-xs text-muted-foreground font-medium">Day</label>
-          <select
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-          >
-            <option value="">Day</option>
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={String(d)}>{d}</option>
-            ))}
-          </select>
-        </div>
+        {month && (
+          <div className="w-24 space-y-1">
+            <label className="text-xs text-muted-foreground font-medium">Day</label>
+            <select
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+            >
+              <option value="">Day</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={String(d)}>{d}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       <div className="space-y-1">
         <label className="text-xs text-muted-foreground font-medium">Note (optional)</label>
@@ -353,9 +356,11 @@ function LifeEventsCard({
 }) {
   const { events, loading, addEvent, deleteEvent } = useLifeEvents(personId);
   const [adding, setAdding] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (eventId: string) => {
+    setConfirmDeleteId(null);
     setDeletingId(eventId);
     await deleteEvent(eventId);
     setDeletingId(null);
@@ -400,17 +405,33 @@ function LifeEventsCard({
                 )}
               </div>
               {canEdit && (
-                <button
-                  onClick={() => handleDelete(event.id)}
-                  disabled={deletingId === event.id}
-                  className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer mt-0.5"
-                  title="Delete event"
-                >
-                  {deletingId === event.id
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <Trash2 className="w-4 h-4" />
-                  }
-                </button>
+                deletingId === event.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mt-0.5" />
+                ) : confirmDeleteId === event.id ? (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-destructive">Delete?</span>
+                    <button
+                      onClick={() => handleDelete(event.id)}
+                      className="text-xs font-semibold text-destructive hover:opacity-70 cursor-pointer"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="text-xs text-muted-foreground hover:opacity-70 cursor-pointer"
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(event.id)}
+                    className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer mt-0.5"
+                    title="Delete event"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )
               )}
             </div>
           ))}
