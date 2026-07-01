@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { BookUser, LogOut, Settings, Users, Network, Home, Cake } from "lucide-react";
+import { BookUser, LogOut, Settings, Users, Network, Home, Cake, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLogout } from "@workspace/api-client-react";
@@ -41,7 +41,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = [
-    { label: "Dashboard", href: "/dashboard", icon: Home },
+    { label: "Home", href: "/home", icon: Home },
+    ...(user.isAdmin ? [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }] : []),
     { label: "Family Tree", href: "/tree", icon: Network },
     { label: "Directory", href: "/members", icon: Users },
     { label: "Birthdays", href: "/birthdays", icon: Cake },
@@ -129,7 +130,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Bottom Tab Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-stretch h-16 shadow-[0_-1px_8px_rgba(0,0,0,0.08)]">
         {navItems.map((item) => {
-          const isActive = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+          const isActive = location === item.href || (item.href !== "/dashboard" && item.href !== "/home" && location.startsWith(item.href));
           return (
             <Link key={item.href} href={item.href} className="flex-1">
               <div className={`flex flex-col items-center justify-center h-full gap-0.5 transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}>

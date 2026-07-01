@@ -1,18 +1,6 @@
-/**
- * Post-invite welcome / home-feed screen.
- *
- * Shown immediately after a new member claims their invite so they
- * experience the product's core value (live family knowledge) before
- * being asked to fill in their own profile.
- *
- * Layout:
- *   Mobile  — single column: header → stats → birthdays → updates → completion
- *   Desktop — header spans full width; below: [birthdays 1.4fr | stats+updates+completion 1fr]
- */
-
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Cake,
   ChevronRight,
-  Leaf,
   Phone,
   Camera,
   Mail,
@@ -259,7 +246,6 @@ function ProfileCompletion({
 
 export default function Welcome() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const unitId = user?.familyUnit.id || "";
   const [completionDismissed, setCompletionDismissed] = useState(false);
@@ -277,8 +263,6 @@ export default function Welcome() {
     enabled: !!unitId,
     staleTime: 60_000,
   });
-
-  const handleContinue = () => setLocation("/dashboard");
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (isLoading || !data) {
@@ -329,15 +313,6 @@ export default function Welcome() {
         dismissed={completionDismissed}
         onDismiss={() => setCompletionDismissed(true)}
       />
-
-      {/* Continue button */}
-      <Button
-        onClick={handleContinue}
-        className="w-full rounded-full h-11"
-      >
-        Go to my family
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
     </div>
   );
 
@@ -371,20 +346,10 @@ export default function Welcome() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
-      {/* ── Welcome header ─────────────────────────────────────────────────── */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Leaf className="w-5 h-5 text-primary" />
-          <h1 className="text-3xl font-serif font-bold text-foreground">
-            Welcome to Your Family
-          </h1>
-        </div>
-        <p className="text-muted-foreground text-lg">
-          {member.firstName
-            ? `Hi ${member.firstName} — here's what's happening.`
-            : "Here's what's happening in your family."}
-        </p>
-      </div>
+      {/* ── Greeting ───────────────────────────────────────────────────────── */}
+      <p className="text-muted-foreground text-base">
+        {member.firstName ? `Hi, ${member.firstName}.` : "Here's what's happening."}
+      </p>
 
       {/* ── Mobile: single column ──────────────────────────────────────────── */}
       <div className="md:hidden space-y-4">
@@ -417,11 +382,6 @@ export default function Welcome() {
           dismissed={completionDismissed}
           onDismiss={() => setCompletionDismissed(true)}
         />
-
-        <Button onClick={handleContinue} className="w-full rounded-full h-11">
-          Go to my family
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
       </div>
 
       {/* ── Desktop: two-column ────────────────────────────────────────────── */}

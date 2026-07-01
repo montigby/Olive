@@ -15,6 +15,7 @@ import Join from "@/pages/join";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Welcome   = lazy(() => import("@/pages/welcome"));
+const HomeView  = lazy(() => import("@/pages/welcome"));
 const Tree = lazy(() => import("@/pages/tree"));
 const Members = lazy(() => import("@/pages/members"));
 const Profile = lazy(() => import("@/pages/profile"));
@@ -47,6 +48,7 @@ function makePage(Component: React.ComponentType) {
 
 const DashboardPage = makePage(Dashboard);
 const WelcomePage   = makePage(Welcome);
+const HomeViewPage  = makePage(HomeView);
 const TreePage     = makePage(Tree);
 const MembersPage  = makePage(Members);
 const ProfilePage  = makePage(Profile);
@@ -66,6 +68,7 @@ function AppRouter() {
       <Route path="/join/:token"     component={Join}        />
 
       {/* Protected — order matters: more-specific paths first */}
+      <Route path="/home"              component={HomeViewPage} />
       <Route path="/welcome"           component={WelcomePage}  />
       <Route path="/members/:personId" component={ProfilePage}  />
       <Route path="/members"           component={MembersPage}  />

@@ -42,7 +42,7 @@ export default function Login() {
     loginMutation.mutate({ data }, {
       onSuccess: (response) => {
         setAuthToken(response.token);
-        setLocation("/dashboard");
+        setLocation("/home");
       },
       onError: (error: any) => {
         toast({
