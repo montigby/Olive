@@ -171,6 +171,9 @@ router.patch("/family-units/:unitId", requireAuth, requireAdmin, async (req, res
 
   const updateData: Partial<typeof familyUnitsTable.$inferInsert> = {};
   if (parsed.data.unitName) updateData.unitName = parsed.data.unitName;
+  if (typeof (req.body as any).membersCanInvite === "boolean") {
+    updateData.membersCanInvite = (req.body as any).membersCanInvite;
+  }
   updateData.updatedAt = new Date();
 
   const updated = await db

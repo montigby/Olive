@@ -60,6 +60,7 @@ function formatUnit(u: typeof familyUnitsTable.$inferSelect, memberCount = 0, cl
     parentUnitId: u.parentUnitId,
     parentLinkStatus: u.parentLinkStatus,
     parentLinkedAt: u.parentLinkedAt?.toISOString() ?? null,
+    membersCanInvite: u.membersCanInvite,
     createdAt: u.createdAt.toISOString(),
     memberCount,
     claimedCount,

@@ -118,15 +118,27 @@ router.post(
 
 // GET /api/family-units/:unitId/invite-tokens
 // Returns the currently-active token (or null if none).
+// Admins always have access; non-admins can access when membersCanInvite = true.
 router.get(
   "/family-units/:unitId/invite-tokens",
   requireAuth,
-  requireAdmin,
   async (req, res) => {
     const unitId = String(req.params.unitId);
     if (req.auth?.familyUnitId !== unitId) {
       res.status(403).json({ error: "Forbidden" });
       return;
+    }
+
+    if (!req.auth?.isAdmin) {
+      const [unit] = await db
+        .select({ membersCanInvite: familyUnitsTable.membersCanInvite })
+        .from(familyUnitsTable)
+        .where(eq(familyUnitsTable.id, unitId))
+        .limit(1);
+      if (!unit?.membersCanInvite) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
     }
 
     const [row] = await db

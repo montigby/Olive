@@ -89,12 +89,14 @@ export default function Settings() {
   };
 
   if (!user?.isAdmin) {
+    const canInvite = (unit as any)?.membersCanInvite !== false;
     return (
       <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div>
           <h1 className="text-3xl font-serif font-bold text-foreground">Settings</h1>
           <p className="text-muted-foreground mt-1">Manage your account and family unit.</p>
         </div>
+        {canInvite && <SharedInviteCard unitId={unitId} readOnly />}
         <Card className="border-none shadow-sm bg-card">
           <CardContent className="p-8 flex flex-col items-center gap-4 text-center">
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
@@ -241,6 +243,7 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      <MemberPermissionsCard unitId={unitId} membersCanInvite={(unit as any)?.membersCanInvite ?? true} />
       <SharedInviteCard unitId={unitId} />
       <PendingClaimsCard unitId={unitId} />
     </div>
@@ -250,7 +253,68 @@ export default function Settings() {
 // ──────────────────────────────────────────────────────────────────────────
 // Shared invite token — Phase 4
 // ──────────────────────────────────────────────────────────────────────────
-function SharedInviteCard({ unitId }: { unitId: string }) {
+// ──────────────────────────────────────────────────────────────────────────
+// Member permissions toggle (admin only)
+// ──────────────────────────────────────────────────────────────────────────
+function MemberPermissionsCard({ unitId, membersCanInvite }: { unitId: string; membersCanInvite: boolean }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+
+  const toggle = async () => {
+    setSaving(true);
+    try {
+      const r = await fetch(`/api/family-units/${unitId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("oliveToken") ?? ""}`,
+        },
+        body: JSON.stringify({ membersCanInvite: !membersCanInvite }),
+      });
+      if (r.ok) {
+        queryClient.invalidateQueries({ queryKey: getGetFamilyUnitQueryKey(unitId) });
+        toast({ title: !membersCanInvite ? "Members can now share the invite link" : "Invite link restricted to admins" });
+      } else {
+        toast({ variant: "destructive", title: "Couldn't update setting" });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="border-none shadow-sm bg-card">
+      <CardHeader>
+        <CardTitle className="font-serif text-xl flex items-center gap-2">
+          <User className="w-5 h-5 text-primary" /> Member Permissions
+        </CardTitle>
+        <CardDescription>Control what family members are allowed to do.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium">Members can share invite link</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              When on, any family member can copy and share the invite link from their Settings page.
+            </p>
+          </div>
+          <Button
+            variant={membersCanInvite ? "default" : "outline"}
+            size="sm"
+            onClick={toggle}
+            disabled={saving}
+            className="shrink-0 w-16"
+          >
+            {membersCanInvite ? "On" : "Off"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SharedInviteCard({ unitId, readOnly = false }: { unitId: string; readOnly?: boolean }) {
   const { toast } = useToast();
   const [active, setActive] = useState<{ token: string; url: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -327,14 +391,20 @@ function SharedInviteCard({ unitId }: { unitId: string }) {
                 <span className="ml-2 hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
               </Button>
             </div>
-            <Button variant="outline" onClick={regenerate} disabled={working}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${working ? "animate-spin" : ""}`} />
-              {working ? "Generating…" : "Regenerate link"}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Regenerating immediately invalidates the previous link.
-            </p>
+            {!readOnly && (
+              <>
+                <Button variant="outline" onClick={regenerate} disabled={working}>
+                  <RefreshCw className={`w-4 h-4 mr-2 ${working ? "animate-spin" : ""}`} />
+                  {working ? "Generating…" : "Regenerate link"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Regenerating immediately invalidates the previous link.
+                </p>
+              </>
+            )}
           </>
+        ) : readOnly ? (
+          <p className="text-sm text-muted-foreground">No invite link is active yet. Ask an admin to create one.</p>
         ) : (
           <Button onClick={regenerate} disabled={working}>
             <Link2 className="w-4 h-4 mr-2" />

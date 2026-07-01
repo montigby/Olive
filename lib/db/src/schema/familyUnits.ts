@@ -3,6 +3,7 @@ import {
   uuid,
   varchar,
   timestamp,
+  boolean,
   check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -20,6 +21,7 @@ export const familyUnitsTable = pgTable(
       .notNull()
       .default("none"),
     parentLinkedAt: timestamp("parent_linked_at", { withTimezone: true }),
+    membersCanInvite: boolean("members_can_invite").notNull().default(true),
     createdBy: uuid("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
