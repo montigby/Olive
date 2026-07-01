@@ -52,6 +52,7 @@ export const personsTable = pgTable(
     confirmedMembersOnly: boolean("confirmed_members_only").notNull().default(false),
     hideAddress: boolean("hide_address").notNull().default(false),
     hideSocials: boolean("hide_socials").notNull().default(false),
+    receiveNotifications: boolean("receive_notifications").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

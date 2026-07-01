@@ -11,6 +11,8 @@ import aiRouter from "./ai";
 import adminRouter from "./admin";
 import homeFeedRouter from "./homeFeed";
 import inviteFlowRouter from "./inviteFlow";
+import cronRouter from "./cron";
+import lifeEventsRouter from "./lifeEvents";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,7 @@ router.use(aiRouter);
 router.use(adminRouter);
 router.use(homeFeedRouter);
 router.use(inviteFlowRouter);
+router.use(cronRouter);
+router.use(lifeEventsRouter);
 
 export default router;

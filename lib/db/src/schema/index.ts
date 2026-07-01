@@ -7,3 +7,4 @@ export * from "./people";
 export * from "./relationships";
 export * from "./inviteTokens";
 export * from "./claimRequests";
+export * from "./lifeEvents";

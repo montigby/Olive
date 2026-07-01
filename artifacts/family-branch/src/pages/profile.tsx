@@ -44,6 +44,9 @@ import {
   Cake,
   Camera,
   Loader2,
+  Plus,
+  Trash2,
+  CalendarDays,
 } from "lucide-react";
 
 const MONTHS = [
@@ -161,6 +164,266 @@ function VenmoIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M19.45 2.005c.48.8.695 1.625.695 2.665 0 3.32-2.835 7.63-5.13 10.66H9.875L7.71 2.97l-4.595.44 2.73 16.95h7.17c3.565-4.665 7.93-12.04 7.93-17.17 0-1.24-.215-2.085-.625-2.77l-4.875 1.585z"/>
     </svg>
+  );
+}
+
+// ─── Life Events ─────────────────────────────────────────────────────────────
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  graduation: "Graduation",
+  marriage: "Marriage",
+  new_baby: "New Baby",
+  moved: "Moved",
+  new_job: "New Job",
+  death: "Passing",
+  custom: "Event",
+};
+
+const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS);
+
+interface LifeEvent {
+  id: string;
+  personId: string;
+  familyId: string;
+  eventType: string;
+  eventDate: string;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+function formatEventDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y!, m! - 1, d!);
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function useLifeEvents(personId: string) {
+  const { user } = useAuth();
+  const [events, setEvents] = useState<LifeEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchEvents = async () => {
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/persons/${personId}/life-events`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) setEvents(await res.json());
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchEvents(); }, [personId]);
+
+  const addEvent = async (data: { eventType: string; eventDate: string; notes?: string }) => {
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/persons/${personId}/life-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) await fetchEvents();
+    return res;
+  };
+
+  const deleteEvent = async (eventId: string) => {
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/life-events/${eventId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) setEvents((prev) => prev.filter((e) => e.id !== eventId));
+  };
+
+  return { events, loading, addEvent, deleteEvent, refetch: fetchEvents };
+}
+
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const CURRENT_YEAR = new Date().getFullYear();
+
+function AddEventForm({ onAdd, onCancel }: { onAdd: (data: any) => Promise<Response>; onCancel: () => void }) {
+  const { toast } = useToast();
+  const [eventType, setEventType] = useState("graduation");
+  const [month, setMonth] = useState("");
+  const [day, setDay] = useState("");
+  const [year, setYear] = useState(String(CURRENT_YEAR));
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!month || !day || !year) {
+      toast({ variant: "destructive", title: "Please fill in the date." });
+      return;
+    }
+    const eventDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    setSaving(true);
+    const res = await onAdd({ eventType, eventDate, notes: notes || undefined });
+    setSaving(false);
+    if (res.ok) {
+      onCancel();
+    } else {
+      toast({ variant: "destructive", title: "Failed to add event." });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3 pt-3 border-t border-border/60 mt-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground font-medium">Type</label>
+          <select
+            value={eventType}
+            onChange={(e) => setEventType(e.target.value)}
+            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+          >
+            {EVENT_TYPES.map((t) => (
+              <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground font-medium">Year</label>
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+          >
+            {Array.from({ length: CURRENT_YEAR - 1899 + 5 }, (_, i) => CURRENT_YEAR + 5 - i).map((y) => (
+              <option key={y} value={String(y)}>{y}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <div className="flex-1 space-y-1">
+          <label className="text-xs text-muted-foreground font-medium">Month</label>
+          <select
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+          >
+            <option value="">Month</option>
+            {MONTHS_SHORT.map((m, i) => (
+              <option key={m} value={String(i + 1)}>{m}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-24 space-y-1">
+          <label className="text-xs text-muted-foreground font-medium">Day</label>
+          <select
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+          >
+            <option value="">Day</option>
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={String(d)}>{d}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground font-medium">Note (optional)</label>
+        <Input
+          placeholder="e.g. Graduated from UT Austin"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          maxLength={500}
+          className="bg-background"
+        />
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={saving} className="flex-1">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function LifeEventsCard({
+  personId,
+  canEdit,
+}: {
+  personId: string;
+  canEdit: boolean;
+}) {
+  const { events, loading, addEvent, deleteEvent } = useLifeEvents(personId);
+  const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (eventId: string) => {
+    setDeletingId(eventId);
+    await deleteEvent(eventId);
+    setDeletingId(null);
+  };
+
+  if (loading) return null;
+  if (!canEdit && events.length === 0) return null;
+
+  return (
+    <Card className="border border-border shadow-sm">
+      <CardContent className="px-6 py-5">
+        <div className="flex items-center justify-between border-b border-border pb-2 mb-1">
+          <h3 className="font-serif text-base font-semibold text-foreground">Life Events</h3>
+          {canEdit && !adding && (
+            <button
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1 text-xs text-primary hover:opacity-70 transition-opacity cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add
+            </button>
+          )}
+        </div>
+
+        {events.length === 0 && !adding && (
+          <p className="text-sm text-muted-foreground py-2">No life events logged yet.</p>
+        )}
+
+        <div className="space-y-0 divide-y divide-border/60">
+          {events.map((event) => (
+            <div key={event.id} className="flex items-start gap-3 py-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CalendarDays className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  {EVENT_TYPE_LABELS[event.eventType] ?? event.eventType}
+                </p>
+                <p className="text-xs text-muted-foreground">{formatEventDate(event.eventDate)}</p>
+                {event.notes && (
+                  <p className="text-sm text-muted-foreground mt-0.5">{event.notes}</p>
+                )}
+              </div>
+              {canEdit && (
+                <button
+                  onClick={() => handleDelete(event.id)}
+                  disabled={deletingId === event.id}
+                  className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer mt-0.5"
+                  title="Delete event"
+                >
+                  {deletingId === event.id
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Trash2 className="w-4 h-4" />
+                  }
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {adding && (
+          <AddEventForm
+            onAdd={addEvent}
+            onCancel={() => setAdding(false)}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -462,6 +725,9 @@ function ProfileView({
           </CardContent>
         </Card>
       )}
+
+      {/* Life Events */}
+      <LifeEventsCard personId={targetId} canEdit={canEdit} />
 
       {/* Empty state */}
       {!hasContact && !hasSocial && (
