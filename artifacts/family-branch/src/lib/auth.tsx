@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { PersonWithUnit, useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 
@@ -13,6 +14,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem("oliveToken"));
+  const queryClient = useQueryClient();
 
   // Set synchronously on every render so the getter is available before any
   // child component fires its first TanStack Query request. A useEffect would
@@ -29,11 +31,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (newToken: string) => {
     localStorage.setItem("oliveToken", newToken);
+    queryClient.clear();
     setToken(newToken);
   };
 
   const logout = () => {
     localStorage.removeItem("oliveToken");
+    queryClient.clear();
     setToken(null);
   };
 
