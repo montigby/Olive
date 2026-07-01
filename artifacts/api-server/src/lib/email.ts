@@ -1,8 +1,9 @@
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = "Olive <notifications@myolive.app>";
+
+async function getClient() {
+  const { Resend } = await import("resend");
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 export async function sendDayBeforeReminder({
   to,
@@ -20,7 +21,8 @@ export async function sendDayBeforeReminder({
   const ageText = age ? ` (turning ${age})` : "";
   const today = new Date().toISOString().slice(0, 10);
 
-  const { error } = await resend.emails.send({
+  const client = await getClient();
+  const { error } = await client.emails.send({
     from: FROM,
     to,
     subject: `${birthdayPersonName}'s birthday is tomorrow`,
@@ -48,9 +50,8 @@ export async function sendWeeklyDigest({
     personId: string;
   }>;
 }) {
-  const monday = getMondayDateString();
-
-  const { error } = await resend.emails.send({
+  const client = await getClient();
+  const { error } = await client.emails.send({
     from: FROM,
     to,
     subject: `Upcoming birthdays in your family`,

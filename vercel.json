@@ -3,6 +3,9 @@
   "buildCommand": "pnpm install && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/family-branch run build",
   "outputDirectory": "artifacts/family-branch/dist/public",
   "installCommand": "pnpm install --frozen-lockfile",
+  "functions": {
+    "api/index.js": { "runtime": "nodejs20.x" }
+  },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index" },
     { "handle": "filesystem" },
