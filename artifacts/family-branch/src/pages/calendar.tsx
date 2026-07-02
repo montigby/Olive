@@ -9,9 +9,64 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Cake } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Cake, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { parseDateLocal, formatBirthdayDate, getAgeTurning } from "@/lib/birthday";
+
+// ── Calendar helpers ──────────────────────────────────────────────────────────
+
+function nextOccurrence(birthday: string): { dateStr: string; nextDayStr: string } {
+  const [, m, d] = birthday.split("-");
+  const month = parseInt(m!, 10);
+  const day = parseInt(d!, 10);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let year = today.getFullYear();
+  if (new Date(year, month - 1, day) < today) year++;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const dateStr = `${year}${pad(month)}${pad(day)}`;
+  const end = new Date(year, month - 1, day + 1);
+  const nextDayStr = `${end.getFullYear()}${pad(end.getMonth() + 1)}${pad(end.getDate())}`;
+  return { dateStr, nextDayStr };
+}
+
+function googleCalendarUrl(entry: BirthdayEntry): string {
+  const { dateStr, nextDayStr } = nextOccurrence(entry.birthday);
+  const text = encodeURIComponent(`${entry.firstName} ${entry.lastName}'s Birthday`);
+  const details = encodeURIComponent(`Happy Birthday, ${entry.firstName}!`);
+  const recur = encodeURIComponent("RRULE:FREQ=YEARLY");
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dateStr}/${nextDayStr}&details=${details}&recur=${recur}`;
+}
+
+function downloadIcs(entry: BirthdayEntry) {
+  const { dateStr, nextDayStr } = nextOccurrence(entry.birthday);
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Olive Family//EN",
+    "BEGIN:VEVENT",
+    `DTSTART;VALUE=DATE:${dateStr}`,
+    `DTEND;VALUE=DATE:${nextDayStr}`,
+    "RRULE:FREQ=YEARLY",
+    `SUMMARY:${entry.firstName} ${entry.lastName}'s Birthday`,
+    `DESCRIPTION:Happy Birthday\\, ${entry.firstName}!`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  const blob = new Blob([ics], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${entry.firstName.toLowerCase()}-birthday.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function getMonthLabel(birthday: string): string {
   const d = parseDateLocal(birthday);
@@ -128,6 +183,28 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
             <DaysUntilBadge days={entry.daysUntil} />
           </div>
         </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-primary"
+              title="Add to calendar"
+            >
+              <CalendarPlus className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem asChild>
+              <a href={googleCalendarUrl(entry)} target="_blank" rel="noreferrer">
+                Google Calendar
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => downloadIcs(entry)}>
+              Apple / iCal (.ics)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {showWish && (
           <Button
             variant="outline"
