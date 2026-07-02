@@ -447,9 +447,6 @@ export default function Members() {
                             {user?.isAdmin && !member.birthday && (
                               <span className="ml-2 text-xs text-amber-600/80">· No birthday</span>
                             )}
-                            {user?.isAdmin && !member.photoUrl && (
-                              <span className="ml-2 text-xs text-amber-600/80">· No photo</span>
-                            )}
                           </p>
                         </div>
                       </div>
