@@ -170,9 +170,13 @@ export default function Members() {
     if (!members) return [];
     const q = search.trim().toLowerCase();
     const filtered = q
-      ? members.filter((m) =>
-          `${m.firstName} ${m.lastName}`.toLowerCase().includes(q),
-        )
+      ? members
+          .filter((m) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q))
+          .sort((a, b) => {
+            const aFirst = a.firstName.toLowerCase().startsWith(q) ? 0 : 1;
+            const bFirst = b.firstName.toLowerCase().startsWith(q) ? 0 : 1;
+            return aFirst - bFirst;
+          })
       : members;
     const sorted = [...filtered];
     if (sortMode === "az") {
