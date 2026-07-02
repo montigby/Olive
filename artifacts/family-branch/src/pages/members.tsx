@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown } from "lucide-react";
+import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown, Search } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -77,6 +77,7 @@ export default function Members() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [inviteTokenMap, setInviteTokenMap] = useState<Record<string, string>>({});
   const [sortMode, setSortMode] = useState<"added" | "az" | "za" | "side">("added");
+  const [search, setSearch] = useState("");
 
   const { data: members, isLoading } = useListMembers(unitId, {
     query: {
@@ -167,7 +168,14 @@ export default function Members() {
   type MemberSection = { heading: string | null; items: typeof members };
   const sections = useMemo<MemberSection[]>(() => {
     if (!members) return [];
-    const sorted = [...members];
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? members.filter((m) =>
+          `${m.firstName} ${m.lastName}`.toLowerCase().includes(q) ||
+          m.relationshipLabel.toLowerCase().includes(q),
+        )
+      : members;
+    const sorted = [...filtered];
     if (sortMode === "az") {
       sorted.sort((a, b) =>
         `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
@@ -208,7 +216,7 @@ export default function Members() {
       (a, b) => new Date((a as any).createdAt).getTime() - new Date((b as any).createdAt).getTime()
     );
     return [{ heading: null, items: sorted }];
-  }, [members, sortMode, user?.lastName]);
+  }, [members, sortMode, user?.lastName, search]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -220,6 +228,16 @@ export default function Members() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-9 w-36 sm:w-48 rounded-full text-sm border-border"
+            />
+          </div>
           {/* Sort control */}
           <Select value={sortMode} onValueChange={(v) => setSortMode(v as typeof sortMode)}>
             <SelectTrigger className="w-44 h-9 text-sm rounded-full border-border">

@@ -5,10 +5,12 @@ import {
   getGetUpcomingBirthdaysQueryKey,
 } from "@workspace/api-client-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Cake } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { parseDateLocal, formatBirthdayDate, getAgeTurning } from "@/lib/birthday";
 
 function getMonthLabel(birthday: string): string {
@@ -70,14 +72,34 @@ type BirthdayEntry = {
   unitName: string;
   birthday: string;
   daysUntil: number;
+  phone?: string | null;
+  email?: string | null;
 };
 
+function onWish(entry: BirthdayEntry, toast: (opts: any) => void) {
+  const msg = `Happy birthday, ${entry.firstName}! 🎂`;
+  if (entry.phone) {
+    window.open(`sms:${entry.phone}?body=${encodeURIComponent(msg)}`, "_self");
+    return;
+  }
+  if (entry.email) {
+    window.open(
+      `mailto:${entry.email}?subject=${encodeURIComponent("Happy Birthday!")}&body=${encodeURIComponent(msg)}`,
+      "_self",
+    );
+    return;
+  }
+  toast({ title: "No contact info", description: `We don't have ${entry.firstName}'s phone or email yet.` });
+}
+
 function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
+  const { toast } = useToast();
   const initials = (entry.firstName[0] || "?") + (entry.lastName[0] || "?");
+  const showWish = Math.abs(entry.daysUntil) <= 7;
   return (
     <li key={entry.personId}>
-      <Link href={`/members/${entry.personId}`}>
-        <div className="flex items-center gap-4 px-5 py-4 hover:bg-secondary/40 transition-colors cursor-pointer">
+      <div className="flex items-center gap-4 px-5 py-4 hover:bg-secondary/40 transition-colors">
+        <Link href={`/members/${entry.personId}`} className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer">
           <Avatar className="w-10 h-10 border border-primary/20 shrink-0">
             <AvatarFallback className="bg-primary/10 text-primary font-serif text-sm">
               {initials.toUpperCase()}
@@ -94,7 +116,7 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
               )}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
+          <div className="flex flex-col items-end gap-1 shrink-0 mr-2">
             <p className="text-sm font-medium text-foreground">
               {formatBirthdayDate(entry.birthday)}
               {getAgeTurning(entry.birthday, entry.showBirthYear) !== null && (
@@ -105,8 +127,18 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
             </p>
             <DaysUntilBadge days={entry.daysUntil} />
           </div>
-        </div>
-      </Link>
+        </Link>
+        {showWish && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-shrink-0 h-8 text-xs rounded-full border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => onWish(entry, toast)}
+          >
+            Wish
+          </Button>
+        )}
+      </div>
     </li>
   );
 }

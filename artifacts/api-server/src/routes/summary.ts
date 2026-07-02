@@ -343,6 +343,8 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
         showBirthYear: person.showBirthYear,
         unitName,
         daysUntil,
+        phone: person.phone ?? null,
+        email: person.email ?? null,
       };
     })
     .sort((a, b) => a.daysUntil - b.daysUntil)
