@@ -325,28 +325,55 @@ export default function Welcome() {
   );
 
   // ── Birthdays column (shared) ─────────────────────────────────────────────
+  const upcoming = upcomingBirthdays.filter((e) => e.daysUntil <= 30);
+  const recentlyCelebrated = upcomingBirthdays.filter((e) => e.daysUntil >= 358);
+
   const BirthdaysColumn = () => (
     <Card className="border-none shadow-sm bg-card">
       <CardContent className="px-5 py-4">
         <div className="flex items-center gap-2 mb-2">
           <Cake className="w-4 h-4 text-accent" />
           <h3 className="font-serif text-base font-semibold text-foreground">
-            Upcoming birthdays
+            Birthdays
           </h3>
         </div>
         {upcomingBirthdays.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            No birthdays on record yet.
+            No birthdays coming up.
           </p>
         ) : (
-          upcomingBirthdays.map((entry, i) => (
-            <BirthdayRow
-              key={entry.memberId}
-              entry={entry}
-              index={i}
-              onWishClick={(e) => onWish(e, toast)}
-            />
-          ))
+          <>
+            {upcoming.length > 0 && (
+              <>
+                {recentlyCelebrated.length > 0 && (
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Upcoming</p>
+                )}
+                {upcoming.map((entry, i) => (
+                  <BirthdayRow
+                    key={entry.memberId}
+                    entry={entry}
+                    index={i}
+                    onWishClick={(e) => onWish(e, toast)}
+                  />
+                ))}
+              </>
+            )}
+            {recentlyCelebrated.length > 0 && (
+              <>
+                <p className={`text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1 ${upcoming.length > 0 ? "mt-4" : ""}`}>
+                  Recently celebrated
+                </p>
+                {recentlyCelebrated.map((entry, i) => (
+                  <BirthdayRow
+                    key={entry.memberId}
+                    entry={entry}
+                    index={upcoming.length + i}
+                    onWishClick={(e) => onWish(e, toast)}
+                  />
+                ))}
+              </>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
