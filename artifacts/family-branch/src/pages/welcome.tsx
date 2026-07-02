@@ -263,7 +263,7 @@ export default function Welcome() {
       return res.json();
     },
     enabled: !!unitId,
-    staleTime: 60_000,
+    staleTime: 0,
   });
 
   // ── Loading skeleton ──────────────────────────────────────────────────────

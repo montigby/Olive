@@ -171,8 +171,7 @@ export default function Members() {
     const q = search.trim().toLowerCase();
     const filtered = q
       ? members.filter((m) =>
-          `${m.firstName} ${m.lastName}`.toLowerCase().includes(q) ||
-          m.relationshipLabel.toLowerCase().includes(q),
+          `${m.firstName} ${m.lastName}`.toLowerCase().includes(q),
         )
       : members;
     const sorted = [...filtered];
