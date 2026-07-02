@@ -169,16 +169,17 @@ export default function Members() {
   const sections = useMemo<MemberSection[]>(() => {
     if (!members) return [];
     const q = search.trim().toLowerCase();
-    const filtered = q
-      ? members
-          .filter((m) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q))
-          .sort((a, b) => {
-            const aFirst = a.firstName.toLowerCase().startsWith(q) ? 0 : 1;
-            const bFirst = b.firstName.toLowerCase().startsWith(q) ? 0 : 1;
-            return aFirst - bFirst;
-          })
-      : members;
-    const sorted = [...filtered];
+    if (q) {
+      const results = members
+        .filter((m) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q))
+        .sort((a, b) => {
+          const aFirst = a.firstName.toLowerCase().startsWith(q) ? 0 : 1;
+          const bFirst = b.firstName.toLowerCase().startsWith(q) ? 0 : 1;
+          return aFirst - bFirst;
+        });
+      return [{ heading: null, items: results }];
+    }
+    const sorted = [...members];
     if (sortMode === "az") {
       sorted.sort((a, b) =>
         `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
