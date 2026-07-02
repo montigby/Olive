@@ -68,12 +68,18 @@ function relativeDateLabel(daysUntil: number, month: number, day: number): strin
   if (daysUntil === 0) return "Today! 🎂";
   if (daysUntil === 1) return "Tomorrow";
   if (daysUntil <= 7) return `In ${daysUntil} days`;
+  if (daysUntil >= 358) {
+    const daysAgo = 365 - daysUntil;
+    if (daysAgo <= 1) return "Yesterday";
+    return `${daysAgo} days ago`;
+  }
   return `${MONTH_ABBR[month - 1]} ${day}`;
 }
 
 function birthdaySubline(entry: BirthdayEntry): string {
+  const isPast = entry.daysUntil >= 358;
   const date = relativeDateLabel(entry.daysUntil, entry.birthMonth, entry.birthDay);
-  if (entry.ageTurning) return `Turns ${entry.ageTurning} · ${date}`;
+  if (entry.ageTurning) return `${isPast ? "Turned" : "Turns"} ${entry.ageTurning} · ${date}`;
   return `Birthday · ${date}`;
 }
 

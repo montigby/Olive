@@ -442,7 +442,12 @@ export default function Members() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{member.relationshipLabel}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {member.relationshipLabel}
+                            {user?.isAdmin && !member.birthday && (
+                              <span className="ml-2 text-xs text-amber-600/80">· No birthday</span>
+                            )}
+                          </p>
                         </div>
                       </div>
                     </Link>
