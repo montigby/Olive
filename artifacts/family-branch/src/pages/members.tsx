@@ -231,35 +231,37 @@ export default function Members() {
           <p className="text-muted-foreground mt-1">Manage the members in your family unit.</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 w-36 sm:w-48 rounded-full text-sm border-border"
-            />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center gap-2">
+            {/* Search */}
+            <div className="relative flex-1 sm:flex-initial">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9 w-full sm:w-48 rounded-full text-sm border-border"
+              />
+            </div>
+            {/* Sort control */}
+            <Select value={sortMode} onValueChange={(v) => setSortMode(v as typeof sortMode)}>
+              <SelectTrigger className="w-32 sm:w-44 h-9 text-sm rounded-full border-border shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="added">Date added</SelectItem>
+                <SelectItem value="az">A → Z</SelectItem>
+                <SelectItem value="za">Z → A</SelectItem>
+                <SelectItem value="side">By family side</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          {/* Sort control */}
-          <Select value={sortMode} onValueChange={(v) => setSortMode(v as typeof sortMode)}>
-            <SelectTrigger className="w-44 h-9 text-sm rounded-full border-border">
-              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="added">Date added</SelectItem>
-              <SelectItem value="az">A → Z</SelectItem>
-              <SelectItem value="za">Z → A</SelectItem>
-              <SelectItem value="side">By family side</SelectItem>
-            </SelectContent>
-          </Select>
 
         {user?.isAdmin && (
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
-              <Button className="rounded-full shadow-sm whitespace-nowrap">
+              <Button className="rounded-full shadow-sm whitespace-nowrap w-full sm:w-auto">
                 <UserPlus className="w-4 h-4 mr-2" />
                 Add Member
               </Button>
