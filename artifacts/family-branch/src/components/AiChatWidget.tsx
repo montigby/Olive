@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
+import { getGetPersonQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageCircle, X, Send, Loader2, Sparkles } from "lucide-react";
@@ -11,9 +12,25 @@ interface Message {
   content: string;
 }
 
+type ActionConfirmation =
+  | { type: "added"; name: string }
+  | { type: "updated"; name: string }
+  | { type: "event"; name: string; eventType: string };
+
 const WELCOME_MESSAGE: Message = {
   role: "assistant",
-  content: "Hi! I'm Olive 🌿 I can help you add family members to your tree. Who would you like to add?",
+  content:
+    "Hi! I'm Olive 🌿 Tell me about your family in your own words — add someone new, update a birthday or contact info, or log a life event like a graduation or new job.",
+};
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  graduation: "graduation",
+  marriage: "marriage",
+  new_baby: "new baby",
+  moved: "move",
+  new_job: "new job",
+  death: "passing",
+  custom: "life event",
 };
 
 export function AiChatWidget() {
@@ -23,7 +40,7 @@ export function AiChatWidget() {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [memberJustAdded, setMemberJustAdded] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<ActionConfirmation | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +65,7 @@ export function AiChatWidget() {
     setMessages(nextMessages);
     setInput("");
     setIsLoading(true);
-    setMemberJustAdded(null);
+    setLastAction(null);
 
     try {
       const token = localStorage.getItem("oliveToken");
@@ -68,7 +85,12 @@ export function AiChatWidget() {
         throw new Error("Request failed");
       }
 
-      const data = await resp.json() as { reply: string; memberAdded?: { firstName: string; lastName: string } | null };
+      const data = await resp.json() as {
+        reply: string;
+        memberAdded?: { id: string; firstName: string; lastName: string } | null;
+        memberUpdated?: { id: string; firstName: string; lastName: string } | null;
+        lifeEventAdded?: { personName: string; eventType: string } | null;
+      };
 
       const assistantMessage: Message = {
         role: "assistant",
@@ -76,11 +98,23 @@ export function AiChatWidget() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      if (data.memberAdded) {
-        const name = `${data.memberAdded.firstName} ${data.memberAdded.lastName}`;
-        setMemberJustAdded(name);
+      if (data.memberAdded || data.memberUpdated || data.lifeEventAdded) {
         queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/members`] });
         queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/home-feed`] });
+      }
+
+      if (data.memberAdded) {
+        setLastAction({ type: "added", name: `${data.memberAdded.firstName} ${data.memberAdded.lastName}` });
+        queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(data.memberAdded.id) });
+      } else if (data.memberUpdated) {
+        setLastAction({ type: "updated", name: `${data.memberUpdated.firstName} ${data.memberUpdated.lastName}` });
+        queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(data.memberUpdated.id) });
+      } else if (data.lifeEventAdded) {
+        setLastAction({
+          type: "event",
+          name: data.lifeEventAdded.personName,
+          eventType: data.lifeEventAdded.eventType,
+        });
       }
     } catch {
       setMessages((prev) => [
@@ -105,7 +139,7 @@ export function AiChatWidget() {
 
   function handleReset() {
     setMessages([WELCOME_MESSAGE]);
-    setMemberJustAdded(null);
+    setLastAction(null);
     setInput("");
   }
 
@@ -134,7 +168,7 @@ export function AiChatWidget() {
             </div>
             <div className="flex-1">
               <p className="font-semibold text-sm leading-tight">Olive AI</p>
-              <p className="text-[11px] opacity-75">Add family members</p>
+              <p className="text-[11px] opacity-75">Add, update, or log family news</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -199,10 +233,21 @@ export function AiChatWidget() {
               </div>
             )}
 
-            {memberJustAdded && (
+            {lastAction && (
               <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs">
                 <span className="text-emerald-500">✓</span>
-                <span><strong>{memberJustAdded}</strong> added to your family tree</span>
+                {lastAction.type === "added" && (
+                  <span><strong>{lastAction.name}</strong> added to your family tree</span>
+                )}
+                {lastAction.type === "updated" && (
+                  <span><strong>{lastAction.name}</strong>'s profile updated</span>
+                )}
+                {lastAction.type === "event" && (
+                  <span>
+                    Logged a {EVENT_TYPE_LABELS[lastAction.eventType] ?? "life event"} for{" "}
+                    <strong>{lastAction.name}</strong>
+                  </span>
+                )}
               </div>
             )}
 
@@ -217,7 +262,7 @@ export function AiChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Who would you like to add?"
+              placeholder="Tell me anything about your family…"
               disabled={isLoading}
               className="flex-1 text-sm bg-secondary rounded-full px-4 py-2 outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground disabled:opacity-50"
             />

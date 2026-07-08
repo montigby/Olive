@@ -1,11 +1,13 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { db } from "@workspace/db";
-import { personsTable } from "@workspace/db";
+import { personsTable, lifeEventsTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
+import { buildPersonUpdateData, type PersonUpdateInput } from "../lib/personUpdate";
+import { VALID_EVENT_TYPES } from "./lifeEvents";
 
 const router = Router();
 
@@ -13,23 +15,46 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Optional profile fields that can be captured alongside a name+relationship,
+// either when adding someone new or updating someone who's already in the tree.
+const DETAIL_FIELD_PROPERTIES: Record<string, Record<string, unknown>> = {
+  birthday: {
+    type: "string",
+    description:
+      'Birthday as YYYY-MM-DD. If the year is unknown, use "2000" as a placeholder year (e.g. "March 5th" -> "2000-03-05"). If the exact day is unknown, do not set this field at all.',
+  },
+  showBirthYear: {
+    type: "boolean",
+    description:
+      "Only set this if the user explicitly says whether their birth year should be shown to the family or kept private. Leave unset otherwise.",
+  },
+  phone: { type: "string", description: "Phone number, in whatever format the user gave it." },
+  email: { type: "string", description: "Email address." },
+  addressLine1: { type: "string", description: "Street address, if mentioned." },
+  addressCity: { type: "string", description: "City, if mentioned." },
+  addressState: { type: "string", description: "State/province, if mentioned." },
+  addressZip: { type: "string", description: "ZIP/postal code, if mentioned." },
+  instagram: { type: "string", description: "Instagram username, without the @ symbol." },
+  facebook: { type: "string", description: "Facebook username or URL." },
+  tiktok: { type: "string", description: "TikTok username, without the @ symbol." },
+  linkedin: { type: "string", description: "LinkedIn username." },
+  snapchat: { type: "string", description: "Snapchat username, without the @ symbol." },
+  venmo: { type: "string", description: "Venmo username, without the @ symbol." },
+  bereal: { type: "string", description: "BeReal username, without the @ symbol." },
+  otherSocial: { type: "string", description: "Any other social link mentioned." },
+};
+
 const ADD_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
   type: "function",
   function: {
     name: "add_family_member",
     description:
-      "Add a new member to the family tree. Only call this once you have confirmed the person's first name, last name, and their relationship to the family.",
+      "Add a new member to the family tree. Only call this once you have confirmed the person's first name, last name, and their relationship to the family. If the user mentioned other details about them in the same message (birthday, phone, email, address, socials), include those too so nothing has to be re-asked.",
     parameters: {
       type: "object",
       properties: {
-        firstName: {
-          type: "string",
-          description: "The person's first name",
-        },
-        lastName: {
-          type: "string",
-          description: "The person's last name",
-        },
+        firstName: { type: "string", description: "The person's first name" },
+        lastName: { type: "string", description: "The person's last name" },
         relationshipLabel: {
           type: "string",
           description:
@@ -40,8 +65,65 @@ const ADD_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
           description:
             "Optional. The ID of the person's direct parent or spouse anchor in the tree. ALWAYS set this for: (1) any child attributed to a named person (nephews/nieces, uncles/aunts, cousins, grandchildren, great-grandchildren) — use that person's [id]; (2) any spouse being added for an existing member — use that member's [id]; (3) grandparents whose parent is already in the tree — use that parent's [id]. Examples: adding Tanner's wife Anna → Anna's parentPersonId = Tanner's id. Adding Nathan's kids → parentPersonId = Nathan's id. Adding James's children (James is a grandfather) → parentPersonId = James's id. Adding Jim's cousin's wife → parentPersonId = the cousin's id. NEVER fabricate a parentPersonId — only use IDs that appear in the current members list.",
         },
+        ...DETAIL_FIELD_PROPERTIES,
       },
       required: ["firstName", "lastName", "relationshipLabel"],
+    },
+  },
+};
+
+const UPDATE_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "update_family_member",
+    description:
+      "Update information on someone who is ALREADY in the family tree (use this instead of add_family_member when the person appears in the current members list below). Only include the fields that should change.",
+    parameters: {
+      type: "object",
+      properties: {
+        personId: {
+          type: "string",
+          description: "The [id] of the existing person to update, exactly as it appears in the current members list. Never fabricate this.",
+        },
+        firstName: { type: "string", description: "Corrected first name, only if the user is fixing a typo or name change." },
+        lastName: { type: "string", description: "Corrected last name, only if the user is fixing a typo or name change." },
+        ...DETAIL_FIELD_PROPERTIES,
+      },
+      required: ["personId"],
+    },
+  },
+};
+
+const ADD_LIFE_EVENT_TOOL: OpenAI.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "add_life_event",
+    description:
+      "Log a life event (graduation, marriage, new baby, move, new job, passing, or other milestone) for someone already in the family tree.",
+    parameters: {
+      type: "object",
+      properties: {
+        personId: {
+          type: "string",
+          description: "The [id] of the person this event happened to, exactly as it appears in the current members list. Never fabricate this.",
+        },
+        eventType: {
+          type: "string",
+          enum: Array.from(VALID_EVENT_TYPES),
+          description:
+            'Map casual phrasing to one of these: "graduated" -> graduation, "got married"/"married" -> marriage, "had a baby"/"new baby" -> new_baby, "moved to" -> moved, "got a new job"/"started a job" -> new_job, "passed away"/"died" -> death. Anything else -> custom.',
+        },
+        eventDate: {
+          type: "string",
+          description:
+            'Date as YYYY-MM-DD. If only the year is known, use "YYYY-01-01". If year and month are known but not the day, use "YYYY-MM-01".',
+        },
+        notes: {
+          type: "string",
+          description: "Optional short detail, e.g. \"Graduated from UT Austin\" or \"New job at Acme Corp\".",
+        },
+      },
+      required: ["personId", "eventType", "eventDate"],
     },
   },
 };
@@ -51,24 +133,33 @@ function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
     members.length === 0
       ? "No members yet."
       : members
-          .map(
-            (m) =>
-              `- ${m.firstName} ${m.lastName} (${m.relationshipLabel ?? "unknown"}) [id: ${m.id}]${m.isAdmin ? " [family admin]" : ""}`,
-          )
+          .map((m) => {
+            const gaps: string[] = [];
+            if (!m.birthday) gaps.push("no birthday on file");
+            if (!m.phone && !m.email) gaps.push("no contact info on file");
+            const gapStr = gaps.length ? ` {${gaps.join(", ")}}` : "";
+            return `- ${m.firstName} ${m.lastName} (${m.relationshipLabel ?? "unknown"}) [id: ${m.id}]${m.isAdmin ? " [family admin]" : ""}${gapStr}`;
+          })
           .join("\n");
 
-  return `You are Olive, a friendly assistant that helps people build their family tree.
-
-Your job is to help the user add new family members through a short, warm conversation. Ask clarifying questions only when needed — most people just need first name, last name, and relationship.
+  return `You are Olive, a friendly assistant that helps people build and maintain their family tree. Your job is to make data entry effortless — people should be able to tell you things the way they'd tell a friend, in whatever order and format they naturally use, and you figure out what to do with it.
 
 Current family members:
 ${memberList}
 
-Guidelines:
-- Be warm and concise — like a helpful friend, not a form.
-- Accept common relationship words directly (mom, dad, son, daughter, sister, brother, wife, husband, grandma, grandpa, etc.).
+You have three tools:
+1. add_family_member — for someone NOT in the list above.
+2. update_family_member — for someone ALREADY in the list above (fix a typo, add a birthday, update contact info, etc.). Match by name; if two members share a first name, ask which one before acting.
+3. add_life_event — log a graduation, marriage, new baby, move, new job, or other milestone for someone in the list.
 
-RELATIONSHIP LABELING RULES — apply these in order, most specific first:
+General guidelines:
+- Be warm and concise — like a helpful friend, not a form. Keep responses to 1-3 sentences.
+- Accept information in any format: full sentences, fragments, lists of multiple people/facts in one message, corrections to something said earlier, whatever the user types. Extract everything usable from a single message and act on all of it — call multiple tools back to back in one turn rather than asking the user to repeat things one at a time.
+- Don't ask for extra confirmation before calling a tool once you have enough information. Just do it, then give a short warm confirmation (e.g. "Done! Sarah is now in your family tree 🌿" or "Got it — added Jake's birthday.").
+- If a message is genuinely ambiguous (which person is meant, or a relationship that doesn't fit the rules below), ask ONE short clarifying question rather than guessing.
+- The {no birthday on file} / {no contact info on file} tags next to a name show what's still missing for that person — if it's natural in conversation, you can mention a gap, but don't interrogate the user about it unprompted.
+
+Relationship labeling (only relevant for add_family_member) — apply in order, most specific first:
 
 Spouses of the admin:
 - Label them "husband", "wife", "spouse", or "partner".
@@ -117,11 +208,13 @@ parentPersonId — always set this when:
 - Never fabricate a parentPersonId. Only use IDs that appear in the current members list above.
 
 Adding members:
-- Once you have first name, last name, and relationship for each person, call add_family_member — add one person at a time, back to back.
-- Before calling add_family_member, check the current members list above. If someone with the same first name, last name, and relationship already exists, do NOT call the tool — just tell the user they're already in the tree.
-- Don't ask for extra confirmation before adding.
-- After adding someone, give a short warm confirmation (e.g. "Done! Sarah is now in your family tree 🌿").
-- Keep responses to 1–3 sentences max.`;
+- Before calling add_family_member, check the current members list above. If someone with the same first name, last name, and relationship already exists, do NOT call the tool — use update_family_member instead if they mentioned new info, or just tell the user they're already in the tree.
+- Add one person at a time, back to back, if multiple people are mentioned in one message.
+
+Updating members and life events:
+- Use update_family_member for corrections or new details about someone already in the list (birthdays, contact info, address, socials, name fixes). Only pass the fields that are changing.
+- Use add_life_event for milestones (graduations, marriages, new babies, moves, new jobs, passings) — these are separate from profile fields and don't go through update_family_member.
+- Dates: always output YYYY-MM-DD. For birthdays with no known year, use "2000" as the placeholder year. For life events with an unknown month/day, default the missing part(s) to "01".`;
 }
 
 // POST /api/ai/chat
@@ -147,6 +240,7 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
     .from(personsTable)
     .where(eq(personsTable.familyUnitId, unitId));
   const members = rawMembers.map(formatPerson);
+  const memberIds = new Set(members.map((m: ReturnType<typeof formatPerson>) => m.id));
 
   const systemPrompt = buildSystemPrompt(members);
 
@@ -159,17 +253,19 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
   ];
 
   let memberAdded: ReturnType<typeof formatPerson> | null = null;
+  let memberUpdated: ReturnType<typeof formatPerson> | null = null;
+  let lifeEventAdded: { personName: string; eventType: string } | null = null;
   let finalText = "";
   let loopMessages = [...currentMessages];
   let loopCount = 0;
 
-  while (loopCount < 5) {
+  while (loopCount < 8) {
     loopCount++;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: loopMessages,
-      tools: [ADD_MEMBER_TOOL],
+      tools: [ADD_MEMBER_TOOL, UPDATE_MEMBER_TOOL, ADD_LIFE_EVENT_TOOL],
       tool_choice: "auto",
     });
 
@@ -186,10 +282,10 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
 
     // Handle tool calls
     for (const toolCall of assistantMsg.tool_calls) {
-      if (toolCall.function.name === "add_family_member") {
-        let toolResult: string;
-        try {
-          const input = JSON.parse(toolCall.function.arguments) as {
+      let toolResult: string;
+      try {
+        if (toolCall.function.name === "add_family_member") {
+          const input = JSON.parse(toolCall.function.arguments) as PersonUpdateInput & {
             firstName: string;
             lastName: string;
             relationshipLabel: string;
@@ -214,6 +310,9 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
             memberAdded = formatPerson(existing[0]);
             toolResult = JSON.stringify({ success: true, member: memberAdded, alreadyExists: true });
           } else {
+            const detailData = buildPersonUpdateData(input, { allowRelationshipLabel: false });
+            delete (detailData as Record<string, unknown>).updatedAt;
+
             const [inserted] = await db
               .insert(personsTable)
               .values({
@@ -224,6 +323,7 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
                 familyUnitId: unitId,
                 isAdmin: false,
                 claimed: false,
+                ...detailData,
               })
               .returning();
 
@@ -231,7 +331,7 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
             toolResult = JSON.stringify({ success: true, member: memberAdded });
 
             // Sync to explicit relationship layer (best-effort)
-            const adminMember = members.find((m) => m.isAdmin);
+            const adminMember = members.find((m: ReturnType<typeof formatPerson>) => m.isAdmin);
             if (adminMember) {
               await syncPersonToRelationshipLayer({
                 personId: inserted.id,
@@ -244,20 +344,74 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
               });
             }
           }
-        } catch {
-          toolResult = JSON.stringify({ success: false, error: "Failed to add member" });
-        }
+        } else if (toolCall.function.name === "update_family_member") {
+          const input = JSON.parse(toolCall.function.arguments) as PersonUpdateInput & { personId: string };
 
-        loopMessages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: toolResult,
-        });
+          if (!memberIds.has(input.personId)) {
+            toolResult = JSON.stringify({ success: false, error: "Unknown personId" });
+          } else {
+            const isSelf = req.auth!.personId === input.personId;
+            const isSameFamilyAdmin = req.auth!.isAdmin; // already scoped to this unit above
+            if (!isSelf && !isSameFamilyAdmin) {
+              toolResult = JSON.stringify({ success: false, error: "Not authorized to update this person" });
+            } else {
+              const updateData = buildPersonUpdateData(input, { allowRelationshipLabel: req.auth!.isAdmin });
+              const [updated] = await db
+                .update(personsTable)
+                .set(updateData)
+                .where(eq(personsTable.id, input.personId))
+                .returning();
+              memberUpdated = formatPerson(updated);
+              toolResult = JSON.stringify({ success: true, member: memberUpdated });
+            }
+          }
+        } else if (toolCall.function.name === "add_life_event") {
+          const input = JSON.parse(toolCall.function.arguments) as {
+            personId: string;
+            eventType: string;
+            eventDate: string;
+            notes?: string;
+          };
+
+          const target = members.find((m: ReturnType<typeof formatPerson>) => m.id === input.personId);
+          const validDate = /^\d{4}-\d{2}-\d{2}$/.test(input.eventDate);
+
+          if (!target || !VALID_EVENT_TYPES.has(input.eventType) || !validDate) {
+            toolResult = JSON.stringify({ success: false, error: "Invalid input" });
+          } else {
+            const isSelf = req.auth!.personId === input.personId;
+            const isSameFamilyAdmin = req.auth!.isAdmin;
+            if (!isSelf && !isSameFamilyAdmin) {
+              toolResult = JSON.stringify({ success: false, error: "Not authorized to add a life event for this person" });
+            } else {
+              await db.insert(lifeEventsTable).values({
+                familyId: unitId,
+                personId: input.personId,
+                eventType: input.eventType,
+                eventDate: input.eventDate,
+                notes: input.notes ?? null,
+                createdBy: req.auth!.personId,
+              });
+              lifeEventAdded = { personName: `${target.firstName} ${target.lastName}`, eventType: input.eventType };
+              toolResult = JSON.stringify({ success: true });
+            }
+          }
+        } else {
+          toolResult = JSON.stringify({ success: false, error: "Unknown tool" });
+        }
+      } catch {
+        toolResult = JSON.stringify({ success: false, error: "Failed to process request" });
       }
+
+      loopMessages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: toolResult,
+      });
     }
   }
 
-  res.json({ reply: finalText, memberAdded });
+  res.json({ reply: finalText, memberAdded, memberUpdated, lifeEventAdded });
 });
 
 export default router;

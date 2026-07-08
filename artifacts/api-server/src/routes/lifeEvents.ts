@@ -6,7 +6,7 @@ import type { LifeEvent } from "@workspace/db";
 
 const router = Router();
 
-const VALID_EVENT_TYPES = new Set([
+export const VALID_EVENT_TYPES = new Set([
   "graduation",
   "marriage",
   "new_baby",
