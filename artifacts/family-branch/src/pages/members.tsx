@@ -452,7 +452,7 @@ export default function Members() {
                       </div>
                     </Link>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {!member.claimed && user?.isAdmin &&
                         (inviteTokenMap[member.id] ? (
                           <Button

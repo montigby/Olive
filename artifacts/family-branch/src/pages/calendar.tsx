@@ -172,7 +172,7 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
             <Button
               variant="ghost"
               size="icon"
-              className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-primary"
+              className="flex-shrink-0 h-9 w-9 text-muted-foreground hover:text-primary"
               title="Add to calendar"
             >
               <CalendarPlus className="w-4 h-4" />
@@ -193,7 +193,7 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
           <Button
             variant="outline"
             size="sm"
-            className="flex-shrink-0 h-8 text-xs rounded-full border-primary/30 text-primary hover:bg-primary/5"
+            className="flex-shrink-0 h-9 text-xs rounded-full border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => sendBirthdayWish(entry, toast)}
           >
             Wish

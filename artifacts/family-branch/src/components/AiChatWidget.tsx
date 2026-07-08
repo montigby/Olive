@@ -136,17 +136,17 @@ export function AiChatWidget() {
               <p className="font-semibold text-sm leading-tight">Olive AI</p>
               <p className="text-[11px] opacity-75">Add family members</p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleReset}
-                className="w-7 h-7 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors cursor-pointer"
                 title="Start over"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
+                <MessageCircle className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-7 h-7 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
