@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Cake, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { parseDateLocal, formatBirthdayDate, getAgeTurning } from "@/lib/birthday";
+import { parseDateLocal, formatBirthdayDate, getAgeTurning, sendBirthdayWish } from "@/lib/birthday";
 
 // ── Calendar helpers ──────────────────────────────────────────────────────────
 
@@ -131,22 +131,6 @@ type BirthdayEntry = {
   email?: string | null;
 };
 
-function onWish(entry: BirthdayEntry, toast: (opts: any) => void) {
-  const msg = `Happy birthday, ${entry.firstName}! 🎂`;
-  if (entry.phone) {
-    window.open(`sms:${entry.phone}?body=${encodeURIComponent(msg)}`, "_self");
-    return;
-  }
-  if (entry.email) {
-    window.open(
-      `mailto:${entry.email}?subject=${encodeURIComponent("Happy Birthday!")}&body=${encodeURIComponent(msg)}`,
-      "_self",
-    );
-    return;
-  }
-  toast({ title: "No contact info", description: `We don't have ${entry.firstName}'s phone or email yet.` });
-}
-
 function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
   const { toast } = useToast();
   const initials = (entry.firstName[0] || "?") + (entry.lastName[0] || "?");
@@ -210,7 +194,7 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
             variant="outline"
             size="sm"
             className="flex-shrink-0 h-8 text-xs rounded-full border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => onWish(entry, toast)}
+            onClick={() => sendBirthdayWish(entry, toast)}
           >
             Wish
           </Button>

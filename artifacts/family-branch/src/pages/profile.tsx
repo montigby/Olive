@@ -24,7 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { PLACEHOLDER_YEAR } from "@/lib/birthday";
+import { PLACEHOLDER_YEAR, daysUntilBirthday, sendBirthdayWish } from "@/lib/birthday";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,6 +47,7 @@ import {
   Plus,
   Trash2,
   CalendarDays,
+  Gift,
 } from "lucide-react";
 
 const MONTHS = [
@@ -517,11 +518,13 @@ function ProfileView({
   canEdit,
   onEdit,
   targetId,
+  isOwnProfile,
 }: {
   person: any;
   canEdit: boolean;
   onEdit: () => void;
   targetId: string;
+  isOwnProfile: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -532,6 +535,8 @@ function ProfileView({
   const address = formatAddress(person);
   const birthday = formatBirthday(person.birthday);
   const mapsHref = address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : undefined;
+  const showWish =
+    !isOwnProfile && !!person.birthday && Math.abs(daysUntilBirthday(person.birthday)) <= 7;
 
   const initials =
     ((person.firstName || " ")[0] + (person.lastName || " ")[0]).toUpperCase();
@@ -629,6 +634,17 @@ function ProfileView({
               <Cake className="w-3.5 h-3.5 text-accent shrink-0" />
               <span className="text-sm text-muted-foreground">{birthday}</span>
             </div>
+          )}
+          {showWish && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-full border-primary/30 text-primary hover:bg-primary/5"
+              onClick={() => sendBirthdayWish(person, toast)}
+            >
+              <Gift className="w-3.5 h-3.5 mr-1.5" />
+              Send birthday wish
+            </Button>
           )}
         </CardContent>
       </Card>
@@ -1466,7 +1482,13 @@ export default function Profile() {
           />
         </ProfileEditErrorBoundary>
       ) : (
-        <ProfileView person={person} canEdit={canEdit} onEdit={() => setEditing(true)} targetId={targetId!} />
+        <ProfileView
+          person={person}
+          canEdit={canEdit}
+          onEdit={() => setEditing(true)}
+          targetId={targetId!}
+          isOwnProfile={isOwnProfile}
+        />
       )}
     </div>
   );

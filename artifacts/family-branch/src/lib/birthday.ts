@@ -28,3 +28,41 @@ export function getAgeTurning(
     thisYearBirthday >= today ? today.getFullYear() : today.getFullYear() + 1;
   return yearTurning - birthYear;
 }
+
+/** Days until the next occurrence of this birthday. Stays negative for up to
+ * 7 days after it's passed (so callers can show "X days ago"), then rolls
+ * forward to next year. Mirrors the same window used by the birthday-emails
+ * cron and the /api/summary endpoint. */
+export function daysUntilBirthday(birthday: string): number {
+  const bday = parseDateLocal(birthday);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const thisYear = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
+  let daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysUntil < -7) {
+    thisYear.setFullYear(now.getFullYear() + 1);
+    daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  }
+  return daysUntil;
+}
+
+/** Opens the user's SMS or email app pre-filled with a birthday message,
+ * falling back to a toast when there's no contact info to reach them by. */
+export function sendBirthdayWish(
+  person: { firstName: string; phone?: string | null; email?: string | null },
+  toast: (opts: { title: string; description?: string }) => void,
+) {
+  const msg = `Happy birthday, ${person.firstName}! 🎂`;
+  if (person.phone) {
+    window.open(`sms:${person.phone}?body=${encodeURIComponent(msg)}`, "_self");
+    return;
+  }
+  if (person.email) {
+    window.open(
+      `mailto:${person.email}?subject=${encodeURIComponent("Happy Birthday!")}&body=${encodeURIComponent(msg)}`,
+      "_self",
+    );
+    return;
+  }
+  toast({ title: "No contact info", description: `We don't have ${person.firstName}'s phone or email yet.` });
+}
