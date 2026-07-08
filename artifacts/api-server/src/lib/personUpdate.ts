@@ -47,7 +47,7 @@ export function buildPersonUpdateData(
   if (data.addressState !== undefined) updateData.addressState = data.addressState;
   if (data.addressZip !== undefined) updateData.addressZip = data.addressZip;
   if (data.addressCountry !== undefined) updateData.addressCountry = data.addressCountry;
-  if (data.birthday !== undefined) updateData.birthday = data.birthday ?? undefined;
+  if (data.birthday !== undefined) updateData.birthday = data.birthday;
   if (data.showBirthYear !== undefined) updateData.showBirthYear = data.showBirthYear;
   if (data.instagram !== undefined) updateData.instagram = data.instagram;
   if (data.facebook !== undefined) updateData.facebook = data.facebook;

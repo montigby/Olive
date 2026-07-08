@@ -1,7 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { db } from "@workspace/db";
-import { personsTable, lifeEventsTable } from "@workspace/db";
+import { personsTable, lifeEventsTable, accountsTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
@@ -17,31 +17,33 @@ const openai = new OpenAI({
 
 // Optional profile fields that can be captured alongside a name+relationship,
 // either when adding someone new or updating someone who's already in the tree.
+// Nullable so update_family_member can express "clear this field", e.g. "remove
+// grandma's birthday" -> birthday: null.
 const DETAIL_FIELD_PROPERTIES: Record<string, Record<string, unknown>> = {
   birthday: {
-    type: "string",
+    type: ["string", "null"],
     description:
-      'Birthday as YYYY-MM-DD. If the year is unknown, use "2000" as a placeholder year (e.g. "March 5th" -> "2000-03-05"). If the exact day is unknown, do not set this field at all.',
+      'Birthday as YYYY-MM-DD. If the year is unknown, use "2000" as a placeholder year (e.g. "March 5th" -> "2000-03-05"). If the exact day is unknown, do not set this field at all. To remove an existing birthday, pass null.',
   },
   showBirthYear: {
     type: "boolean",
     description:
       "Only set this if the user explicitly says whether their birth year should be shown to the family or kept private. Leave unset otherwise.",
   },
-  phone: { type: "string", description: "Phone number, in whatever format the user gave it." },
-  email: { type: "string", description: "Email address." },
-  addressLine1: { type: "string", description: "Street address, if mentioned." },
-  addressCity: { type: "string", description: "City, if mentioned." },
-  addressState: { type: "string", description: "State/province, if mentioned." },
-  addressZip: { type: "string", description: "ZIP/postal code, if mentioned." },
-  instagram: { type: "string", description: "Instagram username, without the @ symbol." },
-  facebook: { type: "string", description: "Facebook username or URL." },
-  tiktok: { type: "string", description: "TikTok username, without the @ symbol." },
-  linkedin: { type: "string", description: "LinkedIn username." },
-  snapchat: { type: "string", description: "Snapchat username, without the @ symbol." },
-  venmo: { type: "string", description: "Venmo username, without the @ symbol." },
-  bereal: { type: "string", description: "BeReal username, without the @ symbol." },
-  otherSocial: { type: "string", description: "Any other social link mentioned." },
+  phone: { type: ["string", "null"], description: "Phone number, in whatever format the user gave it. Pass null to remove it." },
+  email: { type: ["string", "null"], description: "Email address. Pass null to remove it." },
+  addressLine1: { type: ["string", "null"], description: "Street address, if mentioned. Pass null to remove it." },
+  addressCity: { type: ["string", "null"], description: "City, if mentioned. Pass null to remove it." },
+  addressState: { type: ["string", "null"], description: "State/province, if mentioned. Pass null to remove it." },
+  addressZip: { type: ["string", "null"], description: "ZIP/postal code, if mentioned. Pass null to remove it." },
+  instagram: { type: ["string", "null"], description: "Instagram username, without the @ symbol. Pass null to remove it." },
+  facebook: { type: ["string", "null"], description: "Facebook username or URL. Pass null to remove it." },
+  tiktok: { type: ["string", "null"], description: "TikTok username, without the @ symbol. Pass null to remove it." },
+  linkedin: { type: ["string", "null"], description: "LinkedIn username. Pass null to remove it." },
+  snapchat: { type: ["string", "null"], description: "Snapchat username, without the @ symbol. Pass null to remove it." },
+  venmo: { type: ["string", "null"], description: "Venmo username, without the @ symbol. Pass null to remove it." },
+  bereal: { type: ["string", "null"], description: "BeReal username, without the @ symbol. Pass null to remove it." },
+  otherSocial: { type: ["string", "null"], description: "Any other social link mentioned. Pass null to remove it." },
 };
 
 const ADD_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
@@ -128,6 +130,25 @@ const ADD_LIFE_EVENT_TOOL: OpenAI.ChatCompletionTool = {
   },
 };
 
+const DELETE_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "delete_family_member",
+    description:
+      "Permanently remove someone from the family tree. This is IRREVERSIBLE. Only call this after the user has explicitly confirmed in a follow-up message (you asked something like \"Are you sure you want to remove X? This can't be undone\" and they said yes). Never call this in the same turn as the first request to remove someone.",
+    parameters: {
+      type: "object",
+      properties: {
+        personId: {
+          type: "string",
+          description: "The [id] of the person to remove, exactly as it appears in the current members list. Never fabricate this.",
+        },
+      },
+      required: ["personId"],
+    },
+  },
+};
+
 function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
   const memberList =
     members.length === 0
@@ -147,15 +168,19 @@ function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
 Current family members:
 ${memberList}
 
-You have three tools:
+You have four tools:
 1. add_family_member — for someone NOT in the list above.
 2. update_family_member — for someone ALREADY in the list above (fix a typo, add a birthday, update contact info, etc.). Match by name; if two members share a first name, ask which one before acting.
 3. add_life_event — log a graduation, marriage, new baby, move, new job, or other milestone for someone in the list.
+4. delete_family_member — permanently remove someone. IRREVERSIBLE — see confirmation rule below.
 
 General guidelines:
 - Be warm and concise — like a helpful friend, not a form. Keep responses to 1-3 sentences.
 - Accept information in any format: full sentences, fragments, lists of multiple people/facts in one message, corrections to something said earlier, whatever the user types. Extract everything usable from a single message and act on all of it — call multiple tools back to back in one turn rather than asking the user to repeat things one at a time.
-- Don't ask for extra confirmation before calling a tool once you have enough information. Just do it, then give a short warm confirmation (e.g. "Done! Sarah is now in your family tree 🌿" or "Got it — added Jake's birthday.").
+- Don't ask for extra confirmation before calling add_family_member, update_family_member, or add_life_event once you have enough information. Just do it, then give a short warm confirmation (e.g. "Done! Sarah is now in your family tree 🌿" or "Got it — added Jake's birthday.").
+- EXCEPTION — deleting someone is different and requires confirmation first: when the user asks to remove/delete someone, do NOT call delete_family_member yet. Instead ask "Are you sure you want to remove [name]? This can't be undone." Only call the tool if their next message confirms yes. Never claim you removed someone unless the tool call actually returned success.
+- Removing/clearing a single field (e.g. "remove grandma's birthday", "delete his email") is NOT the same as deleting a person — use update_family_member and pass null explicitly for that field. This does not need the delete confirmation step.
+- After any tool call, only tell the user it succeeded if the tool result said success — if it failed, say so honestly rather than guessing why.
 - If a message is genuinely ambiguous (which person is meant, or a relationship that doesn't fit the rules below), ask ONE short clarifying question rather than guessing.
 - The {no birthday on file} / {no contact info on file} tags next to a name show what's still missing for that person — if it's natural in conversation, you can mention a gap, but don't interrogate the user about it unprompted.
 
@@ -213,8 +238,12 @@ Adding members:
 
 Updating members and life events:
 - Use update_family_member for corrections or new details about someone already in the list (birthdays, contact info, address, socials, name fixes). Only pass the fields that are changing.
+- To remove/clear a single field (birthday, phone, email, an address field, a social handle), use update_family_member and pass null for that field specifically — do not use delete_family_member for this.
 - Use add_life_event for milestones (graduations, marriages, new babies, moves, new jobs, passings) — these are separate from profile fields and don't go through update_family_member.
-- Dates: always output YYYY-MM-DD. For birthdays with no known year, use "2000" as the placeholder year. For life events with an unknown month/day, default the missing part(s) to "01".`;
+- Dates: always output YYYY-MM-DD. For birthdays with no known year, use "2000" as the placeholder year. For life events with an unknown month/day, default the missing part(s) to "01".
+
+Deleting members:
+- delete_family_member permanently removes the person and their account. Always confirm first per the rule above before calling it.`;
 }
 
 // POST /api/ai/chat
@@ -255,6 +284,7 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
   let memberAdded: ReturnType<typeof formatPerson> | null = null;
   let memberUpdated: ReturnType<typeof formatPerson> | null = null;
   let lifeEventAdded: { personName: string; eventType: string } | null = null;
+  let memberDeleted: { name: string } | null = null;
   let finalText = "";
   let loopMessages = [...currentMessages];
   let loopCount = 0;
@@ -265,7 +295,7 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: loopMessages,
-      tools: [ADD_MEMBER_TOOL, UPDATE_MEMBER_TOOL, ADD_LIFE_EVENT_TOOL],
+      tools: [ADD_MEMBER_TOOL, UPDATE_MEMBER_TOOL, ADD_LIFE_EVENT_TOOL, DELETE_MEMBER_TOOL],
       tool_choice: "auto",
     });
 
@@ -396,6 +426,24 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
               toolResult = JSON.stringify({ success: true });
             }
           }
+        } else if (toolCall.function.name === "delete_family_member") {
+          const input = JSON.parse(toolCall.function.arguments) as { personId: string };
+          const target = members.find((m: ReturnType<typeof formatPerson>) => m.id === input.personId);
+
+          if (!target) {
+            toolResult = JSON.stringify({ success: false, error: "Unknown personId" });
+          } else {
+            const isSelf = req.auth!.personId === input.personId;
+            const isSameFamilyAdmin = req.auth!.isAdmin;
+            if (!isSelf && !isSameFamilyAdmin) {
+              toolResult = JSON.stringify({ success: false, error: "Not authorized to remove this person" });
+            } else {
+              await db.delete(accountsTable).where(eq(accountsTable.personId, input.personId));
+              await db.delete(personsTable).where(eq(personsTable.id, input.personId));
+              memberDeleted = { name: `${target.firstName} ${target.lastName}` };
+              toolResult = JSON.stringify({ success: true });
+            }
+          }
         } else {
           toolResult = JSON.stringify({ success: false, error: "Unknown tool" });
         }
@@ -411,7 +459,7 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
     }
   }
 
-  res.json({ reply: finalText, memberAdded, memberUpdated, lifeEventAdded });
+  res.json({ reply: finalText, memberAdded, memberUpdated, lifeEventAdded, memberDeleted });
 });
 
 export default router;

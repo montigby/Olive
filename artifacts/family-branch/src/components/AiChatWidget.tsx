@@ -15,7 +15,8 @@ interface Message {
 type ActionConfirmation =
   | { type: "added"; name: string }
   | { type: "updated"; name: string }
-  | { type: "event"; name: string; eventType: string };
+  | { type: "event"; name: string; eventType: string }
+  | { type: "deleted"; name: string };
 
 const WELCOME_MESSAGE: Message = {
   role: "assistant",
@@ -90,6 +91,7 @@ export function AiChatWidget() {
         memberAdded?: { id: string; firstName: string; lastName: string } | null;
         memberUpdated?: { id: string; firstName: string; lastName: string } | null;
         lifeEventAdded?: { personName: string; eventType: string } | null;
+        memberDeleted?: { name: string } | null;
       };
 
       const assistantMessage: Message = {
@@ -98,7 +100,7 @@ export function AiChatWidget() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      if (data.memberAdded || data.memberUpdated || data.lifeEventAdded) {
+      if (data.memberAdded || data.memberUpdated || data.lifeEventAdded || data.memberDeleted) {
         queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/members`] });
         queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/home-feed`] });
       }
@@ -109,6 +111,8 @@ export function AiChatWidget() {
       } else if (data.memberUpdated) {
         setLastAction({ type: "updated", name: `${data.memberUpdated.firstName} ${data.memberUpdated.lastName}` });
         queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(data.memberUpdated.id) });
+      } else if (data.memberDeleted) {
+        setLastAction({ type: "deleted", name: data.memberDeleted.name });
       } else if (data.lifeEventAdded) {
         setLastAction({
           type: "event",
@@ -247,6 +251,9 @@ export function AiChatWidget() {
                     Logged a {EVENT_TYPE_LABELS[lastAction.eventType] ?? "life event"} for{" "}
                     <strong>{lastAction.name}</strong>
                   </span>
+                )}
+                {lastAction.type === "deleted" && (
+                  <span><strong>{lastAction.name}</strong> removed from your family tree</span>
                 )}
               </div>
             )}
