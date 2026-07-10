@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { personsTable, accountsTable, relationshipsTable, peopleTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { UpdatePersonBody } from "@workspace/api-zod";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { computeTier, applyVisibility } from "../lib/visibility";
 import { areUnitsLinked } from "../lib/unitAccess";
@@ -134,6 +134,65 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
   }
 
   res.json(formatPerson(updated[0]));
+});
+
+// PATCH /api/persons/:personId/admin
+// Grants or revokes admin status for an existing (claimed) family member.
+// Admin-only, same family unit. Refuses to remove the last remaining admin
+// so a family unit can never be left without one.
+router.patch("/persons/:personId/admin", requireAuth, requireAdmin, async (req, res) => {
+  const personId = String(req.params.personId);
+  const { isAdmin } = req.body as { isAdmin?: boolean };
+
+  if (typeof isAdmin !== "boolean") {
+    res.status(400).json({ error: "Validation error", message: "isAdmin must be a boolean" });
+    return;
+  }
+
+  const [target] = await db
+    .select({
+      id: personsTable.id,
+      familyUnitId: personsTable.familyUnitId,
+      isAdmin: personsTable.isAdmin,
+      claimed: personsTable.claimed,
+    })
+    .from(personsTable)
+    .where(eq(personsTable.id, personId))
+    .limit(1);
+
+  if (!target) {
+    res.status(404).json({ error: "Not found", message: "Person not found" });
+    return;
+  }
+
+  if (target.familyUnitId !== req.auth!.familyUnitId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  if (!target.claimed) {
+    res.status(400).json({ error: "Bad request", message: "Only a claimed profile with an account can be an admin." });
+    return;
+  }
+
+  if (!isAdmin && target.isAdmin) {
+    const admins = await db
+      .select({ id: personsTable.id })
+      .from(personsTable)
+      .where(and(eq(personsTable.familyUnitId, target.familyUnitId), eq(personsTable.isAdmin, true)));
+    if (admins.length <= 1) {
+      res.status(409).json({ error: "Conflict", message: "Cannot remove the last admin in a family." });
+      return;
+    }
+  }
+
+  const [updated] = await db
+    .update(personsTable)
+    .set({ isAdmin, updatedAt: new Date() })
+    .where(eq(personsTable.id, personId))
+    .returning();
+
+  res.json(formatPerson(updated));
 });
 
 // DELETE /api/persons/:personId

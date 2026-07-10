@@ -32,7 +32,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown, Search } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown, Search, MoreVertical, ShieldCheck } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -148,6 +154,35 @@ export default function Members() {
         },
       }
     );
+  };
+
+  const [togglingAdminId, setTogglingAdminId] = useState<string | null>(null);
+
+  const handleToggleAdmin = async (personId: string, nextIsAdmin: boolean) => {
+    setTogglingAdminId(personId);
+    try {
+      const token = localStorage.getItem("oliveToken");
+      const res = await fetch(`/api/persons/${personId}/admin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isAdmin: nextIsAdmin }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast({
+          variant: "destructive",
+          title: nextIsAdmin ? "Couldn't make them an admin" : "Couldn't remove admin",
+          description: body.message || "Please try again.",
+        });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: getListMembersQueryKey(unitId) });
+      toast({ title: nextIsAdmin ? "Admin access granted" : "Admin access removed" });
+    } catch {
+      toast({ variant: "destructive", title: "Network error", description: "Please try again." });
+    } finally {
+      setTogglingAdminId(null);
+    }
   };
 
   const copyToClipboard = async (text: string) => {
@@ -443,6 +478,11 @@ export default function Members() {
                                 Unclaimed
                               </Badge>
                             )}
+                            {member.isAdmin && (
+                              <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/10 border-none font-normal text-xs px-2 py-0 h-5">
+                                <ShieldCheck className="w-3 h-3 mr-1" /> Admin
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {member.relationshipLabel}
@@ -488,6 +528,29 @@ export default function Members() {
                             <Eye className="w-4 h-4" />
                           </Button>
                         </Link>
+                      )}
+
+                      {/* Admin-only: grant/revoke admin access. Only claimed
+                          profiles have an account to grant it to. */}
+                      {user?.isAdmin && member.claimed && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-primary"
+                              disabled={togglingAdminId === member.id}
+                              title="More actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleToggleAdmin(member.id, !member.isAdmin)}>
+                              {member.isAdmin ? "Remove admin access" : "Make admin"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
 
                       <Link href={`/members/${member.id}`}>
