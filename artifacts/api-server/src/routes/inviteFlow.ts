@@ -544,12 +544,41 @@ router.post("/claims", async (req, res) => {
     .set({ useCount: tokenRow.useCount + 1 })
     .where(eq(inviteTokensTable.id, tokenRow.id));
 
+  // Notify admins by email so a claim doesn't sit unnoticed. Best-effort --
+  // must never block the claimer's request.
+  notifyAdminsOfPendingClaim(tokenRow.familyId, body.claimerName).catch(() => {});
+
   res.status(201).json({
     id: inserted.id,
     status: inserted.status,
     createdAt: inserted.createdAt.toISOString(),
   });
 });
+
+async function notifyAdminsOfPendingClaim(familyUnitId: string, claimerName: string) {
+  const [unit] = await db
+    .select({ unitName: familyUnitsTable.unitName })
+    .from(familyUnitsTable)
+    .where(eq(familyUnitsTable.id, familyUnitId))
+    .limit(1);
+  if (!unit) return;
+
+  const admins = await db
+    .select({ firstName: personsTable.firstName, email: personsTable.email })
+    .from(personsTable)
+    .where(and(eq(personsTable.familyUnitId, familyUnitId), eq(personsTable.isAdmin, true)));
+
+  const { sendClaimPendingNotification } = await import("../lib/email");
+  for (const admin of admins) {
+    if (!admin.email) continue;
+    await sendClaimPendingNotification({
+      to: admin.email,
+      adminName: admin.firstName,
+      claimerName,
+      unitName: unit.unitName,
+    }).catch(() => {});
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Public: poll claim status

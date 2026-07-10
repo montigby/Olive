@@ -258,33 +258,21 @@ function Screen({
     case "noMatch":
       return (
         <div className="space-y-4 text-center">
-          <h2 className="font-serif text-2xl font-bold">Let's add you</h2>
+          <h2 className="font-serif text-2xl font-bold">We couldn't find you</h2>
           <p className="text-muted-foreground">
-            We didn't find an existing profile for <strong>{step.name}</strong> in {step.family.family.unitName}. You can ask the family organizer to add you, or create a new profile that they'll review.
+            We didn't find an existing profile for <strong>{step.name}</strong> in {step.family.family.unitName}. Double-check the spelling, or ask whoever invited you to add you to the family and send you a direct invite.
           </p>
           <div className="flex flex-col gap-2">
             <Button
-              onClick={() =>
-                setStep({
-                  kind: "createNew",
-                  family: step.family,
-                  name: step.name,
-                  email: "",
-                  password: "",
-                  busy: false,
-                })
-              }
-            >
-              Create a new profile
-            </Button>
-            <Button
-              variant="ghost"
               onClick={() =>
                 setStep({ kind: "identify", family: step.family, name: step.name, busy: false })
               }
             >
               Search again
             </Button>
+            <Link href="/login">
+              <Button variant="ghost" className="w-full">Go to sign in</Button>
+            </Link>
           </div>
         </div>
       );
@@ -293,6 +281,11 @@ function Screen({
       return <Credentials token={token} step={step} setStep={setStep} />;
 
     case "createNew":
+      // No longer reachable from the UI (the "noMatch" screen's entry point
+      // was removed 2026-07-09 -- self-service "not listed" profile creation
+      // was unfinished: no way to place the person in the tree at claim
+      // time, admin had to sort it out manually anyway). Kept working end to
+      // end in case it's worth re-exposing once that gap is closed.
       return <CreateNew token={token} step={step} setStep={setStep} />;
 
     case "pending":

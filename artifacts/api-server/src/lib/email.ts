@@ -62,6 +62,49 @@ export async function sendWeeklyDigest({
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
 }
 
+export async function sendClaimPendingNotification({
+  to,
+  adminName,
+  claimerName,
+  unitName,
+}: {
+  to: string;
+  adminName: string;
+  claimerName: string;
+  unitName: string;
+}) {
+  const client = await getClient();
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: `${claimerName} wants to join ${unitName}`,
+    html: buildClaimNotificationHtml(adminName, claimerName, unitName),
+    text: `Hi ${adminName},\n\n${claimerName} has requested to join ${unitName} on Olive and is waiting for your approval.\n\nReview it here: https://myolive.app/settings\n\n— Olive\nhttps://myolive.app`,
+  });
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
+function buildClaimNotificationHtml(adminName: string, claimerName: string, unitName: string): string {
+  return `<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; color: #1a1a1a; max-width: 480px; margin: 0 auto; padding: 24px;">
+  <p style="font-size: 16px;">Hi ${adminName},</p>
+  <p style="font-size: 16px;">
+    <strong>${claimerName}</strong> has requested to join <strong>${unitName}</strong> on Olive
+    and is waiting for your approval.
+  </p>
+  <p style="font-size: 16px;">
+    <a href="https://myolive.app/settings" style="color: #4A7C59; font-weight: 600;">Review the request &rarr;</a>
+  </p>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+  <p style="font-size: 12px; color: #888;">
+    Olive &mdash; <a href="https://myolive.app" style="color: #888;">myolive.app</a>
+  </p>
+</body>
+</html>`;
+}
+
 function getMondayDateString(): string {
   const today = new Date();
   const day = today.getDay();
