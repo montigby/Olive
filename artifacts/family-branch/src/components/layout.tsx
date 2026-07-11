@@ -121,14 +121,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content — add bottom padding on mobile to clear the tab bar */}
-      <main className="flex-1 overflow-auto bg-background pb-20 md:pb-0">
+      <main className="flex-1 overflow-auto bg-background pb-28 md:pb-0">
         <div className="p-4 md:p-8 max-w-6xl mx-auto">
           {children}
         </div>
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-stretch h-16 shadow-[0_-1px_8px_rgba(0,0,0,0.08)]">
+      <nav className="md:hidden fixed bottom-10 left-0 right-0 z-50 bg-card border-t border-border flex items-stretch h-16 shadow-[0_-1px_8px_rgba(0,0,0,0.08)]">
         {navItems.map((item) => {
           const isActive = location === item.href || (item.href !== "/dashboard" && item.href !== "/home" && location.startsWith(item.href));
           return (
