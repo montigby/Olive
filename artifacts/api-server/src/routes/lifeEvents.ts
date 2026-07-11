@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, personsTable, lifeEventsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
+import { canEditPerson, isParentOfPerson } from "../lib/permissions";
 import type { LifeEvent } from "@workspace/db";
 
 const router = Router();
@@ -98,10 +99,7 @@ router.post("/persons/:personId/life-events", requireAuth, async (req, res) => {
     return;
   }
 
-  const isSelf = req.auth!.personId === personId;
-  const isSameFamilyAdmin = req.auth!.isAdmin && req.auth!.familyUnitId === target.familyUnitId;
-
-  if (!isSelf && !isSameFamilyAdmin) {
+  if (!(await canEditPerson(req.auth!, target))) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -144,8 +142,11 @@ router.patch("/life-events/:eventId", requireAuth, async (req, res) => {
 
   const isCreator = event.createdBy === req.auth!.personId;
   const isSameFamilyAdmin = req.auth!.isAdmin && req.auth!.familyUnitId === event.familyId;
+  const isParentOfSubject =
+    !isCreator && !isSameFamilyAdmin && req.auth!.familyUnitId === event.familyId &&
+    (await isParentOfPerson(req.auth!.personId, event.personId, event.familyId));
 
-  if (!isCreator && !isSameFamilyAdmin) {
+  if (!isCreator && !isSameFamilyAdmin && !isParentOfSubject) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -186,8 +187,11 @@ router.delete("/life-events/:eventId", requireAuth, async (req, res) => {
 
   const isCreator = event.createdBy === req.auth!.personId;
   const isSameFamilyAdmin = req.auth!.isAdmin && req.auth!.familyUnitId === event.familyId;
+  const isParentOfSubject =
+    !isCreator && !isSameFamilyAdmin && req.auth!.familyUnitId === event.familyId &&
+    (await isParentOfPerson(req.auth!.personId, event.personId, event.familyId));
 
-  if (!isCreator && !isSameFamilyAdmin) {
+  if (!isCreator && !isSameFamilyAdmin && !isParentOfSubject) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }

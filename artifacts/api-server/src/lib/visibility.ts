@@ -320,6 +320,23 @@ function buildFamilyGraph(
   return graph;
 }
 
+// Is `parentId` a parent of `childId` per the same family graph used for
+// visibility? Reuses buildFamilyGraph so parent detection covers both
+// explicit `relationships` rows and the label-based heuristics (grandparent,
+// nephew/niece anchors, etc.) -- not just the narrow subset of labels
+// syncPersonToRelationshipLayer writes to the relationships table.
+export function isParentOf(
+  parentId: string,
+  childId: string,
+  allMembers: any[],
+  relationships?: RelationshipEdge[],
+): boolean {
+  if (parentId === childId) return false;
+  const graph = buildFamilyGraph(allMembers, relationships);
+  const edges = graph.get(parentId) ?? [];
+  return edges.some((e) => e.to === childId && e.kind === "parent-child" && e.isDown);
+}
+
 export function computeVisibleSet(
   viewerPerson: any,
   allMembers: any[],

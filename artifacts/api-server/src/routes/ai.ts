@@ -1,12 +1,13 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { db } from "@workspace/db";
-import { personsTable, lifeEventsTable, accountsTable } from "@workspace/db";
+import { personsTable, lifeEventsTable, accountsTable, relationshipsTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 import { buildPersonUpdateData, type PersonUpdateInput } from "../lib/personUpdate";
+import { isParentOf } from "../lib/visibility";
 import { VALID_EVENT_TYPES } from "./lifeEvents";
 
 const router = Router();
@@ -271,6 +272,18 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
   const members = rawMembers.map(formatPerson);
   const memberIds = new Set(members.map((m: ReturnType<typeof formatPerson>) => m.id));
 
+  // Loaded once and reused for every isParentOf check in the tool-call loop
+  // below, so a parent (not just an admin) can update or log life events for
+  // their own kids without needing admin rights.
+  const relationships = await db
+    .select({
+      fromPerson: relationshipsTable.fromPerson,
+      toPerson: relationshipsTable.toPerson,
+      type: relationshipsTable.type,
+    })
+    .from(relationshipsTable)
+    .where(eq(relationshipsTable.familyId, unitId));
+
   const systemPrompt = buildSystemPrompt(members);
 
   const currentMessages: OpenAI.ChatCompletionMessageParam[] = [
@@ -382,7 +395,8 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
           } else {
             const isSelf = req.auth!.personId === input.personId;
             const isSameFamilyAdmin = req.auth!.isAdmin; // already scoped to this unit above
-            if (!isSelf && !isSameFamilyAdmin) {
+            const isParent = isParentOf(req.auth!.personId, input.personId, rawMembers, relationships);
+            if (!isSelf && !isSameFamilyAdmin && !isParent) {
               toolResult = JSON.stringify({ success: false, error: "Not authorized to update this person" });
             } else {
               const updateData = buildPersonUpdateData(input, { allowRelationshipLabel: req.auth!.isAdmin });
@@ -411,7 +425,8 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
           } else {
             const isSelf = req.auth!.personId === input.personId;
             const isSameFamilyAdmin = req.auth!.isAdmin;
-            if (!isSelf && !isSameFamilyAdmin) {
+            const isParent = isParentOf(req.auth!.personId, input.personId, rawMembers, relationships);
+            if (!isSelf && !isSameFamilyAdmin && !isParent) {
               toolResult = JSON.stringify({ success: false, error: "Not authorized to add a life event for this person" });
             } else {
               await db.insert(lifeEventsTable).values({

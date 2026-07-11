@@ -8,6 +8,7 @@ import { formatPerson } from "./auth";
 import { computeTier, applyVisibility } from "../lib/visibility";
 import { areUnitsLinked } from "../lib/unitAccess";
 import { buildPersonUpdateData } from "../lib/personUpdate";
+import { canEditPerson } from "../lib/permissions";
 
 const router = Router();
 
@@ -97,11 +98,7 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
     return;
   }
 
-  const isSelf = req.auth!.personId === personId;
-  const isSameFamilyAdmin =
-    req.auth!.isAdmin && req.auth!.familyUnitId === target.familyUnitId;
-
-  if (!isSelf && !isSameFamilyAdmin) {
+  if (!(await canEditPerson(req.auth!, target))) {
     res.status(403).json({ error: "Forbidden", message: "Cannot edit another person's profile" });
     return;
   }
