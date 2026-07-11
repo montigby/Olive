@@ -186,9 +186,13 @@ router.patch("/persons/:personId/admin", requireAuth, requireAdmin, async (req, 
     }
   }
 
+  // Deliberately not touching updatedAt -- it drives the "Recent updates"
+  // home feed, which infers what changed from current field values. Admin
+  // status isn't a profile field, so bumping it would make someone jump to
+  // the top of that feed with a fabricated, unrelated description.
   const [updated] = await db
     .update(personsTable)
-    .set({ isAdmin, updatedAt: new Date() })
+    .set({ isAdmin })
     .where(eq(personsTable.id, personId))
     .returning();
 

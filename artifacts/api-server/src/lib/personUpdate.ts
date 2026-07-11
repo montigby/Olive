@@ -66,6 +66,11 @@ export function buildPersonUpdateData(
   if (data.confirmedMembersOnly !== undefined) updateData.confirmedMembersOnly = data.confirmedMembersOnly;
   if (data.hideAddress !== undefined) updateData.hideAddress = data.hideAddress;
   if (data.hideSocials !== undefined) updateData.hideSocials = data.hideSocials;
-  updateData.updatedAt = new Date();
+  // Only bump updatedAt if something is actually changing -- it drives the
+  // "Recent updates" home feed, so a no-op call shouldn't surface someone
+  // there with nothing real to show.
+  if (Object.keys(updateData).length > 0) {
+    updateData.updatedAt = new Date();
+  }
   return updateData;
 }
