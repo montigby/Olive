@@ -64,6 +64,12 @@ export default function Landing() {
           </div>
         </div>
       </main>
+
+      <footer className="px-6 py-8 text-center">
+        <Link href="/privacy">
+          <span className="text-sm text-[#6B6560] hover:text-[#2D2D2D] hover:underline cursor-pointer">Privacy</span>
+        </Link>
+      </footer>
     </div>
   );
 }

@@ -122,6 +122,12 @@ export default function Login() {
           </div>
         </div>
       </main>
+
+      <footer className="px-6 py-6 text-center">
+        <Link href="/privacy">
+          <span className="text-sm text-muted-foreground hover:text-foreground hover:underline cursor-pointer">Privacy</span>
+        </Link>
+      </footer>
     </div>
   );
 }

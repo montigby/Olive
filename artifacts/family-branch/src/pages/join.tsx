@@ -173,6 +173,11 @@ export default function Join() {
             <Screen step={step} setStep={setStep} token={token!} login={login} />
           </CardContent>
         </Card>
+        <div className="text-center">
+          <Link href="/privacy">
+            <span className="text-sm text-muted-foreground hover:text-foreground hover:underline cursor-pointer">Privacy</span>
+          </Link>
+        </div>
       </div>
     </div>
   );
