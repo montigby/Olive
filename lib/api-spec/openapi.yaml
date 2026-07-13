@@ -755,7 +755,21 @@ components:
           type: boolean
         hideAddress:
           type: boolean
-        hideSocials:
+        hideInstagram:
+          type: boolean
+        hideFacebook:
+          type: boolean
+        hideTiktok:
+          type: boolean
+        hideLinkedin:
+          type: boolean
+        hideSnapchat:
+          type: boolean
+        hideVenmo:
+          type: boolean
+        hideBereal:
+          type: boolean
+        hideOtherSocial:
           type: boolean
 
     # ─── Family Unit ───────────────────────────────────────────────

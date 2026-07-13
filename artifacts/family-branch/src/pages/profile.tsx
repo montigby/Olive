@@ -48,6 +48,8 @@ import {
   Trash2,
   CalendarDays,
   Gift,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const MONTHS = [
@@ -84,7 +86,14 @@ const profileSchema = z.object({
   tier2ContactField: z.enum(["phone", "email"]).default("phone"),
   confirmedMembersOnly: z.boolean().default(false),
   hideAddress: z.boolean().default(false),
-  hideSocials: z.boolean().default(false),
+  hideInstagram: z.boolean().default(false),
+  hideFacebook: z.boolean().default(false),
+  hideTiktok: z.boolean().default(false),
+  hideLinkedin: z.boolean().default(false),
+  hideSnapchat: z.boolean().default(false),
+  hideVenmo: z.boolean().default(false),
+  hideBereal: z.boolean().default(false),
+  hideOtherSocial: z.boolean().default(false),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -542,11 +551,11 @@ function ProfileView({
     ((person.firstName || " ")[0] + (person.lastName || " ")[0]).toUpperCase();
 
   const hasContact = !!(person.phone || person.email || address);
-  // Respect hideSocials — only the profile owner and admins can see hidden socials
+  // Per-handle hiding is enforced server-side (hidden handles come back null to
+  // non-owner/non-admin viewers), so the frontend just checks if anything is left to show.
   const hasSocial = !!(
-    (person.instagram || person.facebook || person.tiktok || person.linkedin ||
-     person.snapchat || person.venmo || person.bereal || person.otherSocial) &&
-    (!person.hideSocials || canEdit)
+    person.instagram || person.facebook || person.tiktok || person.linkedin ||
+    person.snapchat || person.venmo || person.bereal || person.otherSocial
   );
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -866,7 +875,14 @@ function ProfileEditForm({
       tier2ContactField: (person?.tier2ContactField as "phone" | "email") ?? "phone",
       confirmedMembersOnly: person?.confirmedMembersOnly ?? false,
       hideAddress: person?.hideAddress ?? false,
-      hideSocials: person?.hideSocials ?? false,
+      hideInstagram: person?.hideInstagram ?? false,
+      hideFacebook: person?.hideFacebook ?? false,
+      hideTiktok: person?.hideTiktok ?? false,
+      hideLinkedin: person?.hideLinkedin ?? false,
+      hideSnapchat: person?.hideSnapchat ?? false,
+      hideVenmo: person?.hideVenmo ?? false,
+      hideBereal: person?.hideBereal ?? false,
+      hideOtherSocial: person?.hideOtherSocial ?? false,
     },
   });
 
@@ -903,7 +919,14 @@ function ProfileEditForm({
       tier2ContactField: data.tier2ContactField,
       confirmedMembersOnly: data.confirmedMembersOnly,
       hideAddress: data.hideAddress,
-      hideSocials: data.hideSocials,
+      hideInstagram: data.hideInstagram,
+      hideFacebook: data.hideFacebook,
+      hideTiktok: data.hideTiktok,
+      hideLinkedin: data.hideLinkedin,
+      hideSnapchat: data.hideSnapchat,
+      hideVenmo: data.hideVenmo,
+      hideBereal: data.hideBereal,
+      hideOtherSocial: data.hideOtherSocial,
     };
 
     updateMutation.mutate(
@@ -1159,26 +1182,56 @@ function ProfileEditForm({
           {/* Social */}
           <section className="space-y-4">
             <h3 className="font-serif text-lg font-semibold border-b pb-2">Social</h3>
+            {isOwnProfile && (
+              <p className="text-xs text-muted-foreground -mt-2">
+                Toggle a handle to hide it from the family directory. You and admins can always see it.
+              </p>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(
                 [
-                  { name: "instagram", label: "Instagram", placeholder: "username" },
-                  { name: "facebook", label: "Facebook", placeholder: "username or URL" },
-                  { name: "tiktok", label: "TikTok", placeholder: "username" },
-                  { name: "linkedin", label: "LinkedIn", placeholder: "username" },
-                  { name: "snapchat", label: "Snapchat", placeholder: "username" },
-                  { name: "venmo", label: "Venmo", placeholder: "username" },
-                  { name: "bereal", label: "BeReal", placeholder: "username" },
-                  { name: "otherSocial", label: "Other Link", placeholder: "https://..." },
+                  { name: "instagram", hideName: "hideInstagram", label: "Instagram", placeholder: "username" },
+                  { name: "facebook", hideName: "hideFacebook", label: "Facebook", placeholder: "username or URL" },
+                  { name: "tiktok", hideName: "hideTiktok", label: "TikTok", placeholder: "username" },
+                  { name: "linkedin", hideName: "hideLinkedin", label: "LinkedIn", placeholder: "username" },
+                  { name: "snapchat", hideName: "hideSnapchat", label: "Snapchat", placeholder: "username" },
+                  { name: "venmo", hideName: "hideVenmo", label: "Venmo", placeholder: "username" },
+                  { name: "bereal", hideName: "hideBereal", label: "BeReal", placeholder: "username" },
+                  { name: "otherSocial", hideName: "hideOtherSocial", label: "Other Link", placeholder: "https://..." },
                 ] as const
-              ).map(({ name, label, placeholder }) => (
+              ).map(({ name, hideName, label, placeholder }) => (
                 <FormField
                   key={name}
                   control={form.control}
                   name={name}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{label}</FormLabel>
+                      <div className="flex items-center justify-between gap-2">
+                        <FormLabel>{label}</FormLabel>
+                        {isOwnProfile && (
+                          <FormField
+                            control={form.control}
+                            name={hideName}
+                            render={({ field: hideField }) => (
+                              <button
+                                type="button"
+                                onClick={() => hideField.onChange(!hideField.value)}
+                                className={`flex items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                                  hideField.value ? "text-muted-foreground" : "text-primary"
+                                }`}
+                                title={
+                                  hideField.value
+                                    ? "Hidden from family — click to make visible"
+                                    : "Visible to family — click to hide"
+                                }
+                              >
+                                {hideField.value ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                {hideField.value ? "Hidden" : "Visible"}
+                              </button>
+                            )}
+                          />
+                        )}
+                      </div>
                       <FormControl>
                         <Input
                           placeholder={placeholder}
@@ -1311,42 +1364,7 @@ function ProfileEditForm({
                 )}
               />
 
-              {/* Hide socials */}
-              <FormField
-                control={form.control}
-                name="hideSocials"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
-                      <div>
-                        <FormLabel className="text-sm font-medium leading-none">
-                          Hide my social handles
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Don&apos;t show your social media handles (Instagram, Facebook, etc.) to anyone in the family directory. You and admins can still see them.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={field.value}
-                        onClick={() => field.onChange(!field.value)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                          field.value ? "bg-primary" : "bg-muted"
-                        }`}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            field.value ? "translate-x-5" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Per-handle social visibility is now set inline in the Social section above. */}
             </section>
           )}
 

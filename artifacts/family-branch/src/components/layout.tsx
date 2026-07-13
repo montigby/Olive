@@ -127,21 +127,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-10 left-0 right-0 z-50 bg-card border-t border-border flex items-stretch h-16 shadow-[0_-1px_8px_rgba(0,0,0,0.08)]">
-        {navItems.map((item) => {
-          const isActive = location === item.href || (item.href !== "/dashboard" && item.href !== "/home" && location.startsWith(item.href));
-          return (
-            <Link key={item.href} href={item.href} className="flex-1">
-              <div className={`flex flex-col items-center justify-center h-full gap-0.5 transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                <item.icon className={`w-5 h-5 ${isActive ? "stroke-[2.2]" : "stroke-[1.6]"}`} />
-                <span className={`text-[10px] leading-tight font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                  {item.label}
-                </span>
-              </div>
-            </Link>
-          );
-        })}
+      {/* Mobile Bottom Tab Bar — bottom-0 with pb-10 so bg-card fills the gap down to the true
+          viewport edge (raised off bottom-0 previously left that strip transparent, exposing
+          scrolled page content underneath); tab icons/labels stay visually raised via the h-16 inner row. */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-1px_8px_rgba(0,0,0,0.08)] pb-10">
+        <div className="flex items-stretch h-16">
+          {navItems.map((item) => {
+            const isActive = location === item.href || (item.href !== "/dashboard" && item.href !== "/home" && location.startsWith(item.href));
+            return (
+              <Link key={item.href} href={item.href} className="flex-1">
+                <div className={`flex flex-col items-center justify-center h-full gap-0.5 transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                  <item.icon className={`w-5 h-5 ${isActive ? "stroke-[2.2]" : "stroke-[1.6]"}`} />
+                  <span className={`text-[10px] leading-tight font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                    {item.label}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       <AiChatWidget />

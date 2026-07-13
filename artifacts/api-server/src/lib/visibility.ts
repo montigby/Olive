@@ -519,7 +519,14 @@ export function applyVisibility(person: any, tier: Tier): any {
       tier2ContactField: person.tier2ContactField,
       confirmedMembersOnly: person.confirmedMembersOnly,
       hideAddress: person.hideAddress,
-      hideSocials: person.hideSocials,
+      hideInstagram: person.hideInstagram,
+      hideFacebook: person.hideFacebook,
+      hideTiktok: person.hideTiktok,
+      hideLinkedin: person.hideLinkedin,
+      hideSnapchat: person.hideSnapchat,
+      hideVenmo: person.hideVenmo,
+      hideBereal: person.hideBereal,
+      hideOtherSocial: person.hideOtherSocial,
       claimedAt: person.claimedAt,
       inviteExpiresAt: person.inviteExpiresAt,
       createdAt: person.createdAt,
@@ -536,16 +543,14 @@ export function applyVisibility(person: any, tier: Tier): any {
         full.addressZip = null;
         full.addressCountry = null;
       }
-      if (person.hideSocials) {
-        full.instagram = null;
-        full.facebook = null;
-        full.tiktok = null;
-        full.linkedin = null;
-        full.snapchat = null;
-        full.venmo = null;
-        full.bereal = null;
-        full.otherSocial = null;
-      }
+      if (person.hideInstagram) full.instagram = null;
+      if (person.hideFacebook) full.facebook = null;
+      if (person.hideTiktok) full.tiktok = null;
+      if (person.hideLinkedin) full.linkedin = null;
+      if (person.hideSnapchat) full.snapchat = null;
+      if (person.hideVenmo) full.venmo = null;
+      if (person.hideBereal) full.bereal = null;
+      if (person.hideOtherSocial) full.otherSocial = null;
       if (!person.showBirthYear && full.birthday) {
         full.birthday = maskBirthdayYear(full.birthday);
       }

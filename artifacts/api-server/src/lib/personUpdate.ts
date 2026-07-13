@@ -25,7 +25,14 @@ export interface PersonUpdateInput {
   tier2ContactField?: string;
   confirmedMembersOnly?: boolean;
   hideAddress?: boolean;
-  hideSocials?: boolean;
+  hideInstagram?: boolean;
+  hideFacebook?: boolean;
+  hideTiktok?: boolean;
+  hideLinkedin?: boolean;
+  hideSnapchat?: boolean;
+  hideVenmo?: boolean;
+  hideBereal?: boolean;
+  hideOtherSocial?: boolean;
 }
 
 /** Maps a partial person-update payload onto Drizzle update columns.
@@ -65,7 +72,14 @@ export function buildPersonUpdateData(
   }
   if (data.confirmedMembersOnly !== undefined) updateData.confirmedMembersOnly = data.confirmedMembersOnly;
   if (data.hideAddress !== undefined) updateData.hideAddress = data.hideAddress;
-  if (data.hideSocials !== undefined) updateData.hideSocials = data.hideSocials;
+  if (data.hideInstagram !== undefined) updateData.hideInstagram = data.hideInstagram;
+  if (data.hideFacebook !== undefined) updateData.hideFacebook = data.hideFacebook;
+  if (data.hideTiktok !== undefined) updateData.hideTiktok = data.hideTiktok;
+  if (data.hideLinkedin !== undefined) updateData.hideLinkedin = data.hideLinkedin;
+  if (data.hideSnapchat !== undefined) updateData.hideSnapchat = data.hideSnapchat;
+  if (data.hideVenmo !== undefined) updateData.hideVenmo = data.hideVenmo;
+  if (data.hideBereal !== undefined) updateData.hideBereal = data.hideBereal;
+  if (data.hideOtherSocial !== undefined) updateData.hideOtherSocial = data.hideOtherSocial;
   // Only bump updatedAt if something is actually changing -- it drives the
   // "Recent updates" home feed, so a no-op call shouldn't surface someone
   // there with nothing real to show.

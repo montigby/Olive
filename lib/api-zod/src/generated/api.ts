@@ -212,7 +212,14 @@ export const UpdatePersonBody = zod.object({
   tier2ContactField: zod.enum(["phone", "email"]).optional(),
   confirmedMembersOnly: zod.boolean().optional(),
   hideAddress: zod.boolean().optional(),
-  hideSocials: zod.boolean().optional(),
+  hideInstagram: zod.boolean().optional(),
+  hideFacebook: zod.boolean().optional(),
+  hideTiktok: zod.boolean().optional(),
+  hideLinkedin: zod.boolean().optional(),
+  hideSnapchat: zod.boolean().optional(),
+  hideVenmo: zod.boolean().optional(),
+  hideBereal: zod.boolean().optional(),
+  hideOtherSocial: zod.boolean().optional(),
 });
 
 export const UpdatePersonResponse = zod.object({

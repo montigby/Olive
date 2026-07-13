@@ -66,7 +66,14 @@ export interface Person {
   tier2ContactField?: string | null;
   confirmedMembersOnly?: boolean | null;
   hideAddress?: boolean | null;
-  hideSocials?: boolean | null;
+  hideInstagram?: boolean | null;
+  hideFacebook?: boolean | null;
+  hideTiktok?: boolean | null;
+  hideLinkedin?: boolean | null;
+  hideSnapchat?: boolean | null;
+  hideVenmo?: boolean | null;
+  hideBereal?: boolean | null;
+  hideOtherSocial?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -128,7 +135,14 @@ export interface UpdatePersonBody {
   tier2ContactField?: "phone" | "email";
   confirmedMembersOnly?: boolean;
   hideAddress?: boolean;
-  hideSocials?: boolean;
+  hideInstagram?: boolean;
+  hideFacebook?: boolean;
+  hideTiktok?: boolean;
+  hideLinkedin?: boolean;
+  hideSnapchat?: boolean;
+  hideVenmo?: boolean;
+  hideBereal?: boolean;
+  hideOtherSocial?: boolean;
 }
 
 export interface FamilyUnitSummary {
