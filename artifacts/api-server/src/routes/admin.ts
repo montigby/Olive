@@ -136,4 +136,26 @@ router.get("/admin/graph-debug/:unitId", async (req, res) => {
   });
 });
 
+/**
+ * GET /api/admin/find-unit?name=Zachary
+ *
+ * TEMPORARY diagnostic endpoint — finds familyUnitId(s) for persons matching
+ * a first-name substring. Remove alongside graph-debug.
+ */
+router.get("/admin/find-unit", async (req, res) => {
+  if (!checkSecret(req, res)) return;
+
+  const name = String(req.query.name ?? "").toLowerCase();
+  const all = await db
+    .select({
+      id: personsTable.id,
+      firstName: personsTable.firstName,
+      lastName: personsTable.lastName,
+      familyUnitId: personsTable.familyUnitId,
+    })
+    .from(personsTable);
+
+  res.json(all.filter((p) => p.firstName.toLowerCase().includes(name)));
+});
+
 export default router;
