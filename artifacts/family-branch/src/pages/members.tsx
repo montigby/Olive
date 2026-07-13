@@ -38,7 +38,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown, Search, MoreVertical, ShieldCheck } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown, Search, MoreVertical, ShieldCheck, ShieldPlus, ShieldMinus } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -157,6 +167,10 @@ export default function Members() {
   };
 
   const [togglingAdminId, setTogglingAdminId] = useState<string | null>(null);
+  // Confirmation gate before granting/revoking admin access -- this is a
+  // high-trust action (admins can edit anyone's profile and manage other
+  // admins), so it shouldn't fire from a single stray click in a menu.
+  const [adminAction, setAdminAction] = useState<{ id: string; name: string; nextIsAdmin: boolean } | null>(null);
 
   const handleToggleAdmin = async (personId: string, nextIsAdmin: boolean) => {
     setTogglingAdminId(personId);
@@ -485,7 +499,7 @@ export default function Members() {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {member.relationshipLabel}
+                            {member.viewerRelationshipLabel ?? member.relationshipLabel}
                             {user?.isAdmin && !member.birthday && (
                               <span className="ml-2 text-xs text-amber-600/80">· No birthday</span>
                             )}
@@ -531,7 +545,9 @@ export default function Members() {
                       )}
 
                       {/* Admin-only: grant/revoke admin access. Only claimed
-                          profiles have an account to grant it to. */}
+                          profiles have an account to grant it to. Opens a
+                          confirmation dialog (below, outside this loop) that
+                          explains what admin access means before it takes effect. */}
                       {user?.isAdmin && member.claimed && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -540,14 +556,30 @@ export default function Members() {
                               size="icon"
                               className="text-muted-foreground hover:text-primary"
                               disabled={togglingAdminId === member.id}
-                              title="More actions"
+                              title="Admin access"
                             >
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleToggleAdmin(member.id, !member.isAdmin)}>
-                              {member.isAdmin ? "Remove admin access" : "Make admin"}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setAdminAction({
+                                  id: member.id,
+                                  name: member.firstName,
+                                  nextIsAdmin: !member.isAdmin,
+                                })
+                              }
+                            >
+                              {member.isAdmin ? (
+                                <>
+                                  <ShieldMinus className="w-4 h-4 mr-2" /> Revoke admin access
+                                </>
+                              ) : (
+                                <>
+                                  <ShieldPlus className="w-4 h-4 mr-2" /> Grant admin access
+                                </>
+                              )}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -612,6 +644,42 @@ export default function Members() {
           </div>
         )}
       </div>
+
+      {/* Admin grant/revoke confirmation -- explains what the role means
+          before it takes effect, since it's a high-trust action. */}
+      <AlertDialog open={!!adminAction} onOpenChange={(open) => { if (!open) setAdminAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {adminAction?.nextIsAdmin
+                ? `Make ${adminAction.name} an admin?`
+                : `Remove admin access from ${adminAction?.name}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {adminAction?.nextIsAdmin
+                ? "Admins can edit anyone's profile, add or remove family members, and grant or revoke admin access for others. Only give this to someone you'd trust to help run the family directory."
+                : "They'll no longer be able to edit other members' profiles, add or remove people, or manage who else has admin access. Their own profile isn't affected."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                adminAction && !adminAction.nextIsAdmin
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+              disabled={!!togglingAdminId}
+              onClick={() => {
+                if (!adminAction) return;
+                void handleToggleAdmin(adminAction.id, adminAction.nextIsAdmin);
+              }}
+            >
+              {adminAction?.nextIsAdmin ? "Make admin" : "Remove access"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { ClaimProfileBody, MergePreviewBody, MergeConfirmBody } from "@workspace/api-zod";
 import { signToken } from "../middlewares/auth";
 import { formatPerson, formatUnit } from "./auth";
+import { isLastAdminInUnit } from "../lib/permissions";
 
 const router = Router();
 
@@ -292,12 +293,30 @@ router.post("/invites/:token/merge/confirm", async (req, res) => {
     return;
   }
 
+  // Merging moves this account (email + password) onto `placeholder` in a
+  // different family unit and unclaims `existingPerson` below. If
+  // existingPerson is currently an admin, doing that without a check would
+  // silently orphan admin status in their old family: isAdmin would stay
+  // true on a person nobody can log in as, while the family shows zero
+  // *functional* admins. Refuse just like the PATCH .../admin endpoint does.
+  if (existingPerson.isAdmin && (await isLastAdminInUnit(existingPerson.id, existingPerson.familyUnitId))) {
+    res.status(409).json({
+      error: "Conflict",
+      message:
+        "You're the last admin of your current family. Grant admin access to someone else there before linking your account to a different family.",
+    });
+    return;
+  }
+
   await db.transaction(async (tx) => {
     // Remove the email from the old person record so the unique constraint
-    // doesn't fire when we set the same email on the placeholder below
+    // doesn't fire when we set the same email on the placeholder below.
+    // Also clear isAdmin -- the account backing this row is moving to a
+    // different family entirely, so leaving the flag set would show a
+    // phantom "Admin" badge on an unclaimed profile with no account.
     await tx
       .update(personsTable)
-      .set({ email: null, claimed: false, claimedAt: null, updatedAt: new Date() })
+      .set({ email: null, claimed: false, claimedAt: null, isAdmin: false, updatedAt: new Date() })
       .where(eq(personsTable.id, existingPerson.id));
 
     // Mark the placeholder as claimed with the existing account's email

@@ -8,6 +8,7 @@ import { formatPerson } from "./auth";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 import { buildPersonUpdateData, type PersonUpdateInput } from "../lib/personUpdate";
 import { isParentOf } from "../lib/visibility";
+import { isLastAdminInUnit } from "../lib/permissions";
 import { VALID_EVENT_TYPES } from "./lifeEvents";
 
 const router = Router();
@@ -452,6 +453,13 @@ router.post("/ai/chat", requireAuth, async (req, res) => {
             const isSameFamilyAdmin = req.auth!.isAdmin;
             if (!isSelf && !isSameFamilyAdmin) {
               toolResult = JSON.stringify({ success: false, error: "Not authorized to remove this person" });
+            } else if (target.isAdmin && (await isLastAdminInUnit(target.id, unitId))) {
+              // Deleting the last admin would leave this family unit with
+              // zero admins -- same guard as the REST delete/admin-PATCH endpoints.
+              toolResult = JSON.stringify({
+                success: false,
+                error: "Cannot remove the last admin in the family. Grant admin access to someone else first.",
+              });
             } else {
               await db.delete(accountsTable).where(eq(accountsTable.personId, input.personId));
               await db.delete(personsTable).where(eq(personsTable.id, input.personId));

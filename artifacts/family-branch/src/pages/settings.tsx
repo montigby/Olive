@@ -5,7 +5,8 @@ import {
   useUpdateFamilyUnit,
   useListLinkRequests, getListLinkRequestsQueryKey,
   useAcceptLinkRequest,
-  useDeclineLinkRequest
+  useDeclineLinkRequest,
+  useListMembers, getListMembersQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,7 +17,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Network, Save, Check, X, Building2, User, Link2, Copy, RefreshCw, UserCheck } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Network, Save, Check, X, Building2, User, Link2, Copy, RefreshCw, UserCheck, ShieldCheck, UserPlus2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   Form,
@@ -244,6 +262,7 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      <AdminsCard unitId={unitId} />
       <MemberPermissionsCard unitId={unitId} membersCanInvite={(unit as any)?.membersCanInvite ?? true} />
       <SharedInviteCard unitId={unitId} />
       <PendingClaimsCard unitId={unitId} />
@@ -320,6 +339,182 @@ function ChangePasswordCard() {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Admins overview (admin only) — a dedicated, clearly-labeled place to see
+// everyone with admin access and grant/revoke it, separate from the
+// per-person quick action in the Directory's "⋮" menu on each member card.
+// ──────────────────────────────────────────────────────────────────────────
+type SettingsMember = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  relationshipLabel: string;
+  isAdmin: boolean;
+  claimed: boolean;
+};
+
+function AdminsCard({ unitId }: { unitId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: members, isLoading } = useListMembers(unitId, {
+    query: { enabled: !!unitId, queryKey: getListMembersQueryKey(unitId) },
+  });
+
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string; nextIsAdmin: boolean } | null>(null);
+  const [grantPersonId, setGrantPersonId] = useState<string>("");
+
+  const typedMembers = (members ?? []) as unknown as SettingsMember[];
+  const admins = typedMembers.filter((m) => m.isAdmin);
+  const grantable = typedMembers.filter((m) => m.claimed && !m.isAdmin);
+
+  const setAdmin = async (personId: string, nextIsAdmin: boolean) => {
+    setTogglingId(personId);
+    try {
+      const token = localStorage.getItem("oliveToken");
+      const r = await fetch(`/api/persons/${personId}/admin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isAdmin: nextIsAdmin }),
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        toast({
+          variant: "destructive",
+          title: nextIsAdmin ? "Couldn't grant admin access" : "Couldn't remove admin access",
+          description: body.message || "Please try again.",
+        });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: getListMembersQueryKey(unitId) });
+      toast({ title: nextIsAdmin ? "Admin access granted" : "Admin access removed" });
+      if (nextIsAdmin) setGrantPersonId("");
+    } catch {
+      toast({ variant: "destructive", title: "Network error", description: "Please try again." });
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  return (
+    <>
+      <Card className="border-none shadow-sm bg-card">
+        <CardHeader>
+          <CardTitle className="font-serif text-xl flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-primary" /> Admins
+          </CardTitle>
+          <CardDescription>
+            Admins can edit anyone's profile, add or remove family members, and grant or revoke
+            admin access for others. A family unit always keeps at least one.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading…</div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                {admins.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[#FAF7F2] border border-border/50"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{m.firstName} {m.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{m.relationshipLabel}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive hover:text-white shrink-0"
+                      disabled={togglingId === m.id || admins.length <= 1}
+                      title={admins.length <= 1 ? "A family unit must always have at least one admin" : undefined}
+                      onClick={() => setConfirmTarget({ id: m.id, name: m.firstName, nextIsAdmin: false })}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-border/50">
+                <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  <UserPlus2 className="w-3.5 h-3.5 text-muted-foreground" /> Grant admin access
+                </p>
+                {grantable.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Everyone with a claimed profile already has admin access.
+                  </p>
+                ) : (
+                  <div className="flex gap-2">
+                    <Select value={grantPersonId} onValueChange={setGrantPersonId}>
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Select a member…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {grantable.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.firstName} {m.lastName} ({m.relationshipLabel})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      disabled={!grantPersonId || togglingId === grantPersonId}
+                      className="shrink-0"
+                      onClick={() => {
+                        const m = grantable.find((g) => g.id === grantPersonId);
+                        if (m) setConfirmTarget({ id: m.id, name: m.firstName, nextIsAdmin: true });
+                      }}
+                    >
+                      Grant
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={!!confirmTarget} onOpenChange={(open) => { if (!open) setConfirmTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmTarget?.nextIsAdmin
+                ? `Make ${confirmTarget.name} an admin?`
+                : `Remove admin access from ${confirmTarget?.name}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmTarget?.nextIsAdmin
+                ? "Admins can edit anyone's profile, add or remove family members, and grant or revoke admin access for others. Only give this to someone you'd trust to help run the family directory."
+                : "They'll no longer be able to edit other members' profiles, add or remove people, or manage who else has admin access. Their own profile isn't affected."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                confirmTarget && !confirmTarget.nextIsAdmin
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+              disabled={!!togglingId}
+              onClick={() => {
+                if (!confirmTarget) return;
+                void setAdmin(confirmTarget.id, confirmTarget.nextIsAdmin);
+              }}
+            >
+              {confirmTarget?.nextIsAdmin ? "Make admin" : "Remove access"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

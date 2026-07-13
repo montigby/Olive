@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { personsTable, accountsTable, relationshipsTable, peopleTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { UpdatePersonBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
-import { computeTier, applyVisibility } from "../lib/visibility";
+import { computeTier, applyVisibility, describeRelationship } from "../lib/visibility";
 import { areUnitsLinked } from "../lib/unitAccess";
 import { buildPersonUpdateData } from "../lib/personUpdate";
-import { canEditPerson } from "../lib/permissions";
+import { canEditPerson, isLastAdminInUnit } from "../lib/permissions";
 
 const router = Router();
 
@@ -79,7 +79,18 @@ router.get("/persons/:personId", requireAuth, async (req, res) => {
     return;
   }
 
-  res.json(filtered);
+  // Viewer-relative relationship label (e.g. "Sibling", "Parent", "Me")
+  // instead of the static relationshipLabel column, which is frozen to
+  // whoever the admin was when the person was added. Only computed
+  // same-unit -- describeRelationship's graph is built from `allMembers`,
+  // which is the target's unit, so it can't place a cross-unit viewer.
+  // Cross-unit viewers fall back to the static label on the frontend.
+  const result: typeof filtered & { viewerRelationshipLabel?: string } = filtered;
+  if (viewer.familyUnitId === target.familyUnitId) {
+    result.viewerRelationshipLabel = describeRelationship(viewer.id, target.id, allMembers, relationships);
+  }
+
+  res.json(result);
 });
 
 // PATCH /api/persons/:personId
@@ -173,11 +184,7 @@ router.patch("/persons/:personId/admin", requireAuth, requireAdmin, async (req, 
   }
 
   if (!isAdmin && target.isAdmin) {
-    const admins = await db
-      .select({ id: personsTable.id })
-      .from(personsTable)
-      .where(and(eq(personsTable.familyUnitId, target.familyUnitId), eq(personsTable.isAdmin, true)));
-    if (admins.length <= 1) {
+    if (await isLastAdminInUnit(target.id, target.familyUnitId)) {
       res.status(409).json({ error: "Conflict", message: "Cannot remove the last admin in a family." });
       return;
     }
@@ -202,7 +209,7 @@ router.delete("/persons/:personId", requireAuth, async (req, res) => {
 
   // Look up target to verify same-family admin permission.
   const [target] = await db
-    .select({ id: personsTable.id, familyUnitId: personsTable.familyUnitId })
+    .select({ id: personsTable.id, familyUnitId: personsTable.familyUnitId, isAdmin: personsTable.isAdmin })
     .from(personsTable)
     .where(eq(personsTable.id, personId))
     .limit(1);
@@ -218,6 +225,17 @@ router.delete("/persons/:personId", requireAuth, async (req, res) => {
 
   if (!isSelf && !isSameFamilyAdmin) {
     res.status(403).json({ error: "Forbidden", message: "Cannot remove another person" });
+    return;
+  }
+
+  // Deleting a person removes their row entirely -- if they're the last
+  // admin, this would leave the family unit with zero admins, same as
+  // demoting them via the PATCH endpoint above. Applies even to self-delete.
+  if (target.isAdmin && (await isLastAdminInUnit(target.id, target.familyUnitId))) {
+    res.status(409).json({
+      error: "Conflict",
+      message: "Cannot remove the last admin in a family. Grant admin access to someone else first.",
+    });
     return;
   }
 
