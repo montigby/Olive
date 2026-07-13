@@ -5,7 +5,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { personsTable, peopleTable } from "@workspace/db";
+import { personsTable, peopleTable, relationshipsTable } from "@workspace/db";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
@@ -86,6 +86,54 @@ router.post("/admin/backfill-people", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: "Backfill failed", message: err?.message ?? String(err) });
   }
+});
+
+/**
+ * GET /api/admin/graph-debug/:unitId
+ *
+ * TEMPORARY diagnostic endpoint — dumps raw relationshipLabel/parentPersonId
+ * per member plus the explicit relationships-table rows for a unit, to
+ * debug viewer-relative relationship label bugs. Remove once the
+ * describeRelationship bugs are fixed and verified live.
+ */
+router.get("/admin/graph-debug/:unitId", async (req, res) => {
+  if (!checkSecret(req, res)) return;
+
+  const { unitId } = req.params;
+  const members = await db
+    .select({
+      id: personsTable.id,
+      firstName: personsTable.firstName,
+      lastName: personsTable.lastName,
+      relationshipLabel: personsTable.relationshipLabel,
+      parentPersonId: personsTable.parentPersonId,
+      isAdmin: personsTable.isAdmin,
+    })
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, unitId));
+
+  const nameById = new Map(members.map((m) => [m.id, `${m.firstName} ${m.lastName ?? ""}`.trim()]));
+
+  const relationships = await db
+    .select({
+      fromPerson: relationshipsTable.fromPerson,
+      toPerson: relationshipsTable.toPerson,
+      type: relationshipsTable.type,
+    })
+    .from(relationshipsTable)
+    .where(eq(relationshipsTable.familyId, unitId));
+
+  res.json({
+    members: members.map((m) => ({
+      ...m,
+      parentPersonName: m.parentPersonId ? nameById.get(m.parentPersonId) ?? "(outside unit)" : null,
+    })),
+    relationships: relationships.map((r) => ({
+      from: nameById.get(r.fromPerson) ?? r.fromPerson,
+      to: nameById.get(r.toPerson) ?? r.toPerson,
+      type: r.type,
+    })),
+  });
 });
 
 export default router;
