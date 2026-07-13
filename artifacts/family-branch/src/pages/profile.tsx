@@ -637,7 +637,7 @@ function ProfileView({
           <h2 className="text-2xl font-serif font-bold text-foreground leading-tight">
             {person.firstName} {person.lastName}
           </h2>
-          <p className="text-muted-foreground text-sm mt-1">{person.relationshipLabel}</p>
+          <p className="text-muted-foreground text-sm mt-1">{person.viewerRelationshipLabel ?? person.relationshipLabel}</p>
           {birthday && (
             <div className="flex items-center gap-1.5 mt-2">
               <Cake className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -1262,7 +1262,8 @@ function ProfileEditForm({
                       Contact info shared with extended family
                     </FormLabel>
                     <p className="text-xs text-muted-foreground -mt-1 mb-2">
-                      Grandparents, in-laws, and similar relatives see only one contact method.
+                      Grandparents, in-laws, nieces, and nephews in your own family unit see only
+                      one contact method below — not your full profile.
                     </p>
                     <div className="flex gap-3">
                       {(["phone", "email"] as const).map((opt) => (
@@ -1299,10 +1300,13 @@ function ProfileEditForm({
                     <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
                       <div>
                         <FormLabel className="text-sm font-medium leading-none">
-                          Restrict to direct &amp; close family
+                          Stay private from linked families
                         </FormLabel>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Only Tier 1 &amp; 2 family members (e.g. parents, siblings, grandparents) can view your full profile.
+                          People in a family branch linked to yours (e.g. connected through
+                          marriage) can normally see your name, photo, and how you're related,
+                          even if you're not closely connected to them. Turn this on to hide your
+                          profile from them completely. This doesn't affect your own family unit.
                         </p>
                       </div>
                       <button

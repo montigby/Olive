@@ -337,6 +337,105 @@ export function isParentOf(
   return edges.some((e) => e.to === childId && e.kind === "parent-child" && e.isDown);
 }
 
+// ---------------------------------------------------------------------------
+// Viewer-relative relationship labels
+// ---------------------------------------------------------------------------
+//
+// The `relationshipLabel` column on `persons` is a static string set once,
+// from the perspective of whoever the admin was at the time the person was
+// added (e.g. Zachary's row says "Brother" because Jackson, the admin, added
+// him). That's wrong for anyone else viewing -- Zachary logging in should see
+// himself as "Me" and Jackson as "Brother", not the reverse. This section
+// derives a label describing `targetId` relative to `viewerId`, using the
+// same family graph buildFamilyGraph produces for visibility tiers (so it
+// benefits from the same explicit-relationships-first, label-heuristic-
+// fallback behavior).
+
+interface RelPathStep {
+  kind: EdgeKind;
+  isDown: boolean;
+}
+
+// Shortest path of graph edges from `fromId` to `toId` (BFS, so the first
+// path found to any node is the shortest). Returns [] if fromId === toId,
+// or null if unreachable.
+function shortestFamilyPath(
+  graph: FamilyGraph,
+  fromId: string,
+  toId: string,
+): RelPathStep[] | null {
+  if (fromId === toId) return [];
+
+  const visited = new Set<string>([fromId]);
+  const queue: Array<{ id: string; path: RelPathStep[] }> = [{ id: fromId, path: [] }];
+
+  while (queue.length > 0) {
+    const { id, path } = queue.shift()!;
+    const edges = graph.get(id) ?? [];
+    for (const e of edges) {
+      if (visited.has(e.to)) continue;
+      visited.add(e.to);
+      const nextPath = [...path, { kind: e.kind, isDown: e.isDown }];
+      if (e.to === toId) return nextPath;
+      queue.push({ id: e.to, path: nextPath });
+    }
+  }
+
+  return null;
+}
+
+// Encode a path as a short key: "pu" = parent-child, walked up (target is an
+// ancestor); "pd" = parent-child, walked down (target is a descendant);
+// "s" = sibling; "c" = couple (spouse/partner).
+function pathKey(path: RelPathStep[]): string {
+  return path
+    .map((s) => (s.kind === "parent-child" ? `p${s.isDown ? "d" : "u"}` : s.kind[0]))
+    .join(",");
+}
+
+// Common relationship labels by path shape. Anything not covered here (more
+// distant or unusual paths -- great-great-grandparents, cousins-in-law, etc.)
+// falls back to a generic bucket rather than guessing.
+const RELATIONSHIP_LABELS: Record<string, string> = {
+  pu: "Parent",
+  pd: "Child",
+  s: "Sibling",
+  c: "Spouse",
+  "pu,pu": "Grandparent",
+  "pd,pd": "Grandchild",
+  "pu,s": "Aunt/Uncle",
+  "s,pd": "Niece/Nephew",
+  "c,pu": "Parent-in-law",
+  "c,s": "Sibling-in-law",
+  "s,c": "Sibling-in-law",
+  "pd,c": "Child-in-law",
+  "pu,s,pd": "Cousin",
+  "pu,pu,pu": "Great-grandparent",
+  "pd,pd,pd": "Great-grandchild",
+};
+
+// Describe how `targetId` relates to `viewerId`, e.g. "Sibling", "Parent",
+// "Grandparent" -- for display purposes only. "Me" when they're the same
+// person. Falls back to "Extended family" for real-but-distant/unclassified
+// relations found in the graph, and "Family member" when the two aren't
+// connected in the graph at all (e.g. cross-unit callers should guard for
+// that case themselves rather than rely on this fallback).
+export function describeRelationship(
+  viewerId: string,
+  targetId: string,
+  allMembers: any[],
+  relationships?: RelationshipEdge[],
+): string {
+  if (viewerId === targetId) return "Me";
+
+  const graph = buildFamilyGraph(allMembers, relationships);
+  const path = shortestFamilyPath(graph, viewerId, targetId);
+  if (path === null) return "Family member";
+  if (path.length === 0) return "Me";
+
+  return RELATIONSHIP_LABELS[pathKey(path)] ?? "Extended family";
+}
+
 export function computeVisibleSet(
   viewerPerson: any,
   allMembers: any[],
@@ -476,10 +575,13 @@ function maskBirthdayYear(birthday: string): string {
 export function applyVisibility(person: any, tier: Tier): any {
   if (tier === 4) return null; // not visible
 
-  // Target's "Restrict to direct & close family" preference:
-  // when set, only tier 0 / 1 / 2 viewers see the profile at all.
-  // Tier 3 viewers are dropped entirely. Tier 0 (self / admin) still
-  // sees the target — admins manage the directory and self always wins.
+  // Target's "Stay private from linked families" preference (UI label; DB
+  // column is `confirmedMembersOnly`): when set, viewers in a different,
+  // linked family unit who aren't already treated as tier 0/1/2 (see the
+  // cross-unit branch of computeTier) are dropped entirely instead of
+  // getting the tier-3 name/photo/relationship-only view. Tier 0/1/2 are
+  // never affected by this toggle — tier 2's reduced view is unconditional
+  // and controlled separately by `tier2ContactField`.
   if (person.confirmedMembersOnly && tier === 3) return null;
 
   // Base visible fields for all tiers

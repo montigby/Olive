@@ -6,7 +6,7 @@ import { eq, and, ilike } from "drizzle-orm";
 import { AddMemberBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
-import { computeVisibleSet, computeTier, applyVisibility } from "../lib/visibility";
+import { computeVisibleSet, computeTier, applyVisibility, describeRelationship } from "../lib/visibility";
 import { areUnitsLinked } from "../lib/unitAccess";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
@@ -61,14 +61,11 @@ router.get("/family-units/:unitId/members", requireAuth, async (req, res) => {
     return;
   }
 
-  // Same-unit admin: full data.
-  if (viewer.isAdmin) {
-    res.json(members.map(formatPerson));
-    return;
-  }
-
-  // Same-unit non-admin: apply social graph visibility, seeded from the
-  // explicit relationships table for accuracy, with label heuristic fallback.
+  // Same unit (admin or non-admin): fetch the explicit relationships table
+  // once so we can compute a viewer-relative relationship label for every
+  // member (e.g. "Sibling", "Parent", "Me") instead of the static
+  // relationshipLabel column, which is frozen to whoever the admin was when
+  // the person was added.
   const relationships = await db
     .select({
       fromPerson: relationshipsTable.fromPerson,
@@ -78,12 +75,30 @@ router.get("/family-units/:unitId/members", requireAuth, async (req, res) => {
     .from(relationshipsTable)
     .where(eq(relationshipsTable.familyId, unitId));
 
+  // Same-unit admin: full data.
+  if (viewer.isAdmin) {
+    res.json(
+      members.map((m) => ({
+        ...formatPerson(m),
+        viewerRelationshipLabel: describeRelationship(viewer.id, m.id, members, relationships),
+      })),
+    );
+    return;
+  }
+
+  // Same-unit non-admin: apply social graph visibility, seeded from the
+  // explicit relationships table for accuracy, with label heuristic fallback.
   const visibleSet = computeVisibleSet(viewer, members, relationships);
   const result = members
     .map((m) => {
       const tier = visibleSet.get(m.id) ?? 4;
       if (tier === 4) return null;
-      return applyVisibility(formatPerson(m), tier);
+      const filtered = applyVisibility(formatPerson(m), tier);
+      if (!filtered) return null;
+      return {
+        ...filtered,
+        viewerRelationshipLabel: describeRelationship(viewer.id, m.id, members, relationships),
+      };
     })
     .filter(Boolean);
 

@@ -58,6 +58,8 @@ export interface Person {
   bereal?: string | null;
   otherSocial?: string | null;
   relationshipLabel: string;
+  /** The target's relationship to the currently-authenticated viewer (e.g. "Sibling", "Parent", "Me"). Omitted when it can't be computed -- callers should fall back to relationshipLabel. */
+  viewerRelationshipLabel?: string;
   familyUnitId: string;
   isAdmin: boolean;
   claimed: boolean;
@@ -258,6 +260,8 @@ export interface BirthdayEntry {
   firstName: string;
   lastName: string;
   relationshipLabel: string;
+  /** The birthday person's relationship to the currently-authenticated viewer. Omitted for cross-linked-unit entries -- callers should fall back to relationshipLabel. */
+  viewerRelationshipLabel?: string;
   birthday: string;
   showBirthYear: boolean;
   unitName: string;

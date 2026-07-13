@@ -124,6 +124,7 @@ type BirthdayEntry = {
   firstName: string;
   lastName: string;
   relationshipLabel: string;
+  viewerRelationshipLabel?: string;
   unitName: string;
   birthday: string;
   daysUntil: number;
@@ -149,7 +150,7 @@ function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
               {entry.firstName} {entry.lastName}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {entry.relationshipLabel}
+              {entry.viewerRelationshipLabel ?? entry.relationshipLabel}
               {entry.unitName && (
                 <span className="text-muted-foreground/60"> · {entry.unitName}</span>
               )}

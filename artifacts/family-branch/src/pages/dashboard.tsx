@@ -168,7 +168,7 @@ export default function Dashboard() {
                       </Avatar>
                       <div>
                         <p className="font-bold text-sm">{b.firstName} {b.lastName}</p>
-                        <p className="text-xs text-muted-foreground">{b.relationshipLabel} • {b.unitName}</p>
+                        <p className="text-xs text-muted-foreground">{b.viewerRelationshipLabel ?? b.relationshipLabel} • {b.unitName}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -209,7 +209,7 @@ export default function Dashboard() {
                       </Avatar>
                       <div>
                         <p className="font-bold text-sm">{b.firstName} {b.lastName}</p>
-                        <p className="text-xs text-muted-foreground">{b.relationshipLabel} • {b.unitName}</p>
+                        <p className="text-xs text-muted-foreground">{b.viewerRelationshipLabel ?? b.relationshipLabel} • {b.unitName}</p>
                       </div>
                     </div>
                     <div className="text-right">

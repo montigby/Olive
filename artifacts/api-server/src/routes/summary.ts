@@ -9,7 +9,7 @@ import {
 import { eq, or, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
-import { computeTier, computeVisibleSet, applyVisibility } from "../lib/visibility";
+import { computeTier, computeVisibleSet, applyVisibility, describeRelationship } from "../lib/visibility";
 
 const router = Router();
 
@@ -277,26 +277,26 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
 
   // Pre-fetch viewer's unit members AND relationships for graph-based tier
   // computation (used by computeTier when target is same-unit; cross-unit
-  // members fall back to label-based tiering and ignore both lists).
-  const viewerUnitMembers = viewer.isAdmin
-    ? []
-    : await db
-        .select()
-        .from(personsTable)
-        .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
+  // members fall back to label-based tiering and ignore both lists) and for
+  // computing each entry's viewer-relative relationship label below. Fetched
+  // unconditionally (even for admins, who skip the tier check itself) since
+  // describeRelationship needs real member/relationship data to walk the
+  // graph -- admins get "Family member" fallback for everyone otherwise.
+  const viewerUnitMembers = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, viewer.familyUnitId));
 
-  const viewerUnitRelationships = viewer.isAdmin
-    ? []
-    : await db
-        .select({
-          fromPerson: relationshipsTable.fromPerson,
-          toPerson: relationshipsTable.toPerson,
-          type: relationshipsTable.type,
-        })
-        .from(relationshipsTable)
-        .where(eq(relationshipsTable.familyId, viewer.familyUnitId));
+  const viewerUnitRelationships = await db
+    .select({
+      fromPerson: relationshipsTable.fromPerson,
+      toPerson: relationshipsTable.toPerson,
+      type: relationshipsTable.type,
+    })
+    .from(relationshipsTable)
+    .where(eq(relationshipsTable.familyId, viewer.familyUnitId));
 
-  const allMembers: Array<{ person: typeof personsTable.$inferSelect; unitName: string }> = [];
+  const allMembers: Array<{ person: typeof personsTable.$inferSelect; unitName: string; sameUnit: boolean }> = [];
 
   for (const uid of unitIds) {
     const [u] = await db
@@ -315,14 +315,14 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
       const tier = computeTier(viewer, m, viewerUnitMembers, viewerUnitRelationships);
       // Birthday is only visible at tiers 0-2; drop tier 3 and 4.
       if (tier > 2) continue;
-      allMembers.push({ person: m, unitName: u.unitName });
+      allMembers.push({ person: m, unitName: u.unitName, sameUnit: uid === viewer.familyUnitId });
     }
   }
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const results = allMembers
-    .map(({ person, unitName }) => {
+    .map(({ person, unitName, sameUnit }) => {
       const bday = new Date(person.birthday!);
       const thisYear = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
       let daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -332,11 +332,20 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
         thisYear.setFullYear(now.getFullYear() + 1);
         daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       }
+      // Viewer-relative relationship label -- only computable for members in
+      // the viewer's own unit, since describeRelationship's graph is built
+      // from viewerUnitMembers. Cross-unit entries (spouse's family, via a
+      // linked unit) fall back to the static relationshipLabel on the
+      // frontend.
+      const viewerRelationshipLabel = sameUnit
+        ? describeRelationship(viewer.id, person.id, viewerUnitMembers, viewerUnitRelationships)
+        : undefined;
       return {
         personId: person.id,
         firstName: person.firstName,
         lastName: person.lastName,
         relationshipLabel: person.relationshipLabel,
+        viewerRelationshipLabel,
         birthday: person.showBirthYear
           ? person.birthday!
           : `${BIRTHDAY_PLACEHOLDER_YEAR}-${person.birthday!.split("-")[1]}-${person.birthday!.split("-")[2]}`,
