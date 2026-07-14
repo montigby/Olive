@@ -3,7 +3,6 @@
  * These are low-volume ops (backfill, one-time migrations).
  */
 import { Router } from "express";
-import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { personsTable, peopleTable } from "@workspace/db";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
@@ -86,19 +85,6 @@ router.post("/admin/backfill-people", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: "Backfill failed", message: err?.message ?? String(err) });
   }
-});
-
-/**
- * GET /api/admin/gender-check/:unitId
- * TEMPORARY read-only verification for the gender backfill. Remove after use.
- */
-router.get("/admin/gender-check/:unitId", async (req, res) => {
-  if (!checkSecret(req, res)) return;
-  const members = await db
-    .select({ firstName: personsTable.firstName, lastName: personsTable.lastName, relationshipLabel: personsTable.relationshipLabel, gender: personsTable.gender })
-    .from(personsTable)
-    .where(eq(personsTable.familyUnitId, req.params.unitId));
-  res.json(members);
 });
 
 export default router;
