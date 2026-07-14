@@ -22,6 +22,7 @@ export interface PersonUpdateInput {
   bereal?: string | null;
   otherSocial?: string | null;
   relationshipLabel?: string;
+  gender?: string | null;
   tier2ContactField?: string;
   confirmedMembersOnly?: boolean;
   hideAddress?: boolean;
@@ -66,6 +67,9 @@ export function buildPersonUpdateData(
   if (data.otherSocial !== undefined) updateData.otherSocial = data.otherSocial;
   if (data.relationshipLabel !== undefined && opts.allowRelationshipLabel) {
     updateData.relationshipLabel = data.relationshipLabel;
+  }
+  if (data.gender !== undefined) {
+    updateData.gender = data.gender;
   }
   if (data.tier2ContactField !== undefined) {
     updateData.tier2ContactField = data.tier2ContactField as typeof personsTable.$inferSelect["tier2ContactField"];

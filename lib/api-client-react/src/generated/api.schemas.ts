@@ -35,6 +35,13 @@ export interface LoginBody {
   password: string;
 }
 
+export type PersonGender = (typeof PersonGender)[keyof typeof PersonGender];
+
+export const PersonGender = {
+  male: "male",
+  female: "female",
+} as const;
+
 export interface Person {
   id: string;
   firstName: string;
@@ -60,6 +67,8 @@ export interface Person {
   relationshipLabel: string;
   /** The target's relationship to the currently-authenticated viewer (e.g. "Sibling", "Parent", "Me"). Omitted when it can't be computed -- callers should fall back to relationshipLabel. */
   viewerRelationshipLabel?: string;
+  /** Unset (null) means not specified / prefer not to say. Drives gendered relationship terms (e.g. "Brother" vs "Sister") in viewerRelationshipLabel -- neutral terms are used when null. */
+  gender?: PersonGender | null;
   familyUnitId: string;
   isAdmin: boolean;
   claimed: boolean;
@@ -133,6 +142,7 @@ export interface UpdatePersonBody {
   bereal?: string | null;
   otherSocial?: string | null;
   relationshipLabel?: string;
+  gender?: PersonGender | null;
   parentPersonId?: string | null;
   tier2ContactField?: "phone" | "email";
   confirmedMembersOnly?: boolean;
@@ -170,6 +180,7 @@ export interface AddMemberBody {
   firstName: string;
   lastName: string;
   relationshipLabel: string;
+  gender?: PersonGender | null;
   parentPersonId?: string | null;
 }
 

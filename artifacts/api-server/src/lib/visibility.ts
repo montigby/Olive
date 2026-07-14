@@ -400,16 +400,28 @@ function pathKey(path: RelPathStep[]): string {
     .join(",");
 }
 
+// Gender of the *target* person drives the word choice throughout (e.g.
+// "Sister" describes a female target regardless of the viewer's own
+// gender). `g` is the target's `gender` column value ("male" | "female" |
+// null/anything else = unspecified, which falls back to the neutral term).
+type Gender = string | null | undefined;
+function isMale(g: Gender): boolean {
+  return g === "male";
+}
+function isFemale(g: Gender): boolean {
+  return g === "female";
+}
+
 // Relationship labels for paths that include at least one spouse/couple hop.
 // Kept as a small curated table since in-law relationships beyond a couple
 // hop or two get genuinely ambiguous. Anything not covered here falls back
 // to "Extended family".
-const INLAW_PATH_LABELS: Record<string, string> = {
-  c: "Spouse",
-  "c,pu": "Parent-in-law",
-  "c,s": "Sibling-in-law",
-  "s,c": "Sibling-in-law",
-  "pd,c": "Child-in-law",
+const INLAW_PATH_LABELS: Record<string, { neutral: string; male: string; female: string }> = {
+  c: { neutral: "Spouse", male: "Husband", female: "Wife" },
+  "c,pu": { neutral: "Parent-in-law", male: "Father-in-law", female: "Mother-in-law" },
+  "c,s": { neutral: "Sibling-in-law", male: "Brother-in-law", female: "Sister-in-law" },
+  "s,c": { neutral: "Sibling-in-law", male: "Brother-in-law", female: "Sister-in-law" },
+  "pd,c": { neutral: "Child-in-law", male: "Son-in-law", female: "Daughter-in-law" },
 };
 
 const ORDINALS = ["Zeroth", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
@@ -417,26 +429,32 @@ function ordinal(n: number): string {
   return ORDINALS[n] ?? `${n}th`;
 }
 
-function ancestorLabel(up: number): string {
-  if (up === 1) return "Parent";
-  if (up === 2) return "Grandparent";
-  return `Great-${"great-".repeat(up - 3)}grandparent`;
+function ancestorLabel(up: number, g: Gender): string {
+  if (up === 1) return isMale(g) ? "Father" : isFemale(g) ? "Mother" : "Parent";
+  if (up === 2) return isMale(g) ? "Grandfather" : isFemale(g) ? "Grandmother" : "Grandparent";
+  const base = isMale(g) ? "grandfather" : isFemale(g) ? "grandmother" : "grandparent";
+  return `Great-${"great-".repeat(up - 3)}${base}`;
 }
-function descendantLabel(down: number): string {
-  if (down === 1) return "Child";
-  if (down === 2) return "Grandchild";
-  return `Great-${"great-".repeat(down - 3)}grandchild`;
+function descendantLabel(down: number, g: Gender): string {
+  if (down === 1) return isMale(g) ? "Son" : isFemale(g) ? "Daughter" : "Child";
+  if (down === 2) return isMale(g) ? "Grandson" : isFemale(g) ? "Granddaughter" : "Grandchild";
+  const base = isMale(g) ? "grandson" : isFemale(g) ? "granddaughter" : "grandchild";
+  return `Great-${"great-".repeat(down - 3)}${base}`;
 }
-function auntUncleLabel(up: number): string {
-  if (up === 2) return "Aunt/Uncle";
-  return `Great-${"great-".repeat(up - 3)}aunt/uncle`;
+function auntUncleLabel(up: number, g: Gender): string {
+  if (up === 2) return isMale(g) ? "Uncle" : isFemale(g) ? "Aunt" : "Aunt/Uncle";
+  const base = isMale(g) ? "uncle" : isFemale(g) ? "aunt" : "aunt/uncle";
+  return `Great-${"great-".repeat(up - 3)}${base}`;
 }
-function nieceNephewLabel(down: number): string {
-  if (down === 2) return "Niece/Nephew";
-  if (down === 3) return "Grand-niece/nephew";
-  return `Great-${"great-".repeat(down - 4)}grand-niece/nephew`;
+function nieceNephewLabel(down: number, g: Gender): string {
+  const base = isMale(g) ? "nephew" : isFemale(g) ? "niece" : "niece/nephew";
+  if (down === 2) return isMale(g) ? "Nephew" : isFemale(g) ? "Niece" : "Niece/Nephew";
+  if (down === 3) return `Grand-${base}`;
+  return `Great-${"great-".repeat(down - 4)}grand-${base}`;
 }
 function cousinLabel(up: number, down: number): string {
+  // "Cousin" doesn't conventionally split by gender in English -- left
+  // neutral regardless of target gender.
   const degree = Math.min(up, down) - 1;
   const removed = Math.abs(up - down);
   const removedSuffix =
@@ -446,27 +464,30 @@ function cousinLabel(up: number, down: number): string {
 
 // Name a pure blood-line relationship (no spouse/couple hops) from the
 // number of "up" (toward a shared ancestor) and "down" (away from it)
-// generations in the shortest path. A "sibling" edge -- itself a collapsed
-// "up one, down one" hop through a shared parent -- counts as +1 to both.
-// This formula covers any path shape, unlike a hand-picked lookup table,
-// which silently mislabeled e.g. two siblings connected only via a shared
-// third sibling's edges (two "sibling" hops) as "Extended family".
-function nameByGenerations(up: number, down: number): string {
+// generations in the shortest path, gendered by the target's `gender`
+// column when set. A "sibling" edge -- itself a collapsed "up one, down
+// one" hop through a shared parent -- counts as +1 to both. This formula
+// covers any path shape, unlike a hand-picked lookup table, which silently
+// mislabeled e.g. two siblings connected only via a shared third sibling's
+// edges (two "sibling" hops) as "Extended family".
+function nameByGenerations(up: number, down: number, g: Gender): string {
   if (up === 0 && down === 0) return "Me";
-  if (down === 0) return ancestorLabel(up);
-  if (up === 0) return descendantLabel(down);
-  if (up === 1 && down === 1) return "Sibling";
-  if (up === 1) return nieceNephewLabel(down);
-  if (down === 1) return auntUncleLabel(up);
+  if (down === 0) return ancestorLabel(up, g);
+  if (up === 0) return descendantLabel(down, g);
+  if (up === 1 && down === 1) return isMale(g) ? "Brother" : isFemale(g) ? "Sister" : "Sibling";
+  if (up === 1) return nieceNephewLabel(down, g);
+  if (down === 1) return auntUncleLabel(up, g);
   return cousinLabel(up, down);
 }
 
-// Describe how `targetId` relates to `viewerId`, e.g. "Sibling", "Parent",
-// "Grandparent" -- for display purposes only. "Me" when they're the same
-// person. Falls back to "Extended family" for in-law shapes not in
-// INLAW_PATH_LABELS, and "Family member" when the two aren't connected in
-// the graph at all (e.g. cross-unit callers should guard for that case
-// themselves rather than rely on this fallback).
+// Describe how `targetId` relates to `viewerId`, e.g. "Sister", "Father",
+// "Grandmother" when the target's gender is set, falling back to the
+// neutral term ("Sibling", "Parent", "Grandparent") otherwise -- for
+// display purposes only. "Me" when they're the same person. Falls back to
+// "Extended family" for in-law shapes not in INLAW_PATH_LABELS, and
+// "Family member" when the two aren't connected in the graph at all (e.g.
+// cross-unit callers should guard for that case themselves rather than
+// rely on this fallback).
 export function describeRelationship(
   viewerId: string,
   targetId: string,
@@ -480,8 +501,13 @@ export function describeRelationship(
   if (path === null) return "Family member";
   if (path.length === 0) return "Me";
 
+  const target = allMembers.find((m) => m.id === targetId);
+  const gender: Gender = target?.gender ?? null;
+
   if (path.some((s) => s.kind === "couple")) {
-    return INLAW_PATH_LABELS[pathKey(path)] ?? "Extended family";
+    const labels = INLAW_PATH_LABELS[pathKey(path)];
+    if (!labels) return "Extended family";
+    return isMale(gender) ? labels.male : isFemale(gender) ? labels.female : labels.neutral;
   }
 
   // A path made entirely of "sibling" hops (e.g. reaching one admin-sibling
@@ -493,7 +519,7 @@ export function describeRelationship(
   // generation-counting formula below, which would double-count each hop's
   // "up one, down one" and misname it as a cousin.
   if (path.every((s) => s.kind === "sibling")) {
-    return "Sibling";
+    return isMale(gender) ? "Brother" : isFemale(gender) ? "Sister" : "Sibling";
   }
 
   let up = 0;
@@ -508,7 +534,7 @@ export function describeRelationship(
       down++;
     }
   }
-  return nameByGenerations(up, down);
+  return nameByGenerations(up, down, gender);
 }
 
 export function computeVisibleSet(
@@ -665,6 +691,7 @@ export function applyVisibility(person: any, tier: Tier): any {
     firstName: person.firstName,
     lastName: person.lastName,
     relationshipLabel: person.relationshipLabel,
+    gender: person.gender ?? null,
     photoUrl: person.photoUrl,
     familyUnitId: person.familyUnitId,
     isAdmin: person.isAdmin,

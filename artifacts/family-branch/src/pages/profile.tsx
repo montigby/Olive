@@ -64,6 +64,7 @@ const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   relationshipLabel: z.string().min(1, "Relationship label is required"),
+  gender: z.enum(["male", "female"]).nullable().optional(),
   phone: z.string().nullable().optional(),
   email: z.string().email("Invalid email").nullable().optional().or(z.literal("")),
   addressLine1: z.string().nullable().optional(),
@@ -853,6 +854,7 @@ function ProfileEditForm({
       firstName: person?.firstName ?? "",
       lastName: person?.lastName ?? "",
       relationshipLabel: person?.relationshipLabel ?? "",
+      gender: (person?.gender as "male" | "female" | null) ?? null,
       phone: person?.phone ?? "",
       email: person?.email ?? "",
       addressLine1: person?.addressLine1 ?? "",
@@ -899,6 +901,7 @@ function ProfileEditForm({
       firstName: data.firstName,
       lastName: data.lastName,
       relationshipLabel: data.relationshipLabel,
+      gender: data.gender || null,
       phone: data.phone || null,
       email: data.email || null,
       addressLine1: data.addressLine1 || null,
@@ -1006,6 +1009,28 @@ function ProfileEditForm({
                   )}
                 />
               ))}
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                      >
+                        <option value="">Prefer not to say</option>
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">Birthday</label>
                 <div className="flex gap-2">

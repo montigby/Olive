@@ -39,6 +39,10 @@ export const personsTable = pgTable(
     bereal: varchar("bereal", { length: 100 }),
     otherSocial: text("other_social"),
     relationshipLabel: varchar("relationship_label", { length: 100 }).notNull(),
+    // "male" | "female" | null (unset/prefer not to say). Drives gendered
+    // relationship terms (Brother/Sister, Grandma/Grandpa, etc.) -- neutral
+    // terms are used when null.
+    gender: varchar("gender", { length: 20 }),
     parentPersonId: uuid("parent_person_id"),
     familyUnitId: uuid("family_unit_id")
       .notNull()

@@ -76,10 +76,19 @@ const RELATIONSHIP_OPTIONS = [
 
 const ALL_ROLES = RELATIONSHIP_OPTIONS.flatMap((g) => g.options);
 
+// Auto-default the new Gender field from which group a relationship role
+// was picked from (e.g. "Sister" -> Female) -- still freely editable, since
+// the "Other" group (Partner, Cousin, Guardian, ...) doesn't imply a gender.
+const GENDER_BY_ROLE: Record<string, "male" | "female"> = Object.fromEntries([
+  ...RELATIONSHIP_OPTIONS.find((g) => g.group === "Women")!.options.map((r) => [r, "female"] as const),
+  ...RELATIONSHIP_OPTIONS.find((g) => g.group === "Men")!.options.map((r) => [r, "male"] as const),
+]);
+
 const addMemberSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   relationshipLabel: z.string().min(1, "Please select a relationship"),
+  gender: z.enum(["male", "female"]).nullable().optional(),
   parentPersonId: z.string().nullable().optional(),
 });
 
@@ -111,6 +120,7 @@ export default function Members() {
       firstName: "",
       lastName: user?.lastName || "",
       relationshipLabel: "",
+      gender: null,
       parentPersonId: null,
     },
   });
@@ -126,6 +136,7 @@ export default function Members() {
           firstName: data.firstName,
           lastName: data.lastName,
           relationshipLabel: data.relationshipLabel,
+          gender: data.gender || undefined,
           parentPersonId: data.parentPersonId || undefined,
         },
       },
@@ -367,6 +378,9 @@ export default function Members() {
                             if (!["Grandson", "Granddaughter"].includes(val)) {
                               form.setValue("parentPersonId", null);
                             }
+                            // Default gender from the role's group (Women/Men) --
+                            // still freely editable below via the Gender field.
+                            form.setValue("gender", GENDER_BY_ROLE[val] ?? null);
                           }}
                           value={field.value}
                         >
@@ -388,6 +402,32 @@ export default function Members() {
                                 ))}
                               </SelectGroup>
                             ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender</FormLabel>
+                        <Select
+                          onValueChange={(val) => field.onChange(val === "unspecified" ? null : val)}
+                          value={field.value ?? "unspecified"}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select gender..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="unspecified">Prefer not to say</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

@@ -658,6 +658,14 @@ components:
             string set once from the admin's perspective at creation time.
             Omitted when it can't be computed (e.g. cross-linked-unit
             viewers) -- callers should fall back to relationshipLabel.
+        gender:
+          type: string
+          enum: [male, female]
+          nullable: true
+          description: >-
+            Unset (null) means not specified / prefer not to say. Drives
+            gendered relationship terms (e.g. "Brother" vs "Sister") in
+            viewerRelationshipLabel -- neutral terms are used when null.
         familyUnitId:
           type: string
           format: uuid
@@ -753,6 +761,10 @@ components:
           nullable: true
         relationshipLabel:
           type: string
+        gender:
+          type: string
+          enum: [male, female]
+          nullable: true
         parentPersonId:
           type: string
           format: uuid
@@ -867,6 +879,10 @@ components:
           type: string
         relationshipLabel:
           type: string
+        gender:
+          type: string
+          enum: [male, female]
+          nullable: true
         parentPersonId:
           type: string
           format: uuid

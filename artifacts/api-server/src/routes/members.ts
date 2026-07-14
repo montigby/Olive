@@ -139,6 +139,7 @@ router.post("/family-units/:unitId/members", requireAuth, requireAdmin, async (r
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
       relationshipLabel: parsed.data.relationshipLabel,
+      gender: parsed.data.gender ?? null,
       parentPersonId: parsed.data.parentPersonId ?? null,
       familyUnitId: unitId,
       isAdmin: false,

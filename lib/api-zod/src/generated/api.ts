@@ -208,6 +208,7 @@ export const UpdatePersonBody = zod.object({
   bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
   relationshipLabel: zod.string().optional(),
+  gender: zod.enum(["male", "female"]).nullish(),
   parentPersonId: zod.string().uuid().nullish(),
   tier2ContactField: zod.enum(["phone", "email"]).optional(),
   confirmedMembersOnly: zod.boolean().optional(),
@@ -411,6 +412,7 @@ export const AddMemberBody = zod.object({
   firstName: zod.string(),
   lastName: zod.string(),
   relationshipLabel: zod.string(),
+  gender: zod.enum(["male", "female"]).nullish(),
   parentPersonId: zod.string().uuid().nullish(),
 });
 
