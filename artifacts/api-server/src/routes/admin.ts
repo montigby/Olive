@@ -3,7 +3,6 @@
  * These are low-volume ops (backfill, one-time migrations).
  */
 import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { personsTable, peopleTable } from "@workspace/db";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
@@ -86,81 +85,6 @@ router.post("/admin/backfill-people", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: "Backfill failed", message: err?.message ?? String(err) });
   }
-});
-
-/**
- * POST /api/admin/migrate-add-gender
- *
- * ONE-SHOT schema migration for lib/db/migrations/0013_person_gender.sql
- * (drizzle-kit push is banned from the build per CLAUDE.md, so schema
- * changes go out via a one-shot endpoint like this one). Idempotent via
- * IF NOT EXISTS. Remove this endpoint once confirmed applied.
- */
-router.post("/admin/migrate-add-gender", async (req, res) => {
-  if (!checkSecret(req, res)) return;
-  try {
-    await db.execute(sql`ALTER TABLE persons ADD COLUMN IF NOT EXISTS gender VARCHAR(20)`);
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ error: "Migration failed", message: err?.message ?? String(err) });
-  }
-});
-
-// relationshipLabel -> gender, inferred from the exact groupings the Add
-// Member form (RELATIONSHIP_OPTIONS in members.tsx) already presents, plus
-// the additional label variants visibility.ts's own heuristics recognize
-// (mother/father, brother-in-law, grandma/grandpa, etc.). A relationshipLabel
-// of "Sister" does mean the person is female regardless of who added them or
-// from whose perspective it was recorded, so this is a real inference, not
-// a guess.
-const FEMALE_LABELS = new Set([
-  "daughter", "granddaughter", "sister", "aunt", "niece", "wife", "mom", "mother",
-  "grandma", "grandmother", "nana", "nan", "gram", "stepdaughter", "mother-in-law", "sister-in-law",
-]);
-const MALE_LABELS = new Set([
-  "son", "grandson", "brother", "uncle", "nephew", "husband", "dad", "father",
-  "grandpa", "grandfather", "papa", "pop", "pops", "gramps", "stepson", "father-in-law", "brother-in-law",
-]);
-function inferGender(relationshipLabel: string): "male" | "female" | null {
-  const l = relationshipLabel.toLowerCase().trim();
-  if (FEMALE_LABELS.has(l)) return "female";
-  if (MALE_LABELS.has(l)) return "male";
-  return null;
-}
-
-/**
- * POST /api/admin/backfill-gender
- *
- * ONE-SHOT data backfill: infer `gender` for every existing person from
- * their current relationshipLabel where it unambiguously implies one
- * (see inferGender). Only touches rows where gender IS NULL, so it's safe
- * to re-run and won't clobber anyone who's already set their gender
- * explicitly. Remove this endpoint once run.
- */
-router.post("/admin/backfill-gender", async (req, res) => {
-  if (!checkSecret(req, res)) return;
-
-  const allPersons = await db
-    .select({ id: personsTable.id, relationshipLabel: personsTable.relationshipLabel, gender: personsTable.gender })
-    .from(personsTable);
-
-  let updated = 0;
-  let skipped = 0;
-  for (const p of allPersons) {
-    if (p.gender) {
-      skipped++;
-      continue;
-    }
-    const inferred = inferGender(p.relationshipLabel);
-    if (!inferred) {
-      skipped++;
-      continue;
-    }
-    await db.update(personsTable).set({ gender: inferred }).where(eq(personsTable.id, p.id));
-    updated++;
-  }
-
-  res.json({ ok: true, updated, skipped, total: allPersons.length });
 });
 
 export default router;
