@@ -3,6 +3,7 @@
  * These are low-volume ops (backfill, one-time migrations).
  */
 import { Router } from "express";
+import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { personsTable, peopleTable } from "@workspace/db";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
@@ -84,6 +85,30 @@ router.post("/admin/backfill-people", async (req, res) => {
     res.json({ ok: true, synced, skipped, errors });
   } catch (err: any) {
     res.status(500).json({ error: "Backfill failed", message: err?.message ?? String(err) });
+  }
+});
+
+/**
+ * POST /api/admin/migrate-add-waitlist
+ * ONE-SHOT schema migration for lib/db/migrations/0014_waitlist_signups.sql.
+ * Idempotent via IF NOT EXISTS. Remove this endpoint once confirmed applied.
+ */
+router.post("/admin/migrate-add-waitlist", async (req, res) => {
+  if (!checkSecret(req, res)) return;
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS waitlist_signups (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_signups_email ON waitlist_signups (email)
+    `);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: "Migration failed", message: err?.message ?? String(err) });
   }
 });
 
