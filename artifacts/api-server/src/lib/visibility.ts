@@ -247,12 +247,19 @@ function buildFamilyGraph(
       }
     }
 
-    // Extra parentPersonId edges for non-trivially-handled members
+    // Extra parentPersonId edges for non-trivially-handled members. Skipped
+    // for GRANDPARENT_LABELS members -- for them, parentPersonId points to
+    // their CHILD (see the deferred grandparent pass below), the opposite
+    // meaning it has everywhere else. Without this guard, this block ran
+    // first and added a backwards edge (treating the grandparent as the
+    // child of their own child), which then blocked the deferred pass's
+    // correct edge via addParentChild's existing-edge dedup check.
     if (
       m.parentPersonId &&
       m.parentPersonId !== admin.id &&
       graph.has(m.parentPersonId) &&
-      !sharedParentInlawSkip.has(m.id)
+      !sharedParentInlawSkip.has(m.id) &&
+      !GRANDPARENT_LABELS.has(l)
     ) {
       const edges = graph.get(m.id)!;
       if (!edges.some(e => e.to === m.parentPersonId)) {
@@ -393,33 +400,73 @@ function pathKey(path: RelPathStep[]): string {
     .join(",");
 }
 
-// Common relationship labels by path shape. Anything not covered here (more
-// distant or unusual paths -- great-great-grandparents, cousins-in-law, etc.)
-// falls back to a generic bucket rather than guessing.
-const RELATIONSHIP_LABELS: Record<string, string> = {
-  pu: "Parent",
-  pd: "Child",
-  s: "Sibling",
+// Relationship labels for paths that include at least one spouse/couple hop.
+// Kept as a small curated table since in-law relationships beyond a couple
+// hop or two get genuinely ambiguous. Anything not covered here falls back
+// to "Extended family".
+const INLAW_PATH_LABELS: Record<string, string> = {
   c: "Spouse",
-  "pu,pu": "Grandparent",
-  "pd,pd": "Grandchild",
-  "pu,s": "Aunt/Uncle",
-  "s,pd": "Niece/Nephew",
   "c,pu": "Parent-in-law",
   "c,s": "Sibling-in-law",
   "s,c": "Sibling-in-law",
   "pd,c": "Child-in-law",
-  "pu,s,pd": "Cousin",
-  "pu,pu,pu": "Great-grandparent",
-  "pd,pd,pd": "Great-grandchild",
 };
+
+const ORDINALS = ["Zeroth", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+function ordinal(n: number): string {
+  return ORDINALS[n] ?? `${n}th`;
+}
+
+function ancestorLabel(up: number): string {
+  if (up === 1) return "Parent";
+  if (up === 2) return "Grandparent";
+  return `Great-${"great-".repeat(up - 3)}grandparent`;
+}
+function descendantLabel(down: number): string {
+  if (down === 1) return "Child";
+  if (down === 2) return "Grandchild";
+  return `Great-${"great-".repeat(down - 3)}grandchild`;
+}
+function auntUncleLabel(up: number): string {
+  if (up === 2) return "Aunt/Uncle";
+  return `Great-${"great-".repeat(up - 3)}aunt/uncle`;
+}
+function nieceNephewLabel(down: number): string {
+  if (down === 2) return "Niece/Nephew";
+  if (down === 3) return "Grand-niece/nephew";
+  return `Great-${"great-".repeat(down - 4)}grand-niece/nephew`;
+}
+function cousinLabel(up: number, down: number): string {
+  const degree = Math.min(up, down) - 1;
+  const removed = Math.abs(up - down);
+  const removedSuffix =
+    removed === 0 ? "" : removed === 1 ? " once removed" : removed === 2 ? " twice removed" : ` ${removed} times removed`;
+  return `${ordinal(degree)} cousin${removedSuffix}`;
+}
+
+// Name a pure blood-line relationship (no spouse/couple hops) from the
+// number of "up" (toward a shared ancestor) and "down" (away from it)
+// generations in the shortest path. A "sibling" edge -- itself a collapsed
+// "up one, down one" hop through a shared parent -- counts as +1 to both.
+// This formula covers any path shape, unlike a hand-picked lookup table,
+// which silently mislabeled e.g. two siblings connected only via a shared
+// third sibling's edges (two "sibling" hops) as "Extended family".
+function nameByGenerations(up: number, down: number): string {
+  if (up === 0 && down === 0) return "Me";
+  if (down === 0) return ancestorLabel(up);
+  if (up === 0) return descendantLabel(down);
+  if (up === 1 && down === 1) return "Sibling";
+  if (up === 1) return nieceNephewLabel(down);
+  if (down === 1) return auntUncleLabel(up);
+  return cousinLabel(up, down);
+}
 
 // Describe how `targetId` relates to `viewerId`, e.g. "Sibling", "Parent",
 // "Grandparent" -- for display purposes only. "Me" when they're the same
-// person. Falls back to "Extended family" for real-but-distant/unclassified
-// relations found in the graph, and "Family member" when the two aren't
-// connected in the graph at all (e.g. cross-unit callers should guard for
-// that case themselves rather than rely on this fallback).
+// person. Falls back to "Extended family" for in-law shapes not in
+// INLAW_PATH_LABELS, and "Family member" when the two aren't connected in
+// the graph at all (e.g. cross-unit callers should guard for that case
+// themselves rather than rely on this fallback).
 export function describeRelationship(
   viewerId: string,
   targetId: string,
@@ -433,7 +480,35 @@ export function describeRelationship(
   if (path === null) return "Family member";
   if (path.length === 0) return "Me";
 
-  return RELATIONSHIP_LABELS[pathKey(path)] ?? "Extended family";
+  if (path.some((s) => s.kind === "couple")) {
+    return INLAW_PATH_LABELS[pathKey(path)] ?? "Extended family";
+  }
+
+  // A path made entirely of "sibling" hops (e.g. reaching one admin-sibling
+  // via another, "sibling,sibling") always routes through a single hub node
+  // -- the family unit's admin, or their spouse for in-law siblings -- since
+  // that's the only place addSibling ever radiates more than one edge from.
+  // It's never a chain through distinct parent generations, so treat it as
+  // a direct sibling relationship rather than running it through the
+  // generation-counting formula below, which would double-count each hop's
+  // "up one, down one" and misname it as a cousin.
+  if (path.every((s) => s.kind === "sibling")) {
+    return "Sibling";
+  }
+
+  let up = 0;
+  let down = 0;
+  for (const step of path) {
+    if (step.kind === "parent-child") {
+      if (step.isDown) down++;
+      else up++;
+    } else {
+      // sibling: one hop up to the shared parent, one hop back down
+      up++;
+      down++;
+    }
+  }
+  return nameByGenerations(up, down);
 }
 
 export function computeVisibleSet(

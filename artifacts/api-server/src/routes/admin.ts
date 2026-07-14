@@ -3,7 +3,7 @@
  * These are low-volume ops (backfill, one-time migrations).
  */
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { personsTable, peopleTable, relationshipsTable } from "@workspace/db";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
@@ -156,6 +156,46 @@ router.get("/admin/find-unit", async (req, res) => {
     .from(personsTable);
 
   res.json(all.filter((p) => p.firstName.toLowerCase().includes(name)));
+});
+
+/**
+ * POST /api/admin/fix-stale-sibling-relationships
+ *
+ * ONE-SHOT data fix. Found via graph-debug: three relationships-table rows
+ * exist that claim a sibling is a biological_parent (e.g. "Rachel is
+ * Jackson's child", "Jayne is Jackson's parent") -- almost certainly stale
+ * rows written by syncPersonToRelationshipLayer back when these three were
+ * first added with a different (later-corrected) relationshipLabel, since
+ * sync only runs once at insert and never re-runs on a label edit. These
+ * bogus rows corrupted viewer-relative relationship labels for anyone
+ * routed through them. Deletes exactly the specified fromPerson/toPerson/
+ * type rows -- nothing broader. Remove this endpoint once run.
+ */
+router.post("/admin/fix-stale-sibling-relationships", async (req, res) => {
+  if (!checkSecret(req, res)) return;
+
+  const rows: Array<{ fromPerson: string; toPerson: string; type: string }> = req.body?.rows;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: "Bad Request", message: "Provide { rows: [{ fromPerson, toPerson, type }] }" });
+    return;
+  }
+
+  let deleted = 0;
+  for (const r of rows) {
+    const result = await db
+      .delete(relationshipsTable)
+      .where(
+        and(
+          eq(relationshipsTable.fromPerson, r.fromPerson),
+          eq(relationshipsTable.toPerson, r.toPerson),
+          eq(relationshipsTable.type, r.type),
+        ),
+      )
+      .returning({ id: relationshipsTable.id });
+    deleted += result.length;
+  }
+
+  res.json({ ok: true, deleted });
 });
 
 export default router;
