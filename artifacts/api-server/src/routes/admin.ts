@@ -112,4 +112,11 @@ router.post("/admin/migrate-add-waitlist", async (req, res) => {
   }
 });
 
+/** TEMPORARY: clean up the manual verification row from waitlist testing. */
+router.post("/admin/cleanup-waitlist-test", async (req, res) => {
+  if (!checkSecret(req, res)) return;
+  await db.execute(sql`DELETE FROM waitlist_signups WHERE email = 'test-verify@example.com'`);
+  res.json({ ok: true });
+});
+
 export default router;
