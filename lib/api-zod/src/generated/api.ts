@@ -15,6 +15,13 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Join the waitlist
+ */
+export const WaitlistSignupBody = zod.object({
+  email: zod.string().email(),
+});
+
+/**
  * @summary Register a new account
  */
 export const registerBodyPasswordMin = 8;

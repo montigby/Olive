@@ -8,3 +8,4 @@ export * from "./relationships";
 export * from "./inviteTokens";
 export * from "./claimRequests";
 export * from "./lifeEvents";
+export * from "./waitlistSignups";

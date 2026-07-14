@@ -41,6 +41,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  # ─── Waitlist ───────────────────────────────────────────────────
+  /waitlist:
+    post:
+      operationId: joinWaitlist
+      tags: [waitlist]
+      summary: Join the waitlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WaitlistSignupBody"
+      responses:
+        "201":
+          description: Added to the waitlist (idempotent -- re-submitting the same email is not an error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistSignupResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─── Auth ───────────────────────────────────────────────────────
   /auth/register:
     post:
@@ -549,6 +575,22 @@ components:
         message:
           type: string
       required: [message]
+
+    # ─── Waitlist ──────────────────────────────────────────────────
+    WaitlistSignupBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required: [email]
+
+    WaitlistSignupResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
 
     # ─── Auth ──────────────────────────────────────────────────────
     RegisterBody:

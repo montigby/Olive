@@ -18,6 +18,14 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface WaitlistSignupBody {
+  email: string;
+}
+
+export interface WaitlistSignupResponse {
+  ok: boolean;
+}
+
 export interface RegisterBody {
   email: string;
   /** @minLength 8 */

@@ -13,6 +13,7 @@ import homeFeedRouter from "./homeFeed";
 import inviteFlowRouter from "./inviteFlow";
 import cronRouter from "./cron";
 import lifeEventsRouter from "./lifeEvents";
+import waitlistRouter from "./waitlist";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(homeFeedRouter);
 router.use(inviteFlowRouter);
 router.use(cronRouter);
 router.use(lifeEventsRouter);
+router.use(waitlistRouter);
 
 export default router;
