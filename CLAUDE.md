@@ -56,7 +56,7 @@ Two person tables coexist. `persons` is the rich display table (profile fields, 
 ## Key Conventions
 
 ### Auth
-JWT Bearer token, stored in `localStorage.getItem("oliveToken")`. Verified by `requireAuth` middleware. Admin routes also require `requireAdmin`. Admin-only HTTP endpoints use `x-admin-secret` header (`ADMIN_SECRET` env var, defaults to `"olive-admin-2026"`).
+JWT Bearer token, stored in `localStorage.getItem("oliveToken")`. Verified by `requireAuth` middleware. Admin routes also require `requireAdmin`. Admin-only HTTP endpoints use `x-admin-secret` header (`ADMIN_SECRET` env var — required, the server fails to start without it; no insecure default anymore).
 
 ### `formatPerson`
 The canonical implementation lives in `artifacts/api-server/src/routes/auth.ts` and is exported. Import from there. Never redefine it in another file.

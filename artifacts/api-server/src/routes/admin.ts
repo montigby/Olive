@@ -9,10 +9,12 @@ import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET ?? "olive-admin-2026";
-if (!process.env.ADMIN_SECRET && process.env.NODE_ENV === "production") {
-  console.error("[admin] WARNING: ADMIN_SECRET env var is not set — using insecure default");
+if (!process.env.ADMIN_SECRET) {
+  throw new Error(
+    "ADMIN_SECRET must be set. Did you forget to configure it in Vercel?",
+  );
 }
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 function checkSecret(req: any, res: any): boolean {
   const secret = req.headers["x-admin-secret"] ?? req.query["secret"];
