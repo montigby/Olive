@@ -21,6 +21,12 @@ const loginLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  // We already explicitly set `trust proxy` in app.ts for Vercel's proxy
+  // depth; express-rate-limit's own runtime validation of that (which can
+  // throw synchronously, outside any route handler's try/catch, if it thinks
+  // X-Forwarded-For doesn't match) is redundant on top of that and was the
+  // suspected cause of a real, hard-to-reproduce production 500 on login.
+  validate: false,
   keyGenerator: (req) => `${req.ip}:${req.body?.email ?? ""}`,
   message: { error: "Too many login attempts", message: "Please try again in a few minutes." },
 });
