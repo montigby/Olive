@@ -3,9 +3,8 @@
  * These are low-volume ops (backfill, one-time migrations).
  */
 import { Router } from "express";
-import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { personsTable, peopleTable, accountsTable, familyUnitsTable } from "@workspace/db";
+import { personsTable, peopleTable } from "@workspace/db";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
@@ -25,38 +24,6 @@ function checkSecret(req: any, res: any): boolean {
   }
   return true;
 }
-
-/**
- * TEMPORARY — POST /api/admin/cleanup-diag-test
- * Deletes the synthetic account/person/family-unit created while diagnosing
- * today's login incident (email starting "claude-diag-test-"). Bypasses the
- * last-admin guardrail deliberately, since this is intentional test-data
- * teardown, not a real family losing its only admin. Remove after use.
- */
-router.post("/admin/cleanup-diag-test", async (req, res) => {
-  if (!checkSecret(req, res)) return;
-
-  try {
-    const targets = await db
-      .select({ id: personsTable.id, familyUnitId: personsTable.familyUnitId, email: personsTable.email })
-      .from(personsTable)
-      .where(eq(personsTable.email, String(req.query["email"] ?? "")));
-
-    if (!targets.length) {
-      res.json({ deleted: false, message: "No matching person found" });
-      return;
-    }
-
-    const { id: personId, familyUnitId } = targets[0];
-    await db.delete(accountsTable).where(eq(accountsTable.personId, personId));
-    await db.delete(personsTable).where(eq(personsTable.id, personId));
-    await db.delete(familyUnitsTable).where(eq(familyUnitsTable.id, familyUnitId));
-
-    res.json({ deleted: true, personId, familyUnitId });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
-  }
-});
 
 /**
  * POST /api/admin/backfill-people
