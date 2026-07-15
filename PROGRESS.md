@@ -44,6 +44,12 @@ Full writeup: `security.md`. Next security-relevant work is bigger-lift stuff in
 
 ---
 
+## 🟢 Open Follow-up
+
+- **CORS allowlist vs. Vercel alias URLs** — the 2026-07-15 CORS restriction (see punch list above) broke login for the user because they were habitually using a Vercel-generated `*.vercel.app` alias URL rather than `https://myolive.app`. Not a bug — that origin was correctly rejected — but worth deciding: keep using `myolive.app` only (current default), or add the stable git-branch-tracking alias (e.g. `<project>-git-main-<team>.vercel.app`) to the CORS allowlist too if that URL gets used again. Not settled.
+
+---
+
 ## 🔵 Backlog (Roughly Priority Order)
 
 - [ ] Mobile UI audit — remaining cosmetic items: dashboard's 3 stat cards crushed on phones, AI chat panel misalignment/clipping, registration form fields squeeze to ~100px columns, Settings unit-code row doesn't stack, search input text hides behind its own button (`link.tsx`), no safe-area-inset handling for notched phones, pinch-to-zoom cap (`maximum-scale=1`) not yet decided on removal
@@ -78,6 +84,8 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 
 ## Recently Shipped (Condensed Changelog)
 For full detail, `git log` is authoritative. Highlights, most recent first:
+- Production login 500 diagnosed and resolved (2026-07-15) — root cause was a Vercel `*.vercel.app` alias URL not covered by the new CORS allowlist, not an app bug. All temporary diagnostic code added while chasing it was fully reverted afterward (commits `a6b1f44`..`22089a1`); see [[login-incident-2026-07-15]] memory for the full diagnostic writeup.
+- Back button added to the Privacy page (`history.back()` w/ fallback) since it's linked from many entry points and only the browser back arrow could return you — `15a3769`
 - Landing page olive/gold palette applied site-wide; copy rewrite to cut AI-sounding patterns; testimonials/AI-section/CTA cleanup — `f76eec9`
 - Waitlist landing page per supervisor's PRD — `954d928`
 - Gender field + gendered relationship labels — `4039e7f`
