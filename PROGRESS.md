@@ -6,18 +6,18 @@ Last updated: 2026-07-15.
 
 ---
 
-## 🔴 Right Now — Security Punch List
+## ✅ Security Punch List — CLOSED 2026-07-15
 
-Ranked by risk × effort. Items 1–5 shipped and verified live 2026-07-15 (commits `82fee68`, `d7d612c`, `2f1a626`); only item 6 remains, blocked on the user adding a real `ADMIN_SECRET` to Vercel.
+All six items from `security.md`'s original audit shipped and verified live (commits `82fee68`, `d7d612c`, `2f1a626`, `34309b7`):
 
-1. [x] **JWT secret (`SESSION_SECRET`) fail-closed in production** — confirmed set in Vercel Production first, then `auth.ts` now throws at boot if missing, matching the existing `DATABASE_URL` pattern.
-2. [x] **Fixed the spoofable cron-secret bypass** — `cron.ts` now checks Vercel's real `Authorization: Bearer <CRON_SECRET>` header (auto-attached to genuine cron requests) instead of a spoofable `user-agent` string.
-3. [x] **Deleted `/api/healthz/db`** — dead debug code, was leaking raw DB error internals unauthenticated.
-4. [x] **CORS restricted to `https://myolive.app`** (+ `APP_BASE_URL`, + localhost in dev) and **`helmet` added** for baseline security headers. Verified live: a random origin gets rejected, the real origin gets a scoped `Access-Control-Allow-Origin`, CSP/HSTS/X-Frame-Options all present on API responses, and confirmed the CSP header doesn't leak onto the SPA's static HTML (separate routing path).
-5. [x] **Rate limiting added** — `/api/auth/login` capped at 10 attempts/10min (keyed by IP+email), `/api/ai/chat` capped at 30 requests/15min (keyed by personId, closes the no-cost-cap gap on OpenAI usage). Verified live: the 11th rapid login attempt returns 429.
-6. [ ] **`ADMIN_SECRET` fail-closed** — same treatment as `SESSION_SECRET`, but **`ADMIN_SECRET` is not set in Vercel at all** (checked the dashboard 2026-07-15 — it's missing from the env var list entirely, so admin endpoints are actively running on the hardcoded `"olive-admin-2026"` fallback right now, not just hypothetically). Generated a random replacement value for the user to add to Vercel Production; waiting on confirmation before flipping the code to fail-closed. Also still open: fix `.gitignore` to exclude a plain `.env` (not just `.env*.local`).
+1. [x] `SESSION_SECRET` fails closed at boot (matches the `DATABASE_URL` pattern) — confirmed set in Vercel first.
+2. [x] Cron secret bypass fixed — real `Authorization: Bearer <CRON_SECRET>` check, no more spoofable user-agent string.
+3. [x] `/api/healthz/db` deleted — was leaking raw DB error internals unauthenticated.
+4. [x] CORS restricted to `https://myolive.app` (+ `APP_BASE_URL`, + localhost in dev), `helmet` added for CSP/HSTS/X-Frame-Options. Verified a random origin is rejected and the CSP header doesn't leak onto the SPA's static HTML.
+5. [x] Rate limiting added — login capped at 10/10min (IP+email), AI chat capped at 30/15min (personId). Verified the 11th login attempt returns 429.
+6. [x] `ADMIN_SECRET` fails closed at boot — **was actually missing from Vercel entirely** (not just a hypothetical gap; admin endpoints were live on the hardcoded `"olive-admin-2026"` fallback until this was fixed). User added a real value to Vercel (Production + Preview), then the code was flipped. Verified live: app boots fine, old fallback now gets 403, real secret still authenticates. Also fixed `.gitignore` to exclude a plain `.env`.
 
-Full detail and reasoning for all of the above: `security.md` (punch-list section there still needs updating to match — do that alongside item 6).
+Full writeup: `security.md`. Next security-relevant work is bigger-lift stuff intentionally deferred (session revocation, dependency-audit automation, 2FA) — see `security.md` §2/§7/§8, not urgent at current scale.
 
 ---
 
