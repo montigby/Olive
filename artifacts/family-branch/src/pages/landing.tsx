@@ -26,7 +26,7 @@ import {
   Twitter,
 } from "lucide-react";
 
-// ─── Brand palette (this page only -- distinct from the app's internal theme) ──
+// ─── Brand palette (matches the app's theme tokens in index.css) ──
 const BG = "#FAF8F5";
 const GREEN = "#6B7A46";
 const GREEN_DARK = "#57623A";
@@ -217,11 +217,11 @@ export default function Landing() {
               Your family's second brain
             </p>
             <h1 className="font-serif text-4xl md:text-6xl font-medium leading-[1.1] mb-6">
-              Never Lose Touch With Family Again.
+              The Place Your Family's Memory Lives.
             </h1>
             <p className="text-lg md:text-xl leading-relaxed mb-8" style={{ color: "#5A5650" }}>
-              Olive helps grandparents stay connected by remembering birthdays, keeping contact
-              information current, and gently reminding you about the people who matter most.
+              Birthdays, phone numbers, addresses, relationships — kept current in one private
+              place, with a reminder when it matters.
             </p>
             <WaitlistForm id="waitlist" />
             <p className="text-sm mt-4" style={{ color: "#8A8580" }}>Free during beta.</p>
@@ -259,7 +259,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           <FadeIn>
             <h2 className="font-serif text-3xl md:text-5xl font-medium text-center mb-16">
-              Staying Close Shouldn't Be This Hard
+              It's Never One Big Thing
             </h2>
           </FadeIn>
           <div className="grid md:grid-cols-2 gap-16 items-center">
@@ -300,8 +300,8 @@ export default function Landing() {
           <FadeIn delay={0.15}>
             <h2 className="font-serif text-3xl md:text-5xl font-medium mb-6">Meet Olive</h2>
             <p className="text-lg leading-relaxed mb-10" style={{ color: "#5A5650" }}>
-              Olive becomes your family's private memory assistant. It keeps everyone connected
-              without requiring you to remember everything.
+              One private place holds everyone's information. Olive keeps it current and tells
+              you when something worth knowing changes.
             </p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-5">
               {[
@@ -330,35 +330,24 @@ export default function Landing() {
           <FadeIn>
             <h2 className="font-serif text-3xl md:text-5xl font-medium mb-14">Your Family's Second Brain</h2>
           </FadeIn>
-          <div className="flex flex-col gap-4 items-stretch text-left mb-12">
+          <div className="flex flex-col gap-3 items-stretch text-left">
             {[
-              "Emily's birthday is tomorrow. Want me to remind you in the morning?",
+              "Emily's birthday is tomorrow.",
               "It's been six weeks since you've talked with Tyler.",
               "Ava just posted photos from her graduation.",
               "Josh and Sarah just welcomed a new baby.",
               "Miranda's anniversary is next week.",
             ].map((msg, i) => (
-              <FadeIn key={msg} delay={i * 0.08} className={i % 2 === 0 ? "self-start" : "self-end"}>
+              <FadeIn key={msg} delay={i * 0.08}>
                 <div
-                  className="rounded-2xl px-5 py-3.5 max-w-md text-[15px] leading-snug shadow-sm"
-                  style={{
-                    backgroundColor: i % 2 === 0 ? "white" : "#EEF1E7",
-                    borderBottomLeftRadius: i % 2 === 0 ? "0.25rem" : "1rem",
-                    borderBottomRightRadius: i % 2 === 0 ? "1rem" : "0.25rem",
-                  }}
+                  className="flex items-center gap-3 rounded-2xl px-5 py-3.5 text-[15px] leading-snug shadow-sm bg-white"
                 >
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: GREEN }} />
                   {msg}
                 </div>
               </FadeIn>
             ))}
           </div>
-          <FadeIn delay={0.3}>
-            <ScrollLink to="#how-it-works">
-              <Button variant="outline" className="rounded-full px-6" style={{ borderColor: GREEN, color: GREEN }}>
-                Learn More
-              </Button>
-            </ScrollLink>
-          </FadeIn>
         </div>
       </section>
 
@@ -372,7 +361,7 @@ export default function Landing() {
             {[
               { n: "1", title: "Create your family.", body: "Set up your family unit in minutes." },
               { n: "2", title: "Invite everyone.", body: "Each person manages their own information." },
-              { n: "3", title: "Stay effortlessly connected.", body: "Olive quietly keeps you informed." },
+              { n: "3", title: "Everyone stays visible.", body: "New numbers, new addresses, new milestones — kept current automatically." },
             ].map((step, i) => (
               <FadeIn key={step.n} delay={i * 0.1}>
                 <div className="bg-white rounded-3xl p-8 h-full shadow-sm">
@@ -395,19 +384,19 @@ export default function Landing() {
       <section className="px-6 py-24">
         <div className="max-w-3xl mx-auto text-center">
           <FadeIn>
-            <h2 className="font-serif text-3xl md:text-5xl font-medium mb-12">Imagine remembering...</h2>
+            <h2 className="font-serif text-3xl md:text-5xl font-medium mb-12">What Olive Keeps Track Of</h2>
           </FadeIn>
           <FadeIn delay={0.1}>
-            <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-left max-w-xl mx-auto mb-14">
+            <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-left max-w-xl mx-auto">
               {[
-                "Every birthday.",
-                "Every anniversary.",
-                "Every new baby.",
-                "Every graduation.",
-                "Every move.",
-                "Every phone number.",
-                "Every address.",
-                "Every important moment.",
+                "Birthdays",
+                "Anniversaries",
+                "New babies",
+                "Graduations",
+                "Moves",
+                "Phone numbers",
+                "Addresses",
+                "Big moments",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-3 text-lg">
                   <span
@@ -421,11 +410,6 @@ export default function Landing() {
               ))}
             </ul>
           </FadeIn>
-          <FadeIn delay={0.2}>
-            <p className="font-serif text-2xl md:text-3xl italic" style={{ color: GREEN_DARK }}>
-              Olive remembers because love shouldn't depend on memory.
-            </p>
-          </FadeIn>
         </div>
       </section>
 
@@ -433,14 +417,13 @@ export default function Landing() {
       <section className="px-6 py-24" style={{ backgroundColor: "#F3F0EA" }}>
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
           {[
-            { quote: "I finally know how to reach everyone.", who: "Beta tester, grandmother of 9" },
-            { quote: "Mom calls our kids more because Olive reminds her.", who: "Beta tester, family of 5" },
-            { quote: "The whole family feels closer.", who: "Beta tester, extended family of 20+" },
-          ].map((t, i) => (
-            <FadeIn key={t.quote} delay={i * 0.1}>
+            "I finally know how to reach everyone.",
+            "Mom calls our kids more because Olive reminds her.",
+            "The whole family feels closer.",
+          ].map((quote, i) => (
+            <FadeIn key={quote} delay={i * 0.1}>
               <div className="bg-white rounded-3xl p-8 h-full shadow-sm">
-                <p className="font-serif text-xl italic mb-6 leading-relaxed">"{t.quote}"</p>
-                <p className="text-sm" style={{ color: "#8A8580" }}>— {t.who}</p>
+                <p className="font-serif text-xl italic leading-relaxed">"{quote}"</p>
               </div>
             </FadeIn>
           ))}
@@ -504,7 +487,7 @@ export default function Landing() {
               Stay Close to the People You Love.
             </h2>
             <p className="text-lg mb-10" style={{ color: "#5A5650" }}>
-              Join the waitlist and help shape the future of family connection.
+              Join the waitlist and we'll let you know the moment Olive is ready for your family.
             </p>
             <WaitlistForm />
             <p className="text-sm mt-4" style={{ color: "#8A8580" }}>No spam. Early access only.</p>
