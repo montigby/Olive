@@ -190,37 +190,47 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     return;
   }
 
-  await db
-    .update(accountsTable)
-    .set({ lastLoginAt: new Date() })
-    .where(eq(accountsTable.id, account.id));
+  // TEMPORARY: broad try/catch surfacing the real error message to the
+  // client, to diagnose a live 500 on this exact path. Remove once resolved.
+  try {
+    await db
+      .update(accountsTable)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(accountsTable.id, account.id));
 
-  const personWithUnit = await getPersonWithUnit(account.personId);
-  if (!personWithUnit) {
-    res.status(500).json({ error: "Internal error", message: "Person not found" });
-    return;
+    const personWithUnit = await getPersonWithUnit(account.personId);
+    if (!personWithUnit) {
+      res.status(500).json({ error: "Internal error", message: "Person not found" });
+      return;
+    }
+
+    const { familyUnit, ...person } = personWithUnit;
+
+    const members = await db
+      .select()
+      .from(personsTable)
+      .where(eq(personsTable.familyUnitId, person.familyUnitId));
+
+    const token = signToken({
+      personId: person.id,
+      familyUnitId: person.familyUnitId,
+      isAdmin: person.isAdmin,
+    });
+
+    res.json({
+      token,
+      person: {
+        ...formatPerson(person),
+        familyUnit: formatUnit(familyUnit, members.length, members.filter((m) => m.claimed).length),
+      },
+    });
+  } catch (err) {
+    const e = err as Error & { cause?: unknown };
+    res.status(500).json({
+      error: "Internal error",
+      message: `[TEMP DEBUG] ${e.name}: ${e.message}${e.cause ? ` | cause: ${String(e.cause)}` : ""}`,
+    });
   }
-
-  const { familyUnit, ...person } = personWithUnit;
-
-  const members = await db
-    .select()
-    .from(personsTable)
-    .where(eq(personsTable.familyUnitId, person.familyUnitId));
-
-  const token = signToken({
-    personId: person.id,
-    familyUnitId: person.familyUnitId,
-    isAdmin: person.isAdmin,
-  });
-
-  res.json({
-    token,
-    person: {
-      ...formatPerson(person),
-      familyUnit: formatUnit(familyUnit, members.length, members.filter((m) => m.claimed).length),
-    },
-  });
 });
 
 // POST /api/auth/logout
