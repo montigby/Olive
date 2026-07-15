@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -25,7 +26,31 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(helmet());
+
+// The SPA and API are served from the same Vercel deployment, so real
+// browser traffic is same-origin and never hits this check at all -- this
+// allowlist only matters for a *different* origin's browser trying to call
+// the API directly (e.g. with a stolen token in a crafted request).
+const allowedOrigins = new Set(
+  [
+    "https://myolive.app",
+    process.env.APP_BASE_URL,
+    process.env.NODE_ENV !== "production" ? "http://localhost:3000" : undefined,
+    process.env.NODE_ENV !== "production" ? "http://localhost:5173" : undefined,
+  ].filter((origin): origin is string => Boolean(origin)),
+);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
