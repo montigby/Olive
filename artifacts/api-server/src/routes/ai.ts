@@ -22,10 +22,6 @@ const aiChatLimiter = rateLimit({
   limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  // See loginLimiter in auth.ts for why this is disabled -- redundant given
-  // our own explicit `trust proxy` setting, and a suspected source of a real
-  // production 500 that bypassed route-level error handling entirely.
-  validate: false,
   keyGenerator: (req) => req.auth?.personId ?? req.ip ?? "unknown",
   message: { error: "Too many requests", message: "Please slow down and try again shortly." },
 });

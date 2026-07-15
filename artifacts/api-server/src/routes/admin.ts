@@ -3,13 +3,9 @@
  * These are low-volume ops (backfill, one-time migrations).
  */
 import { Router } from "express";
-import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { personsTable, peopleTable, accountsTable, familyUnitsTable } from "@workspace/db";
+import { personsTable, peopleTable } from "@workspace/db";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
-import { getPersonWithUnit } from "../middlewares/auth";
-import { formatPerson, formatUnit } from "./auth";
 
 const router = Router();
 
@@ -28,82 +24,6 @@ function checkSecret(req: any, res: any): boolean {
   }
   return true;
 }
-
-/**
- * TEMPORARY diagnostic — GET /api/admin/diag-account?email=...
- * Read-only, admin-secret-gated. Replays every step of the real login
- * handler for a given email (skipping the actual password check) to find
- * which step throws, without needing the account's real password. Remove
- * once the live login 500 is diagnosed.
- */
-router.get("/admin/diag-account", async (req, res) => {
-  if (!checkSecret(req, res)) return;
-
-  const email = String(req.query["email"] ?? "").toLowerCase();
-  const steps: Record<string, unknown> = {};
-
-  try {
-    const accounts = await db
-      .select()
-      .from(accountsTable)
-      .where(eq(accountsTable.email, email))
-      .limit(1);
-    steps.accountLookup = { found: accounts.length > 0 };
-    if (!accounts.length) {
-      res.json({ steps });
-      return;
-    }
-
-    const account = accounts[0];
-    steps.accountRow = {
-      id: account.id,
-      personId: account.personId,
-      passwordHashLength: account.passwordHash?.length ?? null,
-      passwordHashPrefix: account.passwordHash?.slice(0, 7) ?? null,
-      lastLoginAt: account.lastLoginAt,
-    };
-
-    try {
-      await bcrypt.compare("dummy-probe-password", account.passwordHash);
-      steps.bcryptCompare = "ok (no throw)";
-    } catch (err) {
-      steps.bcryptCompare = `THREW: ${(err as Error).name}: ${(err as Error).message}`;
-    }
-
-    try {
-      const personWithUnit = await getPersonWithUnit(account.personId);
-      steps.getPersonWithUnit = personWithUnit ? "found" : "null (no matching person+unit join)";
-
-      if (personWithUnit) {
-        const { familyUnit, ...person } = personWithUnit;
-        try {
-          const members = await db
-            .select()
-            .from(personsTable)
-            .where(eq(personsTable.familyUnitId, person.familyUnitId));
-          steps.membersQuery = `ok, count=${members.length}`;
-
-          try {
-            const formatted = formatPerson(person);
-            const unitFormatted = formatUnit(familyUnit, members.length, members.filter((m) => m.claimed).length);
-            JSON.stringify({ ...formatted, familyUnit: unitFormatted });
-            steps.formatAndSerialize = "ok";
-          } catch (err) {
-            steps.formatAndSerialize = `THREW: ${(err as Error).name}: ${(err as Error).message}`;
-          }
-        } catch (err) {
-          steps.membersQuery = `THREW: ${(err as Error).name}: ${(err as Error).message}`;
-        }
-      }
-    } catch (err) {
-      steps.getPersonWithUnit = `THREW: ${(err as Error).name}: ${(err as Error).message}`;
-    }
-
-    res.json({ steps });
-  } catch (err) {
-    res.status(500).json({ steps, fatalError: `${(err as Error).name}: ${(err as Error).message}` });
-  }
-});
 
 /**
  * POST /api/admin/backfill-people

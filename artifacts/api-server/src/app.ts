@@ -64,18 +64,7 @@ app.use("/api", router);
 // Log unhandled errors so they appear in Vercel runtime logs
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error({ err }, "Unhandled error");
-  const e = err as Error & { status?: number; statusCode?: number; type?: string; cause?: unknown };
-  const status = e.status ?? e.statusCode ?? 500;
-  // TEMPORARY: this generic handler was silently normalizing every error
-  // (including e.g. a body-parser SyntaxError, which carries its own 400
-  // status) to a bare 500 with no detail -- turns out this exact handler,
-  // not any route-level code, was firing on a live login failure that no
-  // route-specific try/catch could ever have caught. Surfacing the real
-  // status/message/type until that's confirmed and resolved.
-  res.status(status).json({
-    error: "Internal Server Error",
-    message: `[TEMP DEBUG] ${e.name ?? "Error"}: ${e.message ?? String(err)}${e.type ? ` | type: ${e.type}` : ""}${e.cause ? ` | cause: ${String(e.cause)}` : ""}`,
-  });
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
 export default app;

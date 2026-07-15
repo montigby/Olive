@@ -21,12 +21,6 @@ const loginLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  // We already explicitly set `trust proxy` in app.ts for Vercel's proxy
-  // depth; express-rate-limit's own runtime validation of that (which can
-  // throw synchronously, outside any route handler's try/catch, if it thinks
-  // X-Forwarded-For doesn't match) is redundant on top of that and was the
-  // suspected cause of a real, hard-to-reproduce production 500 on login.
-  validate: false,
   keyGenerator: (req) => `${req.ip}:${req.body?.email ?? ""}`,
   message: { error: "Too many login attempts", message: "Please try again in a few minutes." },
 });
@@ -178,67 +172,55 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
 
   const { email, password } = parsed.data;
 
-  // TEMPORARY: entire handler body wrapped in try/catch, surfacing the real
-  // error message to the client, to diagnose a live 500 that two narrower
-  // attempts at this same wrapper both failed to catch. Remove once resolved.
-  try {
-    const accounts = await db
-      .select()
-      .from(accountsTable)
-      .where(eq(accountsTable.email, email.toLowerCase()))
-      .limit(1);
+  const accounts = await db
+    .select()
+    .from(accountsTable)
+    .where(eq(accountsTable.email, email.toLowerCase()))
+    .limit(1);
 
-    if (!accounts.length) {
-      res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
-      return;
-    }
-
-    const account = accounts[0];
-
-    const valid = await bcrypt.compare(password, account.passwordHash);
-    if (!valid) {
-      res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
-      return;
-    }
-
-    await db
-      .update(accountsTable)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(accountsTable.id, account.id));
-
-    const personWithUnit = await getPersonWithUnit(account.personId);
-    if (!personWithUnit) {
-      res.status(500).json({ error: "Internal error", message: "Person not found" });
-      return;
-    }
-
-    const { familyUnit, ...person } = personWithUnit;
-
-    const members = await db
-      .select()
-      .from(personsTable)
-      .where(eq(personsTable.familyUnitId, person.familyUnitId));
-
-    const token = signToken({
-      personId: person.id,
-      familyUnitId: person.familyUnitId,
-      isAdmin: person.isAdmin,
-    });
-
-    res.json({
-      token,
-      person: {
-        ...formatPerson(person),
-        familyUnit: formatUnit(familyUnit, members.length, members.filter((m) => m.claimed).length),
-      },
-    });
-  } catch (err) {
-    const e = err as Error & { cause?: unknown };
-    res.status(500).json({
-      error: "Internal error",
-      message: `[TEMP DEBUG] ${e.name}: ${e.message}${e.cause ? ` | cause: ${String(e.cause)}` : ""}`,
-    });
+  if (!accounts.length) {
+    res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
+    return;
   }
+
+  const account = accounts[0];
+  const valid = await bcrypt.compare(password, account.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
+    return;
+  }
+
+  await db
+    .update(accountsTable)
+    .set({ lastLoginAt: new Date() })
+    .where(eq(accountsTable.id, account.id));
+
+  const personWithUnit = await getPersonWithUnit(account.personId);
+  if (!personWithUnit) {
+    res.status(500).json({ error: "Internal error", message: "Person not found" });
+    return;
+  }
+
+  const { familyUnit, ...person } = personWithUnit;
+
+  const members = await db
+    .select()
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, person.familyUnitId));
+
+  const token = signToken({
+    personId: person.id,
+    familyUnitId: person.familyUnitId,
+    isAdmin: person.isAdmin,
+  });
+
+  res.json({
+    token,
+    person: {
+      ...formatPerson(person),
+      familyUnit: formatUnit(familyUnit, members.length, members.filter((m) => m.claimed).length),
+    },
+  });
 });
 
 // POST /api/auth/logout
