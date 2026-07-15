@@ -115,11 +115,13 @@ Resend and OpenAI keys are loaded safely (see §1). Olive doesn't currently rece
 
 ## Priority Punch List (ranked by risk × effort)
 
-1. **JWT secret (`SESSION_SECRET`) fail-closed in production** — highest severity found, currently undocumented anywhere else. Confirm it's actually set in Vercel first, then make the app refuse to start without it.
-2. **Fix the spoofable cron secret bypass** and **delete/restrict `/healthz/db`** — both quick, both currently-exploitable-for-no-real-reason gaps.
-3. **Restrict CORS to the real domain + add `helmet`** — closes most of §5 and §8 in one pass.
-4. **Add login rate limiting** — quick, closes the brute-force gap.
-5. **Fix `ADMIN_SECRET` the same way as #1**, and fix the `.gitignore` gap.
+Items 1–4 fixed and verified live 2026-07-15 (commits `82fee68`, `d7d612c`, `2f1a626`):
+
+1. ~~**JWT secret (`SESSION_SECRET`) fail-closed in production**~~ — done. `auth.ts` now throws at boot if missing, matching the `DATABASE_URL` pattern. Confirmed `SESSION_SECRET` was already set in Vercel Production before shipping this.
+2. ~~**Fix the spoofable cron secret bypass** and **delete/restrict `/healthz/db`**~~ — done. Cron now checks Vercel's real `Authorization: Bearer <CRON_SECRET>` header instead of a spoofable user-agent string; `/healthz/db` deleted outright.
+3. ~~**Restrict CORS to the real domain + add `helmet`**~~ — done. CORS allowlisted to `https://myolive.app` (+ `APP_BASE_URL`, + localhost in dev); `helmet` added for CSP/HSTS/X-Frame-Options/etc. Verified the CSP header only appears on `/api/*` JSON responses, not on the SPA's static HTML.
+4. ~~**Add login rate limiting**~~ — done, and extended to the AI chat endpoint too since that had the same "no cap at all" gap but against real OpenAI spend rather than login attempts. `/api/auth/login`: 10 attempts/10min keyed by IP+email. `/api/ai/chat`: 30 requests/15min keyed by personId. Verified live: the 11th rapid login attempt returns 429.
+5. **Fix `ADMIN_SECRET` the same way as #1** — **not yet done, and more urgent than originally scored**: checking the Vercel dashboard (2026-07-15) showed `ADMIN_SECRET` isn't set there at all, meaning admin endpoints are *actively* running on the hardcoded `"olive-admin-2026"` fallback in production right now, not just exposed to a hypothetical future misconfiguration. A random replacement value was generated for the user to add to Vercel; once confirmed, flip `admin.ts` to fail-closed the same way `auth.ts` was. Also still open: fix the `.gitignore` gap (exclude a plain `.env`, not just `.env*.local`).
 6. Everything else (session revocation, dependency-audit automation, 2FA) — real work, not urgent at Olive's current scale, worth planning for as the user base grows.
 
 ## Keeping This Current
