@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
+import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import {
   personsTable,
@@ -12,6 +13,17 @@ import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { signToken, requireAuth, getPersonWithUnit } from "../middlewares/auth";
 
 const router = Router();
+
+// Caps brute-force password guessing against a single email while staying
+// generous for a real family member fumbling their own password.
+const loginLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${req.ip}:${req.body?.email ?? ""}`,
+  message: { error: "Too many login attempts", message: "Please try again in a few minutes." },
+});
 
 function formatPerson(p: typeof personsTable.$inferSelect) {
   return {
@@ -151,7 +163,7 @@ router.post("/auth/register", async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", loginLimiter, async (req, res) => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });

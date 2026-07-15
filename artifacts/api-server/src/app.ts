@@ -7,6 +7,11 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Vercel puts one proxy hop in front of the function; trust it so
+// express-rate-limit (and req.ip generally) sees the real client IP from
+// X-Forwarded-For instead of treating every request as the same address.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

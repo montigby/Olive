@@ -1,5 +1,6 @@
 import { Router } from "express";
 import OpenAI from "openai";
+import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import { personsTable, lifeEventsTable, accountsTable, relationshipsTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
@@ -12,6 +13,18 @@ import { isLastAdminInUnit } from "../lib/permissions";
 import { VALID_EVENT_TYPES } from "./lifeEvents";
 
 const router = Router();
+
+// Caps OpenAI spend per person -- each request can trigger several tool
+// calls, so this is deliberately request-count-based rather than trying to
+// track token cost per call.
+const aiChatLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.auth?.personId ?? req.ip ?? "unknown",
+  message: { error: "Too many requests", message: "Please slow down and try again shortly." },
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -249,7 +262,7 @@ Deleting members:
 }
 
 // POST /api/ai/chat
-router.post("/ai/chat", requireAuth, async (req, res) => {
+router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
   const { messages, unitId } = req.body as {
     messages: Array<{ role: "user" | "assistant"; content: string }>;
     unitId: string;
