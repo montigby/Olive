@@ -172,24 +172,23 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
 
   const { email, password } = parsed.data;
 
-  const accounts = await db
-    .select()
-    .from(accountsTable)
-    .where(eq(accountsTable.email, email.toLowerCase()))
-    .limit(1);
-
-  if (!accounts.length) {
-    res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
-    return;
-  }
-
-  const account = accounts[0];
-
-  // TEMPORARY: broad try/catch (now covering bcrypt.compare too, since that
-  // can throw on a malformed stored hash instead of just returning false)
-  // surfacing the real error message to the client, to diagnose a live 500
-  // on this exact path. Remove once resolved.
+  // TEMPORARY: entire handler body wrapped in try/catch, surfacing the real
+  // error message to the client, to diagnose a live 500 that two narrower
+  // attempts at this same wrapper both failed to catch. Remove once resolved.
   try {
+    const accounts = await db
+      .select()
+      .from(accountsTable)
+      .where(eq(accountsTable.email, email.toLowerCase()))
+      .limit(1);
+
+    if (!accounts.length) {
+      res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
+      return;
+    }
+
+    const account = accounts[0];
+
     const valid = await bcrypt.compare(password, account.passwordHash);
     if (!valid) {
       res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
