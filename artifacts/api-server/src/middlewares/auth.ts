@@ -4,7 +4,12 @@ import { db } from "@workspace/db";
 import { personsTable, familyUnitsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const JWT_SECRET = process.env.SESSION_SECRET || "fallback-dev-secret";
+if (!process.env.SESSION_SECRET) {
+  throw new Error(
+    "SESSION_SECRET must be set. Did you forget to configure it in Vercel?",
+  );
+}
+const JWT_SECRET = process.env.SESSION_SECRET;
 
 export interface AuthPayload {
   personId: string;

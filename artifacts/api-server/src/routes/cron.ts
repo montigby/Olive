@@ -11,10 +11,17 @@ const router = Router();
 // (on Mondays) a weekly digest of upcoming birthdays to opted-in members.
 router.get("/cron/birthday-emails", async (req, res) => {
   if (process.env.NODE_ENV === "production") {
-    const isVercelCron = req.headers["user-agent"]?.includes("vercel-cron");
+    // Vercel automatically attaches `Authorization: Bearer <CRON_SECRET>` to
+    // requests it triggers for scheduled cron jobs when CRON_SECRET is set.
+    // `x-cron-secret` is kept as a second accepted header for manual testing
+    // (e.g. via curl/Invoke-RestMethod). Neither is spoofable without knowing
+    // the actual secret -- unlike the old user-agent sniffing this replaced.
     const secret = process.env.CRON_SECRET;
-    const provided = req.headers["x-cron-secret"];
-    if (!isVercelCron && !(secret && provided === secret)) {
+    const authHeader = req.headers["authorization"];
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const customHeader = req.headers["x-cron-secret"];
+    const authorized = Boolean(secret) && (bearerToken === secret || customHeader === secret);
+    if (!authorized) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
