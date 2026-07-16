@@ -342,3 +342,13 @@
     inset: -1px;
   }
 }
+
+/* Printable family directory (members.tsx) -- plain black-on-white contact
+   sheet regardless of light/dark theme, since the app chrome is hidden via
+   print:hidden and this is the only visible content when printing. */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

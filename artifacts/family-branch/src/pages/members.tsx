@@ -48,7 +48,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown, Search, MoreVertical, ShieldCheck, ShieldPlus, ShieldMinus } from "lucide-react";
+import { UserPlus, CheckCircle2, ChevronRight, Copy, Link as LinkIcon, Users, Eye, ArrowUpDown, Search, MoreVertical, ShieldCheck, ShieldPlus, ShieldMinus, Printer } from "lucide-react";
+import { formatBirthdayDate } from "@/lib/birthday";
 import {
   Form,
   FormControl,
@@ -284,6 +285,7 @@ export default function Members() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="print:hidden space-y-6">
       {user?.isAdmin && user.familyUnit?.id && <SharedInviteBanner unitId={user.familyUnit.id} />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -316,6 +318,15 @@ export default function Members() {
                 <SelectItem value="side">By family side</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-full border-border shrink-0"
+              title="Print directory"
+              onClick={() => window.print()}
+            >
+              <Printer className="w-3.5 h-3.5" />
+            </Button>
           </div>
 
         {user?.isAdmin && (
@@ -720,6 +731,74 @@ export default function Members() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+
+      {/* Print-only view -- hidden on screen, shown only in the print
+          stylesheet (see index.css). Built from the same tier-filtered
+          `sections` data as the on-screen list, so it never shows a member
+          more than their viewer-level privacy settings allow. */}
+      <PrintableDirectory
+        familyName={user?.lastName ? `${user.lastName} Family` : user?.familyUnit.unitName}
+        sections={sections}
+      />
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Printable directory — print-only, plain-text contact sheet
+// ──────────────────────────────────────────────────────────────────────────
+function PrintableDirectory({
+  familyName,
+  sections,
+}: {
+  familyName?: string;
+  sections: { heading: string | null; items: any[] | undefined }[];
+}) {
+  return (
+    <div className="hidden print:block print:text-black">
+      <h1 className="text-2xl font-serif font-bold mb-1">{familyName || "Family Directory"}</h1>
+      <p className="text-xs text-gray-500 mb-6">
+        Printed {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+      </p>
+      {sections.map((section, si) => (
+        <div key={si} className="mb-6 break-inside-avoid">
+          {section.heading && (
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 border-b border-gray-300 pb-1 mb-2">
+              {section.heading}
+            </h2>
+          )}
+          <table className="w-full text-sm border-collapse">
+            <tbody>
+              {(section.items ?? []).map((member) => {
+                const addressParts = [
+                  member.addressLine1,
+                  [member.addressCity, member.addressState].filter(Boolean).join(", "),
+                  member.addressZip,
+                ].filter(Boolean);
+                return (
+                  <tr key={member.id} className="border-b border-gray-200 align-top break-inside-avoid">
+                    <td className="py-2 pr-4 font-semibold whitespace-nowrap">
+                      {member.firstName} {member.lastName}
+                      <div className="font-normal text-gray-500">
+                        {member.viewerRelationshipLabel ?? member.relationshipLabel}
+                      </div>
+                    </td>
+                    <td className="py-2 pr-4">
+                      {member.phone && <div>{member.phone}</div>}
+                      {member.email && <div>{member.email}</div>}
+                      {member.birthday && <div>{formatBirthdayDate(member.birthday)}</div>}
+                    </td>
+                    <td className="py-2">
+                      {addressParts.length > 0 && <div>{addressParts.join(" · ")}</div>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }

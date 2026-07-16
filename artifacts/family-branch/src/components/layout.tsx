@@ -65,7 +65,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header — logo only, no hamburger */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-card">
+      <header className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-card print:hidden">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
             <BookUser className="w-4 h-4" />
@@ -83,7 +83,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col border-r bg-card p-6">
+      <aside className="hidden md:flex w-64 flex-col border-r bg-card p-6 print:hidden">
         <div className="mb-8 flex items-center gap-3">
            <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
             <BookUser className="w-5 h-5" />
@@ -121,8 +121,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content — add bottom padding on mobile to clear the tab bar */}
-      <main className="flex-1 overflow-auto bg-background pb-28 md:pb-0">
-        <div className="p-4 md:p-8 max-w-6xl mx-auto">
+      <main className="flex-1 overflow-auto bg-background pb-28 md:pb-0 print:overflow-visible print:pb-0">
+        <div className="p-4 md:p-8 max-w-6xl mx-auto print:p-0 print:max-w-none">
           {children}
         </div>
       </main>
@@ -130,7 +130,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Bottom Tab Bar — bottom-0 with pb-10 so bg-card fills the gap down to the true
           viewport edge (raised off bottom-0 previously left that strip transparent, exposing
           scrolled page content underneath); tab icons/labels stay visually raised via the h-16 inner row. */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-1px_8px_rgba(0,0,0,0.08)] pb-10">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-1px_8px_rgba(0,0,0,0.08)] pb-10 print:hidden">
         <div className="flex items-stretch h-16">
           {navItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/dashboard" && item.href !== "/home" && location.startsWith(item.href));
