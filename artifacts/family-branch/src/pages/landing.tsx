@@ -196,7 +196,7 @@ export default function Landing() {
                 back in for them, even though this page's primary CTA is now
                 the waitlist rather than self-serve signup. */}
             <Link href="/login">
-              <span className="hidden sm:inline text-sm font-medium hover:opacity-70 transition-opacity cursor-pointer" style={{ color: "#6B6560" }}>
+              <span className="text-sm font-medium hover:opacity-70 transition-opacity cursor-pointer" style={{ color: "#6B6560" }}>
                 Log In
               </span>
             </Link>
