@@ -115,7 +115,7 @@ export default function Dashboard() {
       </div>
 
       {/* Connection-progress stats — visible to everyone */}
-      <div className="grid gap-4 grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <StatCard
           icon={Users}
           iconColor="bg-primary/10 text-primary"

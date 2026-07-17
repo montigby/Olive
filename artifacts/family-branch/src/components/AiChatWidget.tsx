@@ -153,17 +153,17 @@ export function AiChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-28 right-6 z-50 md:bottom-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center cursor-pointer print:hidden"
+          className="fixed right-6 z-50 bottom-[7.5rem] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center cursor-pointer print:hidden"
           aria-label="Open AI assistant"
         >
           <Sparkles className="w-6 h-6" />
         </button>
       )}
 
-      {/* Chat panel */}
+      {/* Chat panel — full-width with side margins on phones (avoids clipping off
+          narrow screens) and clears the bottom tab bar + home-indicator safe area */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 flex flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden print:hidden"
-          style={{ maxHeight: "min(560px, calc(100vh - 100px))" }}
+        <div className="fixed z-50 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 bottom-[7.5rem] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] flex flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden print:hidden max-h-[min(560px,calc(100vh-9.5rem))] md:max-h-[min(560px,calc(100vh-6rem-env(safe-area-inset-bottom)))]"
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 bg-primary text-primary-foreground flex-shrink-0">

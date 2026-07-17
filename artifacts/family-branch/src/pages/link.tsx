@@ -91,13 +91,13 @@ export default function LinkPage() {
         <div className="bg-[#FAF7F2] p-6 border-b">
           <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input 
-              placeholder="Search by family name or unit code..." 
-              className="pl-12 h-14 rounded-full bg-background border-border shadow-sm text-lg"
+            <Input
+              placeholder="Search by family name or unit code..."
+              className="pl-12 pr-20 sm:pr-24 h-14 rounded-full bg-background border-border shadow-sm text-lg"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <Button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-6">
+            <Button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-4 sm:px-6">
               Find
             </Button>
           </form>
