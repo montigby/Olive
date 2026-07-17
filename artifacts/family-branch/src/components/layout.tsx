@@ -122,7 +122,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main content — add bottom padding on mobile to clear the tab bar (which itself
           grows on notched phones, see below), with margin so it's never a tight fit */}
-      <main className="flex-1 overflow-auto bg-background pb-32 md:pb-0 print:overflow-visible print:pb-0">
+      <main className="flex-1 overflow-auto bg-background pb-28 md:pb-0 print:overflow-visible print:pb-0">
         <div className="p-4 md:p-8 max-w-6xl mx-auto print:p-0 print:max-w-none">
           {children}
         </div>
@@ -131,9 +131,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Bottom Tab Bar — bottom-0 with bottom padding so bg-card fills the gap down to
           the true viewport edge (raised off bottom-0 previously left that strip transparent,
           exposing scrolled page content underneath); tab icons/labels stay visually raised via
-          the h-16 inner row. Padding is the larger of a flat 2.5rem or the device's actual home-
+          the h-16 inner row. Padding is the larger of a flat 1rem or the device's actual home-
           indicator safe area, so notched phones don't have the tab bar sitting under the gesture bar. */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-1px_8px_rgba(0,0,0,0.08)] pb-[max(2.5rem,env(safe-area-inset-bottom))] print:hidden">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-1px_8px_rgba(0,0,0,0.08)] pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden">
         <div className="flex items-stretch h-16">
           {navItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/dashboard" && item.href !== "/home" && location.startsWith(item.href));
