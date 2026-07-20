@@ -93,6 +93,9 @@ export interface Person {
   hideVenmo?: boolean | null;
   hideBereal?: boolean | null;
   hideOtherSocial?: boolean | null;
+  deceased?: boolean;
+  dateOfPassing?: string | null;
+  memoryCollectionEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -152,6 +155,8 @@ export interface UpdatePersonBody {
   relationshipLabel?: string;
   gender?: PersonGender | null;
   parentPersonId?: string | null;
+  deceased?: boolean;
+  dateOfPassing?: string | null;
   tier2ContactField?: "phone" | "email";
   confirmedMembersOnly?: boolean;
   hideAddress?: boolean;

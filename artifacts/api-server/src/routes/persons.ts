@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { personsTable, accountsTable, relationshipsTable, peopleTable } from "@workspace/db";
+import { personsTable, accountsTable, relationshipsTable, peopleTable, lifeEventsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdatePersonBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
@@ -99,7 +99,7 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
 
   // Look up target to verify same-family admin permission.
   const [target] = await db
-    .select({ id: personsTable.id, familyUnitId: personsTable.familyUnitId })
+    .select({ id: personsTable.id, familyUnitId: personsTable.familyUnitId, deceased: personsTable.deceased })
     .from(personsTable)
     .where(eq(personsTable.id, personId))
     .limit(1);
@@ -139,6 +139,22 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
     if (updateData.firstName !== undefined) nameSync.firstName = updateData.firstName;
     if (updateData.lastName !== undefined) nameSync.lastName = updateData.lastName;
     await db.update(peopleTable).set(nameSync).where(eq(peopleTable.id, personId)).catch(() => {});
+  }
+
+  // First transition to deceased -- auto-log it as a life event alongside
+  // everything else on the person's timeline. Best-effort: never block the
+  // primary profile update on this.
+  if (updateData.deceased === true && !target.deceased) {
+    await db
+      .insert(lifeEventsTable)
+      .values({
+        familyId: target.familyUnitId,
+        personId,
+        eventType: "death",
+        eventDate: updated[0].dateOfPassing ?? new Date().toISOString().slice(0, 10),
+        createdBy: req.auth!.personId,
+      })
+      .catch(() => {});
   }
 
   res.json(formatPerson(updated[0]));

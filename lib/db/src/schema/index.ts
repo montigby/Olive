@@ -9,3 +9,6 @@ export * from "./inviteTokens";
 export * from "./claimRequests";
 export * from "./lifeEvents";
 export * from "./waitlistSignups";
+export * from "./memories";
+export * from "./memoryPromptLog";
+export * from "./memoryPromptOptouts";

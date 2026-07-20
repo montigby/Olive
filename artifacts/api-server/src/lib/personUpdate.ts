@@ -34,6 +34,8 @@ export interface PersonUpdateInput {
   hideVenmo?: boolean;
   hideBereal?: boolean;
   hideOtherSocial?: boolean;
+  deceased?: boolean;
+  dateOfPassing?: string | null;
 }
 
 /** Maps a partial person-update payload onto Drizzle update columns.
@@ -84,6 +86,8 @@ export function buildPersonUpdateData(
   if (data.hideVenmo !== undefined) updateData.hideVenmo = data.hideVenmo;
   if (data.hideBereal !== undefined) updateData.hideBereal = data.hideBereal;
   if (data.hideOtherSocial !== undefined) updateData.hideOtherSocial = data.hideOtherSocial;
+  if (data.deceased !== undefined) updateData.deceased = data.deceased;
+  if (data.dateOfPassing !== undefined) updateData.dateOfPassing = data.dateOfPassing;
   // Only bump updatedAt if something is actually changing -- it drives the
   // "Recent updates" home feed, so a no-op call shouldn't surface someone
   // there with nothing real to show.

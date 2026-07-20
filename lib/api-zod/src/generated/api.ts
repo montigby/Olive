@@ -217,6 +217,8 @@ export const UpdatePersonBody = zod.object({
   relationshipLabel: zod.string().optional(),
   gender: zod.enum(["male", "female"]).nullish(),
   parentPersonId: zod.string().uuid().nullish(),
+  deceased: zod.boolean().optional(),
+  dateOfPassing: zod.string().nullish(),
   tier2ContactField: zod.enum(["phone", "email"]).optional(),
   confirmedMembersOnly: zod.boolean().optional(),
   hideAddress: zod.boolean().optional(),

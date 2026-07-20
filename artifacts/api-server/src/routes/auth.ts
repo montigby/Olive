@@ -67,6 +67,9 @@ function formatPerson(p: typeof personsTable.$inferSelect) {
     hideVenmo: p.hideVenmo,
     hideBereal: p.hideBereal,
     hideOtherSocial: p.hideOtherSocial,
+    deceased: p.deceased,
+    dateOfPassing: p.dateOfPassing,
+    memoryCollectionEnabled: p.memoryCollectionEnabled,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };

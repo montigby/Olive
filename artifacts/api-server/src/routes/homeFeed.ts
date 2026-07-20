@@ -99,7 +99,7 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
   // past 7 days (daysUntil >= 358). Upcoming entries sort first (0→30),
   // then recent-past sorted by most recent (364→358).
   const upcomingBirthdays = visibleMembers
-    .filter((m) => !!m.birthday)
+    .filter((m) => !!m.birthday && !m.deceased)
     .map((m) => {
       const parts = m.birthday!.split("-");
       const birthYear = parseInt(parts[0]!, 10);

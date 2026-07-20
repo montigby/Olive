@@ -697,6 +697,9 @@ export function applyVisibility(person: any, tier: Tier): any {
     isAdmin: person.isAdmin,
     claimed: person.claimed,
     parentPersonId: person.parentPersonId ?? null,
+    deceased: person.deceased,
+    dateOfPassing: person.dateOfPassing ?? null,
+    memoryCollectionEnabled: person.memoryCollectionEnabled,
   };
 
   if (tier <= 1) {

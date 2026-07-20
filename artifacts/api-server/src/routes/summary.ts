@@ -311,7 +311,7 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
       .where(eq(personsTable.familyUnitId, uid));
 
     for (const m of members) {
-      if (!m.birthday) continue;
+      if (!m.birthday || m.deceased) continue;
       const tier = computeTier(viewer, m, viewerUnitMembers, viewerUnitRelationships);
       // Birthday is only visible at tiers 0-2; drop tier 3 and 4.
       if (tier > 2) continue;

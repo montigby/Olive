@@ -14,6 +14,7 @@ import inviteFlowRouter from "./inviteFlow";
 import cronRouter from "./cron";
 import lifeEventsRouter from "./lifeEvents";
 import waitlistRouter from "./waitlist";
+import memoriesRouter from "./memories";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(inviteFlowRouter);
 router.use(cronRouter);
 router.use(lifeEventsRouter);
 router.use(waitlistRouter);
+router.use(memoriesRouter);
 
 export default router;

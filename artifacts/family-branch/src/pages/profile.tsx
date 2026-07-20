@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PLACEHOLDER_YEAR, daysUntilBirthday, sendBirthdayWish } from "@/lib/birthday";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +77,8 @@ const profileSchema = z.object({
   birthdayDay: z.string().nullable().optional(),
   birthdayYear: z.string().nullable().optional(),
   showBirthYear: z.boolean().default(false),
+  deceased: z.boolean().default(false),
+  dateOfPassing: z.string().nullable().optional(),
   instagram: z.string().nullable().optional(),
   facebook: z.string().nullable().optional(),
   tiktok: z.string().nullable().optional(),
@@ -459,6 +462,328 @@ function LifeEventsCard({
   );
 }
 
+// ─── Memories ───────────────────────────────────────────────────────────────
+
+interface MemoryEntry {
+  id: string;
+  body: string;
+  photoUrls: string[];
+  promptText: string | null;
+  createdAt: string;
+  contributorName: string;
+  contributorRelationship: string | null;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+const MAX_MEMORY_PHOTOS = 3;
+
+function useMemories(personId: string) {
+  const [memories, setMemories] = useState<MemoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchMemories = async () => {
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/persons/${personId}/memories`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) setMemories(await res.json());
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchMemories(); }, [personId]);
+
+  const addMemory = async (data: { body: string; photoUrls?: string[] }) => {
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/persons/${personId}/memories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) await fetchMemories();
+    return res;
+  };
+
+  const editMemory = async (memoryId: string, data: { body?: string; photoUrls?: string[] }) => {
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/memories/${memoryId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) await fetchMemories();
+    return res;
+  };
+
+  const deleteMemory = async (memoryId: string) => {
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/memories/${memoryId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) setMemories((prev) => prev.filter((m) => m.id !== memoryId));
+  };
+
+  return { memories, loading, addMemory, editMemory, deleteMemory };
+}
+
+function AddMemoryForm({ onAdd, onCancel }: { onAdd: (data: { body: string; photoUrls?: string[] }) => Promise<Response>; onCancel: () => void }) {
+  const { toast } = useToast();
+  const [body, setBody] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "Image must be under 10 MB." });
+      return;
+    }
+    const dataUrl = await resizeImageToDataUrl(file, 800);
+    setPhotoUrls((prev) => [...prev, dataUrl].slice(0, MAX_MEMORY_PHOTOS));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!body.trim()) return;
+    setSaving(true);
+    const res = await onAdd({ body: body.trim(), photoUrls });
+    setSaving(false);
+    if (res.ok) {
+      onCancel();
+    } else {
+      toast({ variant: "destructive", title: "Failed to save memory." });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3 pt-3 border-t border-border/60 mt-3">
+      <Textarea
+        placeholder="Share a memory..."
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        maxLength={4000}
+        rows={4}
+        className="bg-background"
+      />
+      {photoUrls.length > 0 && (
+        <div className="flex gap-2">
+          {photoUrls.map((url, i) => (
+            <div key={i} className="relative w-16 h-16">
+              <img src={url} className="w-16 h-16 rounded-md object-cover" />
+              <button
+                type="button"
+                onClick={() => setPhotoUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        {photoUrls.length < MAX_MEMORY_PHOTOS ? (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1 text-xs text-primary hover:opacity-70 transition-opacity cursor-pointer"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            Add photo
+          </button>
+        ) : <span />}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" disabled={saving || !body.trim()}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function MemoriesCard({
+  personId,
+  firstName,
+  deceased,
+  memoryCollectionEnabled,
+}: {
+  personId: string;
+  firstName: string;
+  deceased: boolean | null | undefined;
+  memoryCollectionEnabled: boolean | null | undefined;
+}) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { memories, loading, addMemory, editMemory, deleteMemory } = useMemories(personId);
+  const [adding, setAdding] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [togglingCollection, setTogglingCollection] = useState(false);
+
+  const setCollectionEnabled = async (enabled: boolean) => {
+    setTogglingCollection(true);
+    const token = localStorage.getItem("oliveToken");
+    const res = await fetch(`/api/persons/${personId}/memory-collection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ enabled }),
+    });
+    setTogglingCollection(false);
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(personId) });
+    } else {
+      toast({ variant: "destructive", title: "Something went wrong." });
+    }
+  };
+
+  if (!deceased) return null;
+
+  if (!memoryCollectionEnabled) {
+    return (
+      <Card className="border border-border shadow-sm">
+        <CardContent className="px-6 py-5 flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            Start collecting memories of {firstName} from the family?
+          </p>
+          <Button size="sm" disabled={togglingCollection} onClick={() => setCollectionEnabled(true)}>
+            {togglingCollection ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start"}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loading) return null;
+
+  return (
+    <Card className="border border-border shadow-sm">
+      <CardContent className="px-6 py-5">
+        <div className="flex items-center justify-between border-b border-border pb-2 mb-1">
+          <h3 className="font-serif text-base font-semibold text-foreground">Memories</h3>
+          {!adding && (
+            <button
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1 text-xs text-primary hover:opacity-70 transition-opacity cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add
+            </button>
+          )}
+        </div>
+
+        {memories.length === 0 && !adding && (
+          <p className="text-sm text-muted-foreground py-2">
+            No memories shared yet. Be the first to add one.
+          </p>
+        )}
+
+        <div className="space-y-0 divide-y divide-border/60">
+          {memories.map((memory) => (
+            <div key={memory.id} className="py-3">
+              {memory.promptText && (
+                <p className="text-xs text-muted-foreground italic mb-1">{memory.promptText}</p>
+              )}
+              {editingId === memory.id ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    maxLength={4000}
+                    rows={4}
+                    className="bg-background"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={savingEdit || !editBody.trim()}
+                      onClick={async () => {
+                        setSavingEdit(true);
+                        const res = await editMemory(memory.id, { body: editBody.trim() });
+                        setSavingEdit(false);
+                        if (res.ok) setEditingId(null);
+                      }}
+                    >
+                      {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-foreground whitespace-pre-wrap">{memory.body}</p>
+              )}
+              {memory.photoUrls.length > 0 && editingId !== memory.id && (
+                <div className="flex gap-2 mt-2">
+                  {memory.photoUrls.map((url, i) => (
+                    <img key={i} src={url} className="w-20 h-20 rounded-md object-cover" />
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center justify-between mt-1.5">
+                <p className="text-xs text-muted-foreground">
+                  {memory.contributorName}
+                  {memory.contributorRelationship ? ` · ${memory.contributorRelationship}` : ""}
+                </p>
+                {editingId !== memory.id && (
+                  <div className="flex items-center gap-3">
+                    {memory.canEdit && (
+                      <button
+                        onClick={() => { setEditingId(memory.id); setEditBody(memory.body); }}
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {memory.canDelete && (
+                      confirmDeleteId === memory.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-destructive">Delete?</span>
+                          <button onClick={() => { deleteMemory(memory.id); setConfirmDeleteId(null); }} className="text-xs font-semibold text-destructive hover:opacity-70 cursor-pointer">Yes</button>
+                          <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-muted-foreground hover:opacity-70 cursor-pointer">No</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(memory.id)}
+                          className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                          title="Delete memory"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {adding && <AddMemoryForm onAdd={addMemory} onCancel={() => setAdding(false)} />}
+
+        {user?.isAdmin && (
+          <button
+            onClick={() => setCollectionEnabled(false)}
+            className="text-xs text-muted-foreground hover:opacity-70 transition-opacity cursor-pointer mt-4"
+          >
+            Turn off memory collection for {firstName}
+          </button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── ContactRow ───────────────────────────────────────────────────────────────
 
 function ContactRow({
@@ -546,7 +871,7 @@ function ProfileView({
   const birthday = formatBirthday(person.birthday);
   const mapsHref = address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : undefined;
   const showWish =
-    !isOwnProfile && !!person.birthday && Math.abs(daysUntilBirthday(person.birthday)) <= 7;
+    !isOwnProfile && !person.deceased && !!person.birthday && Math.abs(daysUntilBirthday(person.birthday)) <= 7;
 
   const initials =
     ((person.firstName || " ")[0] + (person.lastName || " ")[0]).toUpperCase();
@@ -776,6 +1101,14 @@ function ProfileView({
       {/* Life Events */}
       <LifeEventsCard personId={targetId} canEdit={canEdit} />
 
+      {/* Memories */}
+      <MemoriesCard
+        personId={targetId}
+        firstName={person.firstName}
+        deceased={person.deceased}
+        memoryCollectionEnabled={person.memoryCollectionEnabled}
+      />
+
       {/* Empty state */}
       {!hasContact && !hasSocial && (
         <div className="text-center py-10 text-muted-foreground text-sm">
@@ -866,6 +1199,8 @@ function ProfileEditForm({
       birthdayDay: bdParts.day,
       birthdayYear: bdParts.year,
       showBirthYear: person?.showBirthYear ?? false,
+      deceased: person?.deceased ?? false,
+      dateOfPassing: person?.dateOfPassing ?? "",
       instagram: person?.instagram ?? "",
       facebook: person?.facebook ?? "",
       tiktok: person?.tiktok ?? "",
@@ -911,6 +1246,8 @@ function ProfileEditForm({
       addressCountry: data.addressCountry || null,
       birthday,
       showBirthYear: data.birthdayYear ? data.showBirthYear : false,
+      deceased: data.deceased,
+      dateOfPassing: data.deceased ? (data.dateOfPassing || null) : null,
       instagram: data.instagram || null,
       facebook: data.facebook || null,
       tiktok: data.tiktok || null,
@@ -1113,6 +1450,38 @@ function ProfileEditForm({
                 )}
               </div>
             </div>
+          </section>
+
+          {/* Passing */}
+          <section className="space-y-4">
+            <FormField
+              control={form.control}
+              name="deceased"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2">
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <label className="text-sm text-muted-foreground cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                    This person has passed away
+                  </label>
+                </FormItem>
+              )}
+            />
+            {form.watch("deceased") && (
+              <FormField
+                control={form.control}
+                name="dateOfPassing"
+                render={({ field }) => (
+                  <FormItem className="w-48">
+                    <FormLabel>Date of passing</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            )}
           </section>
 
           {/* Contact */}

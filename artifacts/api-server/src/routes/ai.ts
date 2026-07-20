@@ -2,7 +2,7 @@ import { Router } from "express";
 import OpenAI from "openai";
 import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
-import { personsTable, lifeEventsTable, accountsTable, relationshipsTable } from "@workspace/db";
+import { personsTable, lifeEventsTable, accountsTable, relationshipsTable, memoriesTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
@@ -145,6 +145,29 @@ const ADD_LIFE_EVENT_TOOL: OpenAI.ChatCompletionTool = {
   },
 };
 
+const ADD_MEMORY_TOOL: OpenAI.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "add_memory",
+    description:
+      "Save a memory/story about someone who has passed away, ONLY if that person's profile has memory collection turned on (shown in the members list as [memory collection: on]). If it's off, tell the user they can turn it on from that person's profile page instead of calling this tool.",
+    parameters: {
+      type: "object",
+      properties: {
+        personId: {
+          type: "string",
+          description: "The [id] of the deceased person this memory is about, exactly as it appears in the current members list. Never fabricate this.",
+        },
+        body: {
+          type: "string",
+          description: "The memory/story itself, in the user's own words -- don't rewrite or embellish it.",
+        },
+      },
+      required: ["personId", "body"],
+    },
+  },
+};
+
 const DELETE_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
   type: "function",
   function: {
@@ -174,7 +197,8 @@ function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
             if (!m.birthday) gaps.push("no birthday on file");
             if (!m.phone && !m.email) gaps.push("no contact info on file");
             const gapStr = gaps.length ? ` {${gaps.join(", ")}}` : "";
-            return `- ${m.firstName} ${m.lastName} (${m.relationshipLabel ?? "unknown"}) [id: ${m.id}]${m.isAdmin ? " [family admin]" : ""}${gapStr}`;
+            const deceasedTag = m.deceased ? ` [deceased, memory collection: ${m.memoryCollectionEnabled ? "on" : "off"}]` : "";
+            return `- ${m.firstName} ${m.lastName} (${m.relationshipLabel ?? "unknown"}) [id: ${m.id}]${m.isAdmin ? " [family admin]" : ""}${gapStr}${deceasedTag}`;
           })
           .join("\n");
 
@@ -183,11 +207,12 @@ function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
 Current family members:
 ${memberList}
 
-You have four tools:
+You have five tools:
 1. add_family_member — for someone NOT in the list above.
 2. update_family_member — for someone ALREADY in the list above (fix a typo, add a birthday, update contact info, etc.). Match by name; if two members share a first name, ask which one before acting.
 3. add_life_event — log a graduation, marriage, new baby, move, new job, or other milestone for someone in the list.
-4. delete_family_member — permanently remove someone. IRREVERSIBLE — see confirmation rule below.
+4. add_memory — save a story/memory about someone tagged [deceased, memory collection: on] in the list. If they're tagged [deceased, memory collection: off], don't call this — tell the user to turn memory collection on from that person's profile first.
+5. delete_family_member — permanently remove someone. IRREVERSIBLE — see confirmation rule below.
 
 General guidelines:
 - Be warm and concise — like a helpful friend, not a form. Keep responses to 1-3 sentences.
@@ -255,6 +280,7 @@ Updating members and life events:
 - Use update_family_member for corrections or new details about someone already in the list (birthdays, contact info, address, socials, name fixes). Only pass the fields that are changing.
 - To remove/clear a single field (birthday, phone, email, an address field, a social handle), use update_family_member and pass null for that field specifically — do not use delete_family_member for this.
 - Use add_life_event for milestones (graduations, marriages, new babies, moves, new jobs, passings) — these are separate from profile fields and don't go through update_family_member.
+- Use add_memory when the user shares a story/anecdote about someone tagged [deceased, memory collection: on]. Save their words as given — don't paraphrase or add anything they didn't say.
 - Dates: always output YYYY-MM-DD. For birthdays with no known year, use "2000" as the placeholder year. For life events with an unknown month/day, default the missing part(s) to "01".
 
 Deleting members:
@@ -311,6 +337,7 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
   let memberAdded: ReturnType<typeof formatPerson> | null = null;
   let memberUpdated: ReturnType<typeof formatPerson> | null = null;
   let lifeEventAdded: { personName: string; eventType: string } | null = null;
+  let memoryAdded: { personName: string } | null = null;
   let memberDeleted: { name: string } | null = null;
   let finalText = "";
   let loopMessages = [...currentMessages];
@@ -322,7 +349,7 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: loopMessages,
-      tools: [ADD_MEMBER_TOOL, UPDATE_MEMBER_TOOL, ADD_LIFE_EVENT_TOOL, DELETE_MEMBER_TOOL],
+      tools: [ADD_MEMBER_TOOL, UPDATE_MEMBER_TOOL, ADD_LIFE_EVENT_TOOL, ADD_MEMORY_TOOL, DELETE_MEMBER_TOOL],
       tool_choice: "auto",
     });
 
@@ -455,6 +482,28 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
               toolResult = JSON.stringify({ success: true });
             }
           }
+        } else if (toolCall.function.name === "add_memory") {
+          const input = JSON.parse(toolCall.function.arguments) as { personId: string; body: string };
+          const target = members.find((m: ReturnType<typeof formatPerson>) => m.id === input.personId);
+
+          if (!target || !input.body?.trim()) {
+            toolResult = JSON.stringify({ success: false, error: "Invalid input" });
+          } else if (!target.deceased || !target.memoryCollectionEnabled) {
+            toolResult = JSON.stringify({
+              success: false,
+              error: "Memory collection isn't turned on for this person. Ask the user to turn it on from their profile page first.",
+            });
+          } else {
+            await db.insert(memoriesTable).values({
+              personId: input.personId,
+              familyUnitId: unitId,
+              contributorPersonId: req.auth!.personId,
+              body: input.body.trim(),
+              photoUrls: [],
+            });
+            memoryAdded = { personName: `${target.firstName} ${target.lastName}` };
+            toolResult = JSON.stringify({ success: true });
+          }
         } else if (toolCall.function.name === "delete_family_member") {
           const input = JSON.parse(toolCall.function.arguments) as { personId: string };
           const target = members.find((m: ReturnType<typeof formatPerson>) => m.id === input.personId);
@@ -495,7 +544,7 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
     }
   }
 
-  res.json({ reply: finalText, memberAdded, memberUpdated, lifeEventAdded, memberDeleted });
+  res.json({ reply: finalText, memberAdded, memberUpdated, lifeEventAdded, memoryAdded, memberDeleted });
 });
 
 export default router;

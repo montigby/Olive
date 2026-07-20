@@ -85,6 +85,52 @@ export async function sendClaimPendingNotification({
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
 }
 
+export async function sendMemoryPrompt({
+  to,
+  recipientName,
+  personName,
+  personId,
+  promptText,
+}: {
+  to: string;
+  recipientName: string;
+  personName: string;
+  personId: string;
+  promptText: string;
+}) {
+  const client = await getClient();
+  const link = `https://myolive.app/members/${personId}`;
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: `A memory of ${personName}`,
+    html: buildMemoryPromptHtml(recipientName, promptText, link),
+    text: `Hi ${recipientName},\n\n${promptText}\n\nShare it here: ${link}\n\n(Don't want prompts about this person anymore? You can turn them off from their profile page.)\n\n— Olive\nhttps://myolive.app`,
+  });
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
+function buildMemoryPromptHtml(recipientName: string, promptText: string, link: string): string {
+  return `<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; color: #1a1a1a; max-width: 480px; margin: 0 auto; padding: 24px;">
+  <p style="font-size: 16px;">Hi ${recipientName},</p>
+  <p style="font-size: 18px; font-style: italic;">${promptText}</p>
+  <p style="font-size: 16px;">
+    <a href="${link}" style="color: #4A7C59; font-weight: 600;">Share it on Olive &rarr;</a>
+  </p>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+  <p style="font-size: 12px; color: #888;">
+    Don't want prompts about this person anymore? You can turn them off from their profile page.
+  </p>
+  <p style="font-size: 12px; color: #888;">
+    Olive &mdash; <a href="https://myolive.app" style="color: #888;">myolive.app</a>
+  </p>
+</body>
+</html>`;
+}
+
 function buildClaimNotificationHtml(adminName: string, claimerName: string, unitName: string): string {
   return `<!DOCTYPE html>
 <html>
