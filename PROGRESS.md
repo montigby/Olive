@@ -2,7 +2,7 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-07-15.
+Last updated: 2026-07-18.
 
 ---
 
@@ -18,6 +18,24 @@ All six items from `security.md`'s original audit shipped and verified live (com
 6. [x] `ADMIN_SECRET` fails closed at boot — **was actually missing from Vercel entirely** (not just a hypothetical gap; admin endpoints were live on the hardcoded `"olive-admin-2026"` fallback until this was fixed). User added a real value to Vercel (Production + Preview), then the code was flipped. Verified live: app boots fine, old fallback now gets 403, real secret still authenticates. Also fixed `.gitignore` to exclude a plain `.env`.
 
 Full writeup: `security.md`. Next security-relevant work is bigger-lift stuff intentionally deferred (session revocation, dependency-audit automation, 2FA) — see `security.md` §2/§7/§8, not urgent at current scale.
+
+---
+
+## ✅ Mobile UI Audit — CLOSED 2026-07-17
+
+All items from the 2026-07-07 audit shipped (commits `6ac4230`, `786b851`):
+
+1. [x] Dashboard's 3 stat cards now stack 1-col on phones instead of crushing into a flat `grid-cols-3`
+2. [x] Registration form + Add Member dialog name fields stack on mobile instead of squeezing to ~100px columns
+3. [x] Settings unit-code row stacks vertically on mobile
+4. [x] Directory-link search input (`link.tsx`) no longer hides typed text behind the Find button
+5. [x] Pinch-to-zoom re-enabled (removed `maximum-scale=1` from the viewport meta)
+6. [x] AI chat button/panel and the bottom tab bar respect `env(safe-area-inset-bottom)` on notched phones (`viewport-fit=cover` added to the viewport meta so `env()` reports real values on iOS); chat panel also widened to full-width-with-margins on phones so it can't clip on narrow screens
+7. [x] Bottom tab bar's padding lowered (flat 2.5rem minimum → 1rem, still floored by the safe-area inset) — was sitting noticeably higher above the true edge than it needed to
+
+Also caught and fixed in the same pass: the landing page's "Log In" link was `hidden` below the `sm:` breakpoint, making it invisible on phones — the primary device for existing families trying to get back in (commit `77ee39c`).
+
+Manual verification on a real notched phone still pending from the user.
 
 ---
 
@@ -52,10 +70,8 @@ Full writeup: `security.md`. Next security-relevant work is bigger-lift stuff in
 
 ## 🔵 Backlog (Roughly Priority Order)
 
-- [ ] Mobile UI audit — remaining cosmetic items: dashboard's 3 stat cards crushed on phones, AI chat panel misalignment/clipping, registration form fields squeeze to ~100px columns, Settings unit-code row doesn't stack, search input text hides behind its own button (`link.tsx`), no safe-area-inset handling for notched phones, pinch-to-zoom cap (`maximum-scale=1`) not yet decided on removal
 - [ ] Home page real life-events feed — current "Recent updates" feed isn't sourced from the actual `life_events` table, just inferred activity; not yet discussed whether to wire in real data
 - [ ] Invite/claiming flow — the "not listed → create new profile" self-service path inside `/join` is intentionally unreachable in the UI (backend/component code left intact); worth finishing later if ever prioritized
-- [ ] Printable/PDF family directory export — recently bumped to higher priority, confirmed not present in the codebase at all
 - [ ] Geographic map of family members — not started, no lat/long fields exist yet
 - [ ] Ancestry.com import — not started
 - [ ] Photo per life event — not started, scoped as last-priority within life events
@@ -66,7 +82,7 @@ Full writeup: `security.md`. Next security-relevant work is bigger-lift stuff in
 - [ ] Dependency vulnerability scanning in CI — no CI pipeline exists at all currently (see `security.md` §7)
 
 ### Already Shipped, Listed Here for Completeness (don't re-propose these)
-Directory search, Google Calendar/iCal button (Birthdays page only), Venmo & social links, public landing page (waitlist framing, olive/gold palette applied site-wide), life events CRUD, birthday email notifications, multi-admin + layered permissions, privacy statement page, per-handle social visibility toggles, profile completeness indicator *(shipped but deliberately self-view-only, confirmed 2026-07-13 — not expanding scope)*, viewer-relative relationship labels, gendered relationship labels, admin-grant confirmation + Admins settings card.
+Directory search, Google Calendar/iCal button (Birthdays page only), Venmo & social links, public landing page (waitlist framing, olive/gold palette applied site-wide), life events CRUD, birthday email notifications, multi-admin + layered permissions, privacy statement page, per-handle social visibility toggles, profile completeness indicator *(shipped but deliberately self-view-only, confirmed 2026-07-13 — not expanding scope)*, viewer-relative relationship labels, gendered relationship labels, admin-grant confirmation + Admins settings card, printable/PDF family directory export, mobile UI audit (full punch list, see below).
 
 ---
 
@@ -84,6 +100,10 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 
 ## Recently Shipped (Condensed Changelog)
 For full detail, `git log` is authoritative. Highlights, most recent first:
+- Mobile bottom tab bar lowered — reduced excess bottom padding while still respecting notched-phone safe area — `786b851`
+- Mobile landing page "Log In" link fix — was hidden below the `sm:` breakpoint, invisible on phones — `77ee39c`
+- Remaining mobile UI audit items closed (dashboard cards, forms, settings row, search input, pinch-to-zoom, safe-area-inset handling) — see Mobile UI Audit section above — `6ac4230`
+- Printable/PDF family directory export — "Print Directory" button on the Directory page opens the browser print dialog with a tier-filtered, privacy-safe contact sheet — `02cdea8`
 - Production login 500 diagnosed and resolved (2026-07-15) — root cause was a Vercel `*.vercel.app` alias URL not covered by the new CORS allowlist, not an app bug. All temporary diagnostic code added while chasing it was fully reverted afterward (commits `a6b1f44`..`22089a1`); see [[login-incident-2026-07-15]] memory for the full diagnostic writeup.
 - Back button added to the Privacy page (`history.back()` w/ fallback) since it's linked from many entry points and only the browser back arrow could return you — `15a3769`
 - Landing page olive/gold palette applied site-wide; copy rewrite to cut AI-sounding patterns; testimonials/AI-section/CTA cleanup — `f76eec9`
