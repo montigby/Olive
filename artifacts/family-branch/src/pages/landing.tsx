@@ -1,10 +1,6 @@
-import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useJoinWaitlist } from "@workspace/api-client-react";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Accordion,
   AccordionItem,
@@ -94,68 +90,6 @@ function PhotoPlaceholder({
   );
 }
 
-function WaitlistForm({ id }: { id?: string }) {
-  const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const joinWaitlist = useJoinWaitlist();
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    joinWaitlist.mutate(
-      { data: { email: email.trim() } },
-      {
-        onSuccess: () => {
-          setSubmitted(true);
-        },
-        onError: () => {
-          toast({
-            variant: "destructive",
-            title: "Something went wrong",
-            description: "Please try again in a moment.",
-          });
-        },
-      },
-    );
-  };
-
-  if (submitted) {
-    return (
-      <div
-        id={id}
-        className="flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-medium"
-        style={{ backgroundColor: "#EEF1E7", color: GREEN_DARK }}
-      >
-        You're on the list — we'll be in touch soon.
-      </div>
-    );
-  }
-
-  return (
-    <form id={id} onSubmit={onSubmit} className="flex flex-col sm:flex-row items-stretch gap-3 w-full max-w-md mx-auto">
-      <Input
-        type="email"
-        required
-        placeholder="you@email.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="h-12 rounded-full px-5 text-base bg-white border-black/10"
-        style={{ color: TEXT }}
-        aria-label="Email address"
-      />
-      <Button
-        type="submit"
-        disabled={joinWaitlist.isPending}
-        className="h-12 rounded-full px-8 text-base text-white shrink-0 border-0"
-        style={{ backgroundColor: GREEN }}
-      >
-        {joinWaitlist.isPending ? "Joining…" : "Join the Waitlist"}
-      </Button>
-    </form>
-  );
-}
-
 function ScrollLink({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) {
   return (
     <a
@@ -192,19 +126,16 @@ export default function Landing() {
             <ScrollLink to="#faq" className="hover:opacity-70 transition-opacity">FAQ</ScrollLink>
           </nav>
           <div className="flex items-center gap-4">
-            {/* Existing families already use Olive live -- keep a quiet way
-                back in for them, even though this page's primary CTA is now
-                the waitlist rather than self-serve signup. */}
             <Link href="/login">
               <span className="text-sm font-medium hover:opacity-70 transition-opacity cursor-pointer" style={{ color: "#6B6560" }}>
                 Log In
               </span>
             </Link>
-            <ScrollLink to="#waitlist">
+            <Link href="/register">
               <Button className="rounded-full px-5 text-white border-0" style={{ backgroundColor: GREEN }}>
-                Join Waitlist
+                Create Directory
               </Button>
-            </ScrollLink>
+            </Link>
           </div>
         </div>
       </header>
@@ -223,8 +154,12 @@ export default function Landing() {
               Birthdays, phone numbers, addresses, relationships — kept current in one private
               place, with a reminder when it matters.
             </p>
-            <WaitlistForm id="waitlist" />
-            <p className="text-sm mt-4" style={{ color: "#8A8580" }}>Free during beta.</p>
+            <Link href="/register">
+              <Button className="h-12 rounded-full px-8 text-base text-white border-0" style={{ backgroundColor: GREEN }}>
+                Create Your Family Directory
+              </Button>
+            </Link>
+            <p className="text-sm mt-4" style={{ color: "#8A8580" }}>Free to get started. Takes less than 2 minutes.</p>
           </FadeIn>
           <FadeIn delay={0.15}>
             <PhotoPlaceholder variant="a" className="w-full aspect-square md:aspect-[4/5]" />
@@ -487,10 +422,13 @@ export default function Landing() {
               Stay Close to the People You Love.
             </h2>
             <p className="text-lg mb-10" style={{ color: "#5A5650" }}>
-              Join the waitlist and we'll let you know the moment Olive is ready for your family.
+              Create your family's directory today — free to get started.
             </p>
-            <WaitlistForm />
-            <p className="text-sm mt-4" style={{ color: "#8A8580" }}>No spam. Early access only.</p>
+            <Link href="/register">
+              <Button className="h-12 rounded-full px-8 text-base text-white border-0" style={{ backgroundColor: GREEN }}>
+                Create Your Family Directory
+              </Button>
+            </Link>
           </FadeIn>
         </div>
       </section>
