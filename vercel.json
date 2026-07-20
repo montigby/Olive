@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/birthday-emails",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/memory-prompts",
+      "schedule": "0 13 * * *"
     }
   ]
 }
