@@ -2,7 +2,24 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-07-18.
+Last updated: 2026-07-20.
+
+---
+
+## 🟡 Memories of the Deceased — BUILT 2026-07-20, NOT YET LIVE
+
+Full feature scoped via direct interview with the user (now personally driving this feature, not the supervisor) and built same-day. Deceased flag + date of passing on a profile, opt-in memory collection (any family member can start it, admin-only to stop), memories with text + up to 3 photos, publish-as-submitted with contributor edit / contributor-or-admin delete, a 45-prompt bank across 6 categories that rotates and avoids repeats for years, a daily cron that targets close relatives via the existing tier/graph system (not a blanket send) and emails prompts through Resend, an AI chat tool for adding memories conversationally, auto-logged life event + birthday-reminder exclusion when someone is marked deceased.
+
+**Two scope calls made during the build**, worth knowing about:
+- Prompt emails deep-link into the app instead of true reply-to-email — every realistic contributor already has an Olive login, so this gets the same low friction without needing Resend's inbound-email/DNS setup. True reply-to-email can be added later as an alternate path.
+- Skipped orval/openapi codegen for the new endpoints, hand-writing `fetch` calls instead (same precedent as life-events). Along the way, found `lib/api-spec/openapi.yaml` had already drifted significantly out of sync with the real API before this session touched it (missing fields like `venmo`/`snapchat`/`bereal` on Person, `birthdayCount`/`phoneCount` on UnitSummary, and an entire account-merge type set) — not fixed, just avoided disturbing it further.
+
+**Before this is live, still needed:**
+- [ ] Apply `lib/db/migrations/0015_memories.sql` via the Supabase SQL editor (not run yet)
+- [ ] Confirm the new `/api/cron/memory-prompts` Vercel cron job is within plan limits (2nd cron job added alongside `birthday-emails` in `vercel.json`)
+- [ ] Manual end-to-end verification on production: mark someone deceased, opt in, add a memory, confirm a prompt email actually sends and the tier-based targeting looks right for a real family
+
+Full spec: memory file `legacy_memories_feature.md` (auto-memory system).
 
 ---
 
@@ -41,13 +58,7 @@ Manual verification on a real notched phone still pending from the user.
 
 ## 🟡 Active Discussions — Not Yet Scoped/Approved to Build
 
-- **"Memories of those who've passed" feature** — supervisor-proposed new main feature (2026-07-13). Concept: collect memories of deceased family members from multiple living relatives, prompted via low-friction email (reply-to-email style, not app-only), leaning on Olive's existing family graph to make prompts relationship-aware ("a memory of your grandpa" vs "your dad"). Differentiator vs. StoryWorth/Legacy.com/Ancestry: crowd-sourced multi-perspective memories on one profile, not a single-author memoir. Key open questions before this can be scoped:
-  - Data model: needs a "deceased" flag + date-of-passing on `persons` (doesn't exist yet), a memories table, and a prompt bank.
-  - Whether memories need moderation before appearing, or publish-as-submitted.
-  - Interview cadence/trigger timing (death anniversary? slow drip after opt-in?).
-  - **Hard requirement already set:** any notification system for this must be tier/relationship-aware (reuse the `computeTier`/`buildFamilyGraph` work), not a blanket send to everyone.
-  - Floated monetization angle: a "memory book" PDF export as a premium feature — ties into the printable-directory backlog item below.
-  - Pure brainstorm stage — nothing here is approved to build yet.
+Nothing currently open here — the "memories of those who've passed" feature that lived in this section moved to "Built, Not Yet Live" above once it was scoped and implemented (2026-07-20).
 
 ---
 
@@ -80,9 +91,10 @@ Manual verification on a real notched phone still pending from the user.
 - [ ] Set up `privacy@myolive.app` email forwarding (5-minute DNS job) and swap the Privacy page's "contact your admin" copy for a real mailto link — deferred by user, **remind again before onboarding real families beyond testing**
 - [ ] Stripe integration — on hold until [Business Model](#business-model) is decided
 - [ ] Dependency vulnerability scanning in CI — no CI pipeline exists at all currently (see `security.md` §7)
+- [ ] Memory book PDF export — deliberately deferred out of the memories-of-the-deceased v1 (see above); revisit alongside the business model decision once that feature is live and it's clear whether it's actually getting used
 
 ### Already Shipped, Listed Here for Completeness (don't re-propose these)
-Directory search, Google Calendar/iCal button (Birthdays page only), Venmo & social links, public landing page (waitlist framing, olive/gold palette applied site-wide), life events CRUD, birthday email notifications, multi-admin + layered permissions, privacy statement page, per-handle social visibility toggles, profile completeness indicator *(shipped but deliberately self-view-only, confirmed 2026-07-13 — not expanding scope)*, viewer-relative relationship labels, gendered relationship labels, admin-grant confirmation + Admins settings card, printable/PDF family directory export, mobile UI audit (full punch list, see below).
+Directory search, Google Calendar/iCal button (Birthdays page only), Venmo & social links, public landing page (direct self-serve "Create Directory" CTA, waitlist framing removed 2026-07-20, olive/gold palette applied site-wide), life events CRUD, birthday email notifications, multi-admin + layered permissions, privacy statement page, per-handle social visibility toggles, profile completeness indicator *(shipped but deliberately self-view-only, confirmed 2026-07-13 — not expanding scope)*, viewer-relative relationship labels, gendered relationship labels, admin-grant confirmation + Admins settings card, printable/PDF family directory export, mobile UI audit (full punch list, see below).
 
 ---
 
@@ -100,6 +112,9 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 
 ## Recently Shipped (Condensed Changelog)
 For full detail, `git log` is authoritative. Highlights, most recent first:
+- Memories-of-the-deceased feature built (2026-07-20) — see "Built, Not Yet Live" section above for full scope and outstanding steps — `eb965c4`, `f7f04fe`
+- Landing page waitlist CTA replaced with direct self-serve "Create Directory" signup (2026-07-20) — the waitlist framing was a mistake, not the actual goal — `595e582`
+- Mobile bottom tab bar lowered further, second pass (2026-07-20) — `1fa4f09`
 - Mobile bottom tab bar lowered — reduced excess bottom padding while still respecting notched-phone safe area — `786b851`
 - Mobile landing page "Log In" link fix — was hidden below the `sm:` breakpoint, invisible on phones — `77ee39c`
 - Remaining mobile UI audit items closed (dashboard cards, forms, settings row, search input, pinch-to-zoom, safe-area-inset handling) — see Mobile UI Audit section above — `6ac4230`
