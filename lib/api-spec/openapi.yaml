@@ -411,6 +411,89 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /invites/{token}/merge/preview:
+    post:
+      operationId: previewInviteMerge
+      tags: [invites]
+      summary: >-
+        Preview merging an invited placeholder profile into the invitee's
+        existing Olive account (re-authenticates the existing account by
+        email/password; does not write anything yet)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergePreviewBody"
+      responses:
+        "200":
+          description: Merge preview -- the placeholder and the matched existing account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergePreviewResponse"
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Wrong email or password for the existing account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invites/{token}/merge/confirm:
+    post:
+      operationId: confirmInviteMerge
+      tags: [invites]
+      summary: Confirm the merge previewed above and log in as the merged account
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergeConfirmBody"
+      responses:
+        "200":
+          description: Merge completed and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergeConfirmResponse"
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Wrong email or password for the existing account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Merge conflict (e.g. already merged)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─── Link Requests ────────────────────────────────────────────────
   /family-units/{unitId}/link-requests:
     post:
@@ -686,6 +769,15 @@ components:
         linkedin:
           type: string
           nullable: true
+        snapchat:
+          type: string
+          nullable: true
+        venmo:
+          type: string
+          nullable: true
+        bereal:
+          type: string
+          nullable: true
         otherSocial:
           type: string
           nullable: true
@@ -708,6 +800,10 @@ components:
             Unset (null) means not specified / prefer not to say. Drives
             gendered relationship terms (e.g. "Brother" vs "Sister") in
             viewerRelationshipLabel -- neutral terms are used when null.
+        parentPersonId:
+          type: string
+          format: uuid
+          nullable: true
         familyUnitId:
           type: string
           format: uuid
@@ -723,6 +819,29 @@ components:
           type: string
           format: date-time
           nullable: true
+        tier2ContactField:
+          type: string
+          enum: [phone, email]
+        confirmedMembersOnly:
+          type: boolean
+        hideAddress:
+          type: boolean
+        hideInstagram:
+          type: boolean
+        hideFacebook:
+          type: boolean
+        hideTiktok:
+          type: boolean
+        hideLinkedin:
+          type: boolean
+        hideSnapchat:
+          type: boolean
+        hideVenmo:
+          type: boolean
+        hideBereal:
+          type: boolean
+        hideOtherSocial:
+          type: boolean
         deceased:
           type: boolean
         dateOfPassing:
@@ -745,6 +864,19 @@ components:
         - isAdmin
         - claimed
         - showBirthYear
+        - tier2ContactField
+        - confirmedMembersOnly
+        - hideAddress
+        - hideInstagram
+        - hideFacebook
+        - hideTiktok
+        - hideLinkedin
+        - hideSnapchat
+        - hideVenmo
+        - hideBereal
+        - hideOtherSocial
+        - deceased
+        - memoryCollectionEnabled
         - createdAt
         - updatedAt
 
@@ -803,6 +935,15 @@ components:
           type: string
           nullable: true
         linkedin:
+          type: string
+          nullable: true
+        snapchat:
+          type: string
+          nullable: true
+        venmo:
+          type: string
+          nullable: true
+        bereal:
           type: string
           nullable: true
         otherSocial:
@@ -869,6 +1010,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        membersCanInvite:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -881,6 +1024,7 @@ components:
         - unitName
         - unitCode
         - parentLinkStatus
+        - membersCanInvite
         - createdAt
         - memberCount
         - claimedCount
@@ -922,6 +1066,8 @@ components:
       properties:
         unitName:
           type: string
+        membersCanInvite:
+          type: boolean
 
     # ─── Members ───────────────────────────────────────────────────
     AddMemberBody:
@@ -985,6 +1131,79 @@ components:
           type: string
           minLength: 8
       required: [email, password]
+
+    MergePreviewBody:
+      type: object
+      description: >-
+        Re-authenticates the invitee's existing Olive account by email +
+        password (not a new-account password minimum -- this is a login).
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+
+    MergePreviewResponse:
+      type: object
+      properties:
+        placeholder:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            firstName:
+              type: string
+            lastName:
+              type: string
+            relationshipLabel:
+              type: string
+            unitName:
+              type: string
+            unitId:
+              type: string
+              format: uuid
+          required: [id, firstName, lastName, relationshipLabel, unitName, unitId]
+        existingPerson:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              type: string
+              nullable: true
+            familyUnitId:
+              type: string
+              format: uuid
+          required: [id, firstName, lastName, email, familyUnitId]
+      required: [placeholder, existingPerson]
+
+    MergeConfirmBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+
+    MergeConfirmResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT session token
+        person:
+          $ref: "#/components/schemas/PersonWithUnit"
+      required: [token, person]
 
     # ─── Link Requests ─────────────────────────────────────────────
     CreateLinkRequestBody:
@@ -1111,6 +1330,12 @@ components:
           type: integer
         pendingLinkRequests:
           type: integer
+        birthdayCount:
+          type: integer
+          description: Members with a birthday this month
+        phoneCount:
+          type: integer
+          description: Members with a phone number on file
       required:
         - unitId
         - unitName
@@ -1121,6 +1346,8 @@ components:
         - linkedUnits
         - pendingInvites
         - pendingLinkRequests
+        - birthdayCount
+        - phoneCount
 
     BirthdayEntry:
       type: object
@@ -1142,16 +1369,25 @@ components:
             callers should fall back to relationshipLabel.
         birthday:
           type: string
+        showBirthYear:
+          type: boolean
         unitName:
           type: string
         daysUntil:
           type: integer
           description: Days until their next birthday
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
       required:
         - personId
         - firstName
         - lastName
         - relationshipLabel
         - birthday
+        - showBirthYear
         - unitName
         - daysUntil
