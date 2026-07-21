@@ -14,9 +14,11 @@ Full feature scoped via direct interview with the user (now personally driving t
 - Prompt emails deep-link into the app instead of true reply-to-email — every realistic contributor already has an Olive login, so this gets the same low friction without needing Resend's inbound-email/DNS setup. True reply-to-email can be added later as an alternate path.
 - Skipped orval/openapi codegen for the new endpoints, hand-writing `fetch` calls instead (same precedent as life-events). Along the way, found `lib/api-spec/openapi.yaml` had already drifted significantly out of sync with the real API before this session touched it (missing fields like `venmo`/`snapchat`/`bereal` on Person, `birthdayCount`/`phoneCount` on UnitSummary, and an entire account-merge type set) — not fixed, just avoided disturbing it further.
 
-**Before this is live, still needed:**
-- [ ] Apply `lib/db/migrations/0015_memories.sql` via the Supabase SQL editor (not run yet)
-- [ ] Confirm the new `/api/cron/memory-prompts` Vercel cron job is within plan limits (2nd cron job added alongside `birthday-emails` in `vercel.json`)
+**Status as of 2026-07-20 evening:**
+- [x] Migration `0015_memories.sql` applied via Supabase SQL editor — ran "without RLS" (correct choice: this app has no RLS anywhere, access control is entirely in the Express JWT layer, not Postgres) — confirmed success
+- [ ] **BLOCKED: verifying the Vercel deploy.** User hit a Vercel login wall — an account already exists under their GitHub email as an email/password account, and Vercel won't let GitHub OAuth create a second one. User doesn't have that account's credentials on hand right now. Needs to use "Login with Email" → magic link → then link GitHub to that account from Account Settings, whenever they have access to that inbox. Nothing code-side is blocked, just deploy verification.
+- [ ] Once logged into Vercel: confirm the `main` branch commits (`eb965c4`, `f7f04fe`, `73e7467`) actually deployed (auto-deploy on push, presumably, but unconfirmed)
+- [ ] Confirm the new `/api/cron/memory-prompts` Vercel cron job is within plan limits (2nd cron job added alongside `birthday-emails` in `vercel.json`) — can't check without dashboard access
 - [ ] Manual end-to-end verification on production: mark someone deceased, opt in, add a memory, confirm a prompt email actually sends and the tier-based targeting looks right for a real family
 
 Full spec: memory file `legacy_memories_feature.md` (auto-memory system).
