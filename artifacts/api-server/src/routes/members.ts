@@ -108,6 +108,10 @@ router.get("/family-units/:unitId/members", requireAuth, async (req, res) => {
 // POST /api/family-units/:unitId/members
 router.post("/family-units/:unitId/members", requireAuth, requireAdmin, async (req, res) => {
   const unitId = String(req.params.unitId);
+  if (req.auth?.familyUnitId !== unitId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = AddMemberBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -188,14 +192,23 @@ router.post(
   requireAuth,
   requireAdmin,
   async (req, res) => {
+    const unitId = String(req.params.unitId);
+    if (req.auth?.familyUnitId !== unitId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const personId = String(req.params.personId);
     const token = nanoid(32);
     const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
+    // Scope the update to this unit too, not just the requester's admin
+    // status -- otherwise a same-family admin could still mint a live
+    // invite token for an arbitrary personId belonging to a different
+    // family just by knowing its UUID.
     const updated = await db
       .update(personsTable)
       .set({ inviteToken: token, inviteExpiresAt: expiresAt, updatedAt: new Date() })
-      .where(eq(personsTable.id, personId))
+      .where(and(eq(personsTable.id, personId), eq(personsTable.familyUnitId, unitId)))
       .returning();
 
     if (!updated.length) {
