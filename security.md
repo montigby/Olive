@@ -1,6 +1,6 @@
 # Security Guide for Olive (Family Branch)
 
-Last updated: 2026-07-21 — memories-of-the-deceased feature re-audit (see below). Original audit: 2026-07-13, punch list closed 2026-07-15. Re-run this audit periodically (see "Keeping This Current" at the bottom) since security isn't a one-time checklist.
+Last updated: 2026-07-21 — full route-level access control audit (6 broken-access-control bugs found & fixed) + first pnpm audit run (see below). Original audit: 2026-07-13, punch list closed 2026-07-15, memories re-audit earlier same day. Re-run this audit periodically (see "Keeping This Current" at the bottom) since security isn't a one-time checklist.
 
 This is Olive's version of a generic "security basics for non-developers building fast with AI" guide, rewritten against Olive's actual stack (Vercel + Supabase Postgres + Express + Drizzle ORM + React, not Replit) and checked against the real codebase rather than written as generic advice. Every section below says what Olive actually does today, not just what it should do.
 
@@ -133,6 +133,28 @@ Targeted re-check per the "re-run before onboarding real families / when new per
 **Found and fixed:** `photoUrls` on memories was accepted as any string, not validated as an actual image — since the frontend renders it directly as `<img src>` and the SPA's static HTML has no CSP (see §5/§8 above), a raw external URL could have been stored and used as a tracking pixel against every family member who later viewed that memory. Fixed by restricting `validatePhotoUrls` (`memories.ts`) to `data:image/...;base64,` URIs, matching the only path the UI actually produces photos through.
 
 **Pre-existing, not new:** `persons.photoUrl` (the regular profile picture field) has the identical gap — plain `zod.string()`, no format check. Same fix pattern would apply if this is ever prioritized; not urgent since it's a single field vs. memories' 3-per-entry, unauthenticated-write surface.
+
+---
+
+## Full Route-Level Access Control Audit + First `pnpm audit` Run (2026-07-21)
+
+Triggered by the memories re-audit above turning up a real bug pattern (missing family-unit ownership checks), which prompted auditing every route file in `artifacts/api-server/src/routes/`, not just the new feature.
+
+**Found and fixed, 6 real broken-access-control bugs (all `requireAdmin` used without also checking the URL's `:unitId` against the caller's own family -- `requireAdmin` only checks `req.auth.isAdmin`, never unit ownership):**
+- `GET /family-units/:unitId/tree` -- any authenticated user could pull any other family's full member tree (names, photos, relationship labels) with zero relationship to them. Worst finding of the sweep -- a straightforward PII leak, not just a mutation risk.
+- `POST /family-units/:unitId/members/:personId/invite` -- any admin could mint a claimable invite token for any person in any family -- a full account-takeover path via `/invites/:token/claim`.
+- `POST /family-units/:unitId/members`, `PATCH /family-units/:unitId`, and all 4 link-request endpoints -- cross-family member injection, unit tampering, and consent-bypass on accept/decline.
+- Cross-family relationship injection + missing password floor in the public `/api/claims` flow.
+
+Fixed by adding the same `req.auth.familyUnitId !== unitId` (or `areUnitsLinked`, for the legitimate cross-linked-family case) guard every other correctly-scoped route in the codebase already uses. Verified via `tsc --noEmit` after every change and live-probed against production post-deploy (unauthenticated requests now correctly 401, CORS preflight no longer 500s -- see below).
+
+**Also fixed while sweeping:** a `photoUrls` tracking-pixel gap on memories (see the re-audit section above), a CORS preflight throwing into the generic error handler (500 instead of a clean rejection -- `app.ts`'s `cors()` origin callback), a `membersCanInvite` validation bypass reading straight off `req.body` instead of the Zod-validated schema, and a `parentPersonId` field that validated but silently no-op'd on PATCH.
+
+**Structural review of `lib/visibility.ts`** (the tier/graph engine backing most of the above): confirmed every `computeTier`/`computeVisibleSet` call site now passes correctly-scoped `allMembers`/`relationships` and is gated before being called -- the `/tree` bug was the actual gap, not a symptom of something deeper in the graph logic itself. Did not attempt to re-verify the relationship-labeling heuristics' correctness (which relative sees which tier) -- that's product correctness, not an auth boundary, and the code shows heavy iterative hardening already from real bug reports.
+
+**First-ever `pnpm audit` run:** 28 advisories total, but only 4 packages sit on `api-server`'s actual production dependency chain (`path-to-regexp`, `qs`, `body-parser`, and a types-only `@types/node-fetch>form-data` reference) -- everything else is dev/build-time tooling (`orval`, `vite`, `vitest`, `esbuild`'s own dev-server, `mockup-sandbox`) never deployed. None of the 4 are realistically exploitable in Olive's specific usage: the `path-to-regexp`/`qs` DoS CVEs need attacker-controlled route-pattern or `stringify` input (Olive's routes are all static; `qs.stringify` is never called on user data), and `body-parser`'s bug only triggers on an explicitly-passed invalid `limit` value (Olive doesn't pass one, so it uses the library's safe default). Real risk is low. **Not yet fixed** -- dependency-version bumps are a different risk class than the code fixes above (harder to cleanly reverse, no CI to catch a bad bump), left for a dedicated pass rather than done inline here.
+
+**Status:** all 6 access-control fixes + the CORS/validation fixes are committed and deployed, spot-verified live. `pnpm audit` triage documented but not acted on.
 
 ---
 
