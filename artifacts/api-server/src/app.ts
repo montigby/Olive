@@ -48,11 +48,12 @@ const allowedOrigins = new Set(
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
+      // `false` (not an Error) so a disallowed origin fails the CORS check
+      // without falling into the app's generic error handler -- that would
+      // 500 and log every scanner/bot hitting the API from a random origin
+      // as an "Unhandled error", burying real errors in Vercel's logs. The
+      // request is blocked either way; only the response shape changes.
+      callback(null, !origin || allowedOrigins.has(origin));
     },
   }),
 );
