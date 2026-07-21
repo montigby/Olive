@@ -52,6 +52,10 @@ router.post(
   requireAdmin,
   async (req, res) => {
     const unitId = String(req.params.unitId);
+    if (req.auth?.familyUnitId !== unitId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const parsed = CreateLinkRequestBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -83,6 +87,10 @@ router.post(
 // GET /api/family-units/:unitId/link-requests
 router.get("/family-units/:unitId/link-requests", requireAuth, async (req, res) => {
   const unitId = String(req.params.unitId);
+  if (req.auth?.familyUnitId !== unitId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
 
   const all = await db
     .select()
@@ -115,6 +123,13 @@ router.post("/link-requests/:requestId/accept", requireAuth, requireAdmin, async
 
   if (!lr) {
     res.status(404).json({ error: "Not found", message: "Request not found" });
+    return;
+  }
+  // Only an admin of the *target* unit can consent to a link -- otherwise
+  // any admin anywhere could force through (or hijack) a pending request
+  // between two unrelated families just by knowing/guessing its id.
+  if (req.auth?.familyUnitId !== lr.targetUnitId) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
 
@@ -159,6 +174,10 @@ router.post("/link-requests/:requestId/decline", requireAuth, requireAdmin, asyn
 
   if (!lr) {
     res.status(404).json({ error: "Not found", message: "Request not found" });
+    return;
+  }
+  if (req.auth?.familyUnitId !== lr.targetUnitId) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
 
