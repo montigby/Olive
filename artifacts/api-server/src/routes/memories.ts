@@ -9,11 +9,19 @@ const router = Router();
 const MAX_PHOTOS = 3;
 const MAX_BODY_LENGTH = 4000;
 
+// Only accept photos as inline data URIs, matching the only path the UI
+// actually produces them through (client-side resize to a data: URL).
+// Rejecting anything else stops a raw external URL from being stored and
+// rendered as an <img src>, which would act as a tracking pixel against
+// every family member who later views the memory -- the SPA's static HTML
+// has no CSP to block that kind of cross-origin image load.
+const DATA_IMAGE_URI = /^data:image\/[a-zA-Z0-9.+-]+;base64,/;
+
 function validatePhotoUrls(value: unknown): string[] | null {
   if (value === undefined) return [];
   if (!Array.isArray(value)) return null;
   if (value.length > MAX_PHOTOS) return null;
-  if (!value.every((v) => typeof v === "string")) return null;
+  if (!value.every((v) => typeof v === "string" && DATA_IMAGE_URI.test(v))) return null;
   return value;
 }
 

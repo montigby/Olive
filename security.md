@@ -1,6 +1,6 @@
 # Security Guide for Olive (Family Branch)
 
-Last updated: 2026-07-15 — punch list closed (see below). Original audit: 2026-07-13. Re-run this audit periodically (see "Keeping This Current" at the bottom) since security isn't a one-time checklist.
+Last updated: 2026-07-21 — memories-of-the-deceased feature re-audit (see below). Original audit: 2026-07-13, punch list closed 2026-07-15. Re-run this audit periodically (see "Keeping This Current" at the bottom) since security isn't a one-time checklist.
 
 This is Olive's version of a generic "security basics for non-developers building fast with AI" guide, rewritten against Olive's actual stack (Vercel + Supabase Postgres + Express + Drizzle ORM + React, not Replit) and checked against the real codebase rather than written as generic advice. Every section below says what Olive actually does today, not just what it should do.
 
@@ -123,6 +123,18 @@ All five items fixed and verified live (commits `82fee68`, `d7d612c`, `2f1a626`,
 4. ~~**Add login rate limiting**~~ — done, and extended to the AI chat endpoint too since that had the same "no cap at all" gap but against real OpenAI spend rather than login attempts. `/api/auth/login`: 10 attempts/10min keyed by IP+email. `/api/ai/chat`: 30 requests/15min keyed by personId. Verified live: the 11th rapid login attempt returns 429.
 5. ~~**Fix `ADMIN_SECRET` the same way as #1**~~ — done, and it turned out more urgent than originally scored: the Vercel dashboard (checked 2026-07-15) showed `ADMIN_SECRET` wasn't set there at all, meaning admin endpoints had been *actively* running on the hardcoded `"olive-admin-2026"` fallback in production, not just exposed to a hypothetical misconfiguration. User added a real random value to Vercel (Production + Preview); `admin.ts` now throws at boot if it's missing, matching the `SESSION_SECRET`/`DATABASE_URL` pattern. Verified live: app boots fine, the old hardcoded fallback now gets 403, the real secret still authenticates. Also fixed the `.gitignore` gap (a plain `.env` is now excluded, not just `.env*.local`).
 6. Everything else (session revocation, dependency-audit automation, 2FA) — real work, not urgent at Olive's current scale, worth planning for as the user base grows.
+
+## Re-audit: Memories-of-the-Deceased Feature (2026-07-21)
+
+Targeted re-check per the "re-run before onboarding real families / when new personal data is touched" rule, since this feature added `deceased`/`dateOfPassing` and a whole new `memories` table.
+
+**Handled well:** family-unit scoping, contributor/admin permission checks, and cron-secret auth all correctly extend to every new route (`memories.ts`, `cron.ts`'s `/cron/memory-prompts`); the AI chat's `add_memory` tool inherits the existing per-family scoping and the `/api/ai/chat` rate limit; deceased-marking reuses the same `canEditPerson` check as every other profile field, no new permission path invented.
+
+**Found and fixed:** `photoUrls` on memories was accepted as any string, not validated as an actual image — since the frontend renders it directly as `<img src>` and the SPA's static HTML has no CSP (see §5/§8 above), a raw external URL could have been stored and used as a tracking pixel against every family member who later viewed that memory. Fixed by restricting `validatePhotoUrls` (`memories.ts`) to `data:image/...;base64,` URIs, matching the only path the UI actually produces photos through.
+
+**Pre-existing, not new:** `persons.photoUrl` (the regular profile picture field) has the identical gap — plain `zod.string()`, no format check. Same fix pattern would apply if this is ever prioritized; not urgent since it's a single field vs. memories' 3-per-entry, unauthenticated-write surface.
+
+---
 
 ## Keeping This Current
 
