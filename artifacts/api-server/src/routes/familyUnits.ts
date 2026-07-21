@@ -163,6 +163,10 @@ router.get("/family-units/:unitId", requireAuth, async (req, res) => {
 // PATCH /api/family-units/:unitId
 router.patch("/family-units/:unitId", requireAuth, requireAdmin, async (req, res) => {
   const unitId = String(req.params.unitId);
+  if (req.auth?.familyUnitId !== unitId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = UpdateFamilyUnitBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
