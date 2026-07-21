@@ -10,6 +10,7 @@ import { eq, or, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { computeTier, computeVisibleSet, applyVisibility, describeRelationship } from "../lib/visibility";
+import { areUnitsLinked } from "../lib/unitAccess";
 
 const router = Router();
 
@@ -113,6 +114,18 @@ router.get("/family-units/:unitId/tree", requireAuth, async (req, res) => {
 
   if (!viewer) {
     res.status(401).json({ error: "Unauthorized", message: "Viewer not found" });
+    return;
+  }
+
+  // Unlike /family-units/:unitId and /members, this route has no per-member
+  // tier=4 backstop for a totally unrelated unit -- computeTier's cross-unit
+  // fallback is label-based (old behavior, assumes the units are already
+  // linked) and still returns real fields (name, photo, relationship label)
+  // at tier 3. Must gate on the same areUnitsLinked check its siblings use
+  // before ever calling computeTier, or any authenticated user could pull
+  // any other family's full tree just by knowing/searching for its unitId.
+  if (viewer.familyUnitId !== unitId && !(await areUnitsLinked(viewer.familyUnitId, unitId))) {
+    res.status(403).json({ error: "Forbidden", message: "Not authorized to view this unit" });
     return;
   }
 
