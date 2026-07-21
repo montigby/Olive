@@ -476,6 +476,10 @@ router.post("/claims", async (req, res) => {
     res.status(400).json({ error: "Bad request", message: "Invalid type." });
     return;
   }
+  if (body.claimerPassword.length < 8) {
+    res.status(400).json({ error: "Bad request", message: "Password must be at least 8 characters." });
+    return;
+  }
 
   const [tokenRow] = await db
     .select()
@@ -789,7 +793,22 @@ router.post(
       boundPersonId = insertedPerson.id;
 
       if (signal.attachingRelationships?.length) {
+        // relatedPersonId came from an unauthenticated claimer at claim-request
+        // time and was never checked against the family it's now being
+        // approved into -- relationshipsTable's FK only requires the id to
+        // exist *somewhere* in people, not in this family. Without this
+        // check a claimer could wire their new placeholder to an arbitrary
+        // person in a different family entirely.
+        const unitPersonIds = new Set(
+          (
+            await db
+              .select({ id: peopleTable.id })
+              .from(peopleTable)
+              .where(eq(peopleTable.familyId, unitId))
+          ).map((p) => p.id),
+        );
         for (const link of signal.attachingRelationships) {
+          if (!unitPersonIds.has(link.relatedPersonId)) continue;
           if (link.type === "spouse" || link.type === "partner") {
             await db
               .insert(relationshipsTable)
