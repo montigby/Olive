@@ -162,6 +162,16 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+  # Security patches for known CVEs in api-server's real production dependency
+  # chain (express's own transitive deps) -- router@2.2.0 (express 5's router
+  # package) hasn't cut a release with a fixed path-to-regexp yet, so this
+  # needs a direct override rather than a plain version bump. qs/body-parser
+  # already have compatible patched versions within express's own declared
+  # ranges (^6.14.0 / ^2.2.1) but the lockfile hadn't picked them up yet.
+  path-to-regexp: "^8.4.2"
+  qs: "^6.15.3"
+  body-parser: "^2.3.0"
+  form-data: "^4.0.6"
 
 allowBuilds:
   esbuild: set this to true or false
