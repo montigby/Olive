@@ -2,11 +2,38 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-07-20.
+Last updated: 2026-07-21.
 
 ---
 
-## 🟡 Memories of the Deceased — BUILT 2026-07-20, NOT YET LIVE
+## 🔴 START HERE — pick up from this point next session
+
+**Vercel account access was restored 2026-07-21** (see `vercel_account_access.md` memory — the GitHub/email account-conflict blocker from 2026-07-20 is resolved). This unblocks everything below that was previously stuck on dashboard access.
+
+**One thing to confirm first, if not already done:** commit `32bc868` (the dependency security-patch commit, last one pushed 2026-07-21) needs a manual check in the Vercel dashboard's Deployments tab to confirm it actually **built successfully** — a healthy `/api/healthz` only proves the *previous* successful deploy is still serving traffic, not that this one built. Local verification was typecheck + `pnpm audit` only; the real esbuild build couldn't run locally (pre-existing Windows-only gap, see `local_dev_environment.md` memory) so this is the one blind spot from that session.
+
+**Then run the manual smoke test** the user was given at the end of the 2026-07-21 session (not yet confirmed done): log in, open the family tree page (both as admin and, if available, a non-admin/linked-unit viewer), add a member, generate an invite link for them, toggle Settings → Member Permissions, check a profile page's visibility tiers look right, and add a memory with a photo. All of today's fixes were *additive* restrictions, so the failure mode to watch for is a legitimate action now wrongly 403ing — not a security hole reopening.
+
+**2026-07-21 was a huge session — full recap:**
+1. Memories-of-the-deceased feature (built 2026-07-20) — deploy now confirmable, but the actual end-to-end manual verification (mark deceased → opt in → add memory → confirm prompt email + tier targeting) still hasn't been done. See section below.
+2. **Fixed a `photoUrls` tracking-pixel gap** on memories (`8b9511a`).
+3. **Fixed the acute `openapi.yaml` drift** — Person/FamilyUnit/UnitSummary/BirthdayEntry schemas + the account-merge endpoints were undocumented, risking a silent breakage on the next `orval codegen` (`7899363`). Life-events/memories/home-feed/AI-chat/join-flow endpoints are *still* undocumented but that's lower-risk (never had spec backing to begin with) — see `openapi_drift.md` memory for the exact list if this gets picked back up.
+4. **Fixed a latent `parentPersonId` PATCH no-op bug** (`c7c90bd`).
+5. **Full route-level access-control audit — 6 real broken-access-control bugs found and fixed**, the most serious work of the session: a cross-family PII leak on `GET /family-units/:unitId/tree` (any logged-in user could pull any other family's full member tree), an account-takeover path via the member-invite endpoint, cross-family member/unit tampering, and a link-request consent bypass. **See the new CLAUDE.md rule #7** — `requireAdmin` doesn't check unit ownership, this is the bug class to watch for on any new `:unitId` route. Full detail in `security.md` and the `security_audit.md` memory. All deployed and live-verified via unauthenticated probes against `https://myolive.app` (not full manual QA — see smoke test above).
+6. Also fixed: CORS preflight 500s, a `membersCanInvite` validation bypass, a cross-family relationship-injection + missing password floor in the public claim flow.
+7. **First-ever `pnpm audit` run**, then **patched the 4 CVEs that actually sit on `api-server`'s production dependency chain** (`path-to-regexp`, `qs`, `body-parser`, `form-data`) via `pnpm-workspace.yaml` overrides (`32bc868`). 23 advisories remain but are all dev/build-tooling-only (orval, vite, vitest) — never deployed, not urgent.
+8. Structural review of `lib/visibility.ts` (clean, no new bugs) and a frontend XSS/injection pass (clean — the one `dangerouslySetInnerHTML` in the codebase is dead code, unused anywhere).
+
+**Not done / open follow-ups from today:**
+- [ ] Confirm `32bc868` deployed successfully (see above)
+- [ ] Manual smoke test (see above)
+- [ ] Manual end-to-end verification of the memories feature itself (see section below — separate from the access-control fixes)
+- [ ] The 23 remaining `pnpm audit` advisories (dev-tooling only, low urgency)
+- [ ] OpenAPI Phase 2 — document the still-undocumented endpoint groups (life-events, memories, home-feed, ai-chat, the whole join/claim invite-token system) — see `openapi_drift.md` memory
+
+---
+
+## 🟡 Memories of the Deceased — BUILT 2026-07-20, Vercel access restored 2026-07-21, still not manually verified end-to-end
 
 Full feature scoped via direct interview with the user (now personally driving this feature, not the supervisor) and built same-day. Deceased flag + date of passing on a profile, opt-in memory collection (any family member can start it, admin-only to stop), memories with text + up to 3 photos, publish-as-submitted with contributor edit / contributor-or-admin delete, a 45-prompt bank across 6 categories that rotates and avoids repeats for years, a daily cron that targets close relatives via the existing tier/graph system (not a blanket send) and emails prompts through Resend, an AI chat tool for adding memories conversationally, auto-logged life event + birthday-reminder exclusion when someone is marked deceased.
 
@@ -14,11 +41,11 @@ Full feature scoped via direct interview with the user (now personally driving t
 - Prompt emails deep-link into the app instead of true reply-to-email — every realistic contributor already has an Olive login, so this gets the same low friction without needing Resend's inbound-email/DNS setup. True reply-to-email can be added later as an alternate path.
 - Skipped orval/openapi codegen for the new endpoints, hand-writing `fetch` calls instead (same precedent as life-events). Along the way, found `lib/api-spec/openapi.yaml` had already drifted significantly out of sync with the real API before this session touched it (missing fields like `venmo`/`snapchat`/`bereal` on Person, `birthdayCount`/`phoneCount` on UnitSummary, and an entire account-merge type set) — not fixed, just avoided disturbing it further.
 
-**Status as of 2026-07-20 evening:**
+**Status as of 2026-07-21:**
 - [x] Migration `0015_memories.sql` applied via Supabase SQL editor — ran "without RLS" (correct choice: this app has no RLS anywhere, access control is entirely in the Express JWT layer, not Postgres) — confirmed success
-- [ ] **BLOCKED: verifying the Vercel deploy.** User hit a Vercel login wall — an account already exists under their GitHub email as an email/password account, and Vercel won't let GitHub OAuth create a second one. User doesn't have that account's credentials on hand right now. Needs to use "Login with Email" → magic link → then link GitHub to that account from Account Settings, whenever they have access to that inbox. Nothing code-side is blocked, just deploy verification.
-- [ ] Once logged into Vercel: confirm the `main` branch commits (`eb965c4`, `f7f04fe`, `73e7467`) actually deployed (auto-deploy on push, presumably, but unconfirmed)
-- [ ] Confirm the new `/api/cron/memory-prompts` Vercel cron job is within plan limits (2nd cron job added alongside `birthday-emails` in `vercel.json`) — can't check without dashboard access
+- [x] **Vercel account access restored 2026-07-21** — the GitHub/email account-conflict is resolved, dashboard is reachable again.
+- [x] Deploy confirmed live indirectly — live probes against `https://myolive.app/api/cron/memory-prompts` on 2026-07-21 returned a 401 (auth-gated, not 404), proving the route exists in production, so `eb965c4`/`f7f04fe`/`73e7367` did deploy at some point. Not confirmed via the dashboard directly.
+- [ ] Confirm the `/api/cron/memory-prompts` Vercel cron job is within plan limits (2nd cron job added alongside `birthday-emails` in `vercel.json`) — now checkable via the dashboard, just hasn't been done yet
 - [ ] Manual end-to-end verification on production: mark someone deceased, opt in, add a memory, confirm a prompt email actually sends and the tier-based targeting looks right for a real family
 
 Full spec: memory file `legacy_memories_feature.md` (auto-memory system).
@@ -106,7 +133,8 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 ---
 
 ## Recurring Maintenance (don't let these slip)
-- [ ] Re-run the `security.md` audit before onboarding any real families beyond testing, and any time auth/payments/new personal-data fields are touched
+- [x] Re-run the `security.md` audit — done 2026-07-21, and turned into the biggest fix batch of the project so far (6 broken-access-control bugs). Re-run again before onboarding any real families beyond testing, and any time auth/payments/new personal-data fields are touched.
+- [ ] The 23 remaining `pnpm audit` advisories (dev-tooling only — orval/vite/vitest, never deployed) — not urgent, revisit if `pnpm audit` is ever wired into CI
 - [ ] Periodically check actual Resend usage/plan against limits in the Resend dashboard as the family/user base grows (current volume is nowhere near any tier's cap as of 2026-07-13)
 - [ ] Keep `HANDOFF.md` in mind as historical-only — it's stale (dated 2026-05-26) and shouldn't be trusted for current architecture without cross-checking
 
@@ -114,6 +142,7 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 
 ## Recently Shipped (Condensed Changelog)
 For full detail, `git log` is authoritative. Highlights, most recent first:
+- **2026-07-21 security sweep** (see "START HERE" at the top for full detail) — 6 broken-access-control bugs across `members.ts`/`linkRequests.ts`/`familyUnits.ts`, memories photoUrls tracking-pixel gap, CORS 500s, `membersCanInvite` validation bypass, `parentPersonId` PATCH no-op, acute `openapi.yaml` drift, 4 dependency CVEs patched — `8b9511a`, `7899363`, `c7c90bd`, `152d09f`, `c6b1060`, `1e94fa3`, `e6927d5`, `b5bb35a`, `4d03985`, `9c9c1a6`, `cbd5e43`, `32bc868`
 - Memories-of-the-deceased feature built (2026-07-20) — see "Built, Not Yet Live" section above for full scope and outstanding steps — `eb965c4`, `f7f04fe`
 - Landing page waitlist CTA replaced with direct self-serve "Create Directory" signup (2026-07-20) — the waitlist framing was a mistake, not the actual goal — `595e582`
 - Mobile bottom tab bar lowered further, second pass (2026-07-20) — `1fa4f09`

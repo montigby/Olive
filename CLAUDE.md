@@ -51,6 +51,9 @@ Two person tables coexist. `persons` is the rich display table (profile fields, 
 ### 6. Spouse edges are symmetric (2 rows)
 `addRelationship(..., "spouse")` automatically inserts both A→B and B→A. Adding a new spouse retires existing spouse edges as `ex_spouse`. Use `ON CONFLICT DO NOTHING` when inserting spouse edges manually to avoid conflicts with existing `ex_spouse` rows.
 
+### 7. `requireAdmin` does NOT check unit ownership — you must add that check yourself
+`requireAdmin` (`middlewares/auth.ts`) only verifies `req.auth.isAdmin === true`. It never checks that the `:unitId` in the URL actually belongs to the caller's own family. A 2026-07-21 audit found 6 routes across `members.ts`, `linkRequests.ts`, and `familyUnits.ts` that used `requireAuth, requireAdmin` alone and were exploitable by any admin of any family (cross-family member injection, unit tampering, and a full account-takeover path via a forged invite token — see `security.md`). Every route that takes `:unitId` must also explicitly check `req.auth.familyUnitId !== unitId` (same-unit-only) or call `areUnitsLinked(viewer.familyUnitId, unitId)` (linked-family case, e.g. `/tree`, `/members`) before doing anything else. Grep the route file for this pattern before assuming a new admin-gated `:unitId` route is safe.
+
 ---
 
 ## Key Conventions
