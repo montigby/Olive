@@ -116,6 +116,7 @@ export interface FamilyUnit {
   parentUnitId?: string | null;
   parentLinkStatus: FamilyUnitParentLinkStatus;
   parentLinkedAt?: string | null;
+  membersCanInvite: boolean;
   createdAt: string;
   memberCount: number;
   claimedCount: number;
@@ -187,6 +188,7 @@ export interface CreateFamilyUnitBody {
 
 export interface UpdateFamilyUnitBody {
   unitName?: string;
+  membersCanInvite?: boolean;
 }
 
 export interface AddMemberBody {

@@ -107,7 +107,7 @@ export default function Settings() {
   };
 
   if (!user?.isAdmin) {
-    const canInvite = (unit as any)?.membersCanInvite !== false;
+    const canInvite = unit?.membersCanInvite !== false;
     return (
       <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div>
@@ -263,7 +263,7 @@ export default function Settings() {
       </Card>
 
       <AdminsCard unitId={unitId} />
-      <MemberPermissionsCard unitId={unitId} membersCanInvite={(unit as any)?.membersCanInvite ?? true} />
+      <MemberPermissionsCard unitId={unitId} membersCanInvite={unit?.membersCanInvite ?? true} />
       <SharedInviteCard unitId={unitId} />
       <PendingClaimsCard unitId={unitId} />
       <ChangePasswordCard />

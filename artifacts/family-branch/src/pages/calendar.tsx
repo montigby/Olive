@@ -127,6 +127,7 @@ type BirthdayEntry = {
   viewerRelationshipLabel?: string;
   unitName: string;
   birthday: string;
+  showBirthYear: boolean;
   daysUntil: number;
   phone?: string | null;
   email?: string | null;

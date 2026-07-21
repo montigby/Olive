@@ -359,6 +359,7 @@ export const UpdateFamilyUnitParams = zod.object({
 
 export const UpdateFamilyUnitBody = zod.object({
   unitName: zod.string().optional(),
+  membersCanInvite: zod.boolean().optional(),
 });
 
 export const UpdateFamilyUnitResponse = zod.object({
