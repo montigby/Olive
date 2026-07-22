@@ -480,14 +480,31 @@ function nameByGenerations(up: number, down: number, g: Gender): string {
   return cousinLabel(up, down);
 }
 
+// Capitalizes only the first character, leaving the rest untouched -- the
+// `relationshipLabel` values this app writes (e.g. "Niece", "Brother-in-law")
+// are already properly cased, so this is just a safety net for any
+// lowercase-stored values (e.g. older rows, or the AI-chat add path) rather
+// than a full title-case that could mangle "in-law" segments.
+function capitalizeLabel(label: string): string {
+  const trimmed = label.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
 // Describe how `targetId` relates to `viewerId`, e.g. "Sister", "Father",
 // "Grandmother" when the target's gender is set, falling back to the
 // neutral term ("Sibling", "Parent", "Grandparent") otherwise -- for
 // display purposes only. "Me" when they're the same person. Falls back to
-// "Extended family" for in-law shapes not in INLAW_PATH_LABELS, and
-// "Family member" when the two aren't connected in the graph at all (e.g.
-// cross-unit callers should guard for that case themselves rather than
-// rely on this fallback).
+// "Extended family" for in-law shapes not in INLAW_PATH_LABELS. When the two
+// aren't connected in the graph at all -- e.g. a niece/nephew/grandchild/
+// in-law added without a parentPersonId, so syncPersonToRelationshipLayer
+// never created a graph edge for them (see syncRelationship.ts) -- falls
+// back to the target's own stored `relationshipLabel` (the value the admin
+// picked when adding them) rather than a generic string, since that's still
+// an accurate description even though it isn't computed relative to the
+// viewer. Only falls back to the generic "Family member" when the target has
+// no relationshipLabel either (e.g. cross-unit callers should guard for that
+// case themselves rather than rely on this fallback).
 export function describeRelationship(
   viewerId: string,
   targetId: string,
@@ -496,12 +513,19 @@ export function describeRelationship(
 ): string {
   if (viewerId === targetId) return "Me";
 
+  const target = allMembers.find((m) => m.id === targetId);
+
   const graph = buildFamilyGraph(allMembers, relationships);
   const path = shortestFamilyPath(graph, viewerId, targetId);
-  if (path === null) return "Family member";
+  if (path === null) {
+    const storedLabel = target?.relationshipLabel;
+    if (typeof storedLabel === "string" && storedLabel.trim()) {
+      return capitalizeLabel(storedLabel);
+    }
+    return "Family member";
+  }
   if (path.length === 0) return "Me";
 
-  const target = allMembers.find((m) => m.id === targetId);
   const gender: Gender = target?.gender ?? null;
 
   if (path.some((s) => s.kind === "couple")) {
