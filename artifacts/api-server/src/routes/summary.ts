@@ -357,6 +357,7 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
         personId: person.id,
         firstName: person.firstName,
         lastName: person.lastName,
+        photoUrl: person.photoUrl ?? null,
         relationshipLabel: person.relationshipLabel,
         viewerRelationshipLabel,
         birthday: person.showBirthYear

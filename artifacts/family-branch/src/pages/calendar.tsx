@@ -4,7 +4,7 @@ import {
   useGetUpcomingBirthdays,
   getGetUpcomingBirthdaysQueryKey,
 } from "@workspace/api-client-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -123,6 +123,7 @@ type BirthdayEntry = {
   personId: string;
   firstName: string;
   lastName: string;
+  photoUrl?: string | null;
   relationshipLabel: string;
   viewerRelationshipLabel?: string;
   unitName: string;
@@ -135,17 +136,12 @@ type BirthdayEntry = {
 
 function BirthdayRow({ entry }: { entry: BirthdayEntry }) {
   const { toast } = useToast();
-  const initials = (entry.firstName[0] || "?") + (entry.lastName[0] || "?");
   const showWish = Math.abs(entry.daysUntil) <= 7;
   return (
     <li key={entry.personId}>
       <div className="flex items-center gap-4 px-5 py-4 hover:bg-secondary/40 transition-colors">
         <Link href={`/members/${entry.personId}`} className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer">
-          <Avatar className="w-10 h-10 border border-primary/20 shrink-0">
-            <AvatarFallback className="bg-primary/10 text-primary font-serif text-sm">
-              {initials.toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <PersonAvatar firstName={entry.firstName} lastName={entry.lastName} photoUrl={entry.photoUrl} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground leading-tight">
               {entry.firstName} {entry.lastName}

@@ -1,7 +1,7 @@
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -136,18 +136,12 @@ function BirthdayRow({ entry, index, onWishClick }: {
   const isFirst = index === 0;
   return (
     <div className={`flex items-center gap-3 py-3 ${index > 0 ? "border-t border-border/50" : ""}`}>
-      <Avatar className={`h-11 w-11 flex-shrink-0 ${isFirst ? "ring-2 ring-primary/40" : ""}`}>
-        <AvatarImage src={entry.avatarUrl || undefined} />
-        <AvatarFallback
-          className={`text-sm font-semibold ${
-            isFirst
-              ? "bg-primary/15 text-primary"
-              : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {entry.initials}
-        </AvatarFallback>
-      </Avatar>
+      <PersonAvatar
+        firstName={entry.firstName}
+        lastName={entry.lastName}
+        photoUrl={entry.avatarUrl}
+        highlighted={isFirst}
+      />
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-foreground truncate">
           {entry.firstName} {entry.lastName}

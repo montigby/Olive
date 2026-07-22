@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PLACEHOLDER_YEAR, daysUntilBirthday, sendBirthdayWish } from "@/lib/birthday";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -873,9 +873,6 @@ function ProfileView({
   const showWish =
     !isOwnProfile && !person.deceased && !!person.birthday && Math.abs(daysUntilBirthday(person.birthday)) <= 7;
 
-  const initials =
-    ((person.firstName || " ")[0] + (person.lastName || " ")[0]).toUpperCase();
-
   const hasContact = !!(person.phone || person.email || address);
   // Per-handle hiding is enforced server-side (hidden handles come back null to
   // non-owner/non-admin viewers), so the frontend just checks if anything is left to show.
@@ -933,12 +930,7 @@ function ProfileView({
           <div className="flex items-end justify-between -mt-12 mb-4">
             {/* Avatar with upload overlay */}
             <div className="relative group w-24 h-24">
-              <Avatar className="w-24 h-24 border-4 border-card shadow-md">
-                <AvatarImage src={person.photoUrl || undefined} />
-                <AvatarFallback className="text-3xl bg-primary/10 text-primary font-serif">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <PersonAvatar firstName={person.firstName} lastName={person.lastName} photoUrl={person.photoUrl} size="xl" className="border-card" />
               {canEdit && (
                 <button
                   onClick={() => fileInputRef.current?.click()}

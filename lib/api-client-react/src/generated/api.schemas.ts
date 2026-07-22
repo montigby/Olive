@@ -285,6 +285,7 @@ export interface BirthdayEntry {
   personId: string;
   firstName: string;
   lastName: string;
+  photoUrl?: string | null;
   relationshipLabel: string;
   /** The birthday person's relationship to the currently-authenticated viewer. Omitted for cross-linked-unit entries -- callers should fall back to relationshipLabel. */
   viewerRelationshipLabel?: string;

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -533,12 +533,7 @@ export default function Members() {
                   <div className="flex items-center p-4">
                     <Link href={`/members/${member.id}`}>
                       <div className="flex-1 flex items-center gap-4 cursor-pointer">
-                        <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
-                          <AvatarImage src={member.photoUrl || undefined} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-medium text-lg">
-                            {member.firstName[0]}{member.lastName[0]}
-                          </AvatarFallback>
-                        </Avatar>
+                        <PersonAvatar firstName={member.firstName} lastName={member.lastName} photoUrl={member.photoUrl} />
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-bold text-lg">

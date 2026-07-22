@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Link as LinkIcon, Gift, UserPlus, Cake, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { parseDateLocal, getAgeTurning, formatDaysUntil } from "@/lib/birthday";
 
 // A single connection-progress stat card.
@@ -161,11 +161,7 @@ export default function Dashboard() {
                 {upcomingBirthdays.map((b) => (
                   <div key={b.personId} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10 border border-border">
-                        <AvatarFallback className="bg-background text-foreground text-xs">
-                          {b.firstName[0]}{b.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
+                      <PersonAvatar firstName={b.firstName} lastName={b.lastName} photoUrl={b.photoUrl} />
                       <div>
                         <p className="font-bold text-sm">{b.firstName} {b.lastName}</p>
                         <p className="text-xs text-muted-foreground">{b.viewerRelationshipLabel ?? b.relationshipLabel} • {b.unitName}</p>
@@ -202,11 +198,7 @@ export default function Dashboard() {
                 {recentBirthdays.map((b) => (
                   <div key={b.personId} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10 border border-border">
-                        <AvatarFallback className="bg-background text-foreground text-xs">
-                          {b.firstName[0]}{b.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
+                      <PersonAvatar firstName={b.firstName} lastName={b.lastName} photoUrl={b.photoUrl} />
                       <div>
                         <p className="font-bold text-sm">{b.firstName} {b.lastName}</p>
                         <p className="text-xs text-muted-foreground">{b.viewerRelationshipLabel ?? b.relationshipLabel} • {b.unitName}</p>

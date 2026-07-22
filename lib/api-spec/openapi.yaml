@@ -1359,6 +1359,9 @@ components:
           type: string
         lastName:
           type: string
+        photoUrl:
+          type: string
+          nullable: true
         relationshipLabel:
           type: string
         viewerRelationshipLabel:

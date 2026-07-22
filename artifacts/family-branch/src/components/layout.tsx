@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
 import { BookUser, LogOut, Settings, Users, Network, Home, Cake, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { useLogout } from "@workspace/api-client-react";
 import { AiChatWidget } from "@/components/AiChatWidget";
 
@@ -73,12 +73,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <span className="font-serif font-bold text-xl">{user.lastName ? `${user.lastName} Family` : user.familyUnit.unitName}</span>
         </div>
         <Link href="/profile">
-          <Avatar className="w-8 h-8 cursor-pointer">
-            <AvatarImage src={user.photoUrl || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-              {user.firstName[0]}{user.lastName[0]}
-            </AvatarFallback>
-          </Avatar>
+          <PersonAvatar firstName={user.firstName} lastName={user.lastName} photoUrl={user.photoUrl} size="sm" className="cursor-pointer" />
         </Link>
       </header>
 
@@ -101,12 +96,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="mt-auto pt-6 border-t">
           <Link href="/profile">
             <div className="flex items-center gap-3 mb-4 p-2 rounded-md hover:bg-secondary cursor-pointer transition-colors">
-              <Avatar>
-                <AvatarImage src={user.photoUrl || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                  {user.firstName[0]}{user.lastName[0]}
-                </AvatarFallback>
-              </Avatar>
+              <PersonAvatar firstName={user.firstName} lastName={user.lastName} photoUrl={user.photoUrl} size="sm" />
               <div className="flex flex-col overflow-hidden">
                 <span className="text-sm font-bold truncate">{user.firstName} {user.lastName}</span>
                 <span className="text-xs text-muted-foreground truncate">{user.relationshipLabel}</span>

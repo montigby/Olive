@@ -16,7 +16,7 @@ import {
   Position,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -139,12 +139,13 @@ function PersonCard({ member }: { member: any }) {
     >
       {/* Circle avatar */}
       <div className="relative flex-shrink-0">
-        <Avatar className="h-16 w-16 border-2 border-primary/60 shadow-sm pointer-events-none">
-          <AvatarImage src={member.photoUrl} />
-          <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">
-            {(member.firstName || "?")[0]}{(member.lastName || "?")[0]}
-          </AvatarFallback>
-        </Avatar>
+        <PersonAvatar
+          firstName={member.firstName}
+          lastName={member.lastName}
+          photoUrl={member.photoUrl}
+          size="lg"
+          className="border-primary/60 pointer-events-none"
+        />
         {member.claimed && (
           <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background pointer-events-none" />
         )}
@@ -284,12 +285,7 @@ const PillNode = ({ data }: any) => {
               key={m.id}
               style={{ marginLeft: i > 0 ? -6 : 0, position: "relative", zIndex: 3 - i }}
             >
-              <Avatar className="h-5 w-5 border border-background">
-                <AvatarImage src={m.photoUrl} />
-                <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
-                  {(m.firstName || "?")[0]}{(m.lastName || "?")[0]}
-                </AvatarFallback>
-              </Avatar>
+              <PersonAvatar firstName={m.firstName} lastName={m.lastName} photoUrl={m.photoUrl} size="xs" />
             </div>
           ))}
           {extraCount > 0 && (
