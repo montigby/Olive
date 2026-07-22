@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -90,6 +90,19 @@ function AppRouter() {
 }
 
 function App() {
+  // The browser's native scroll restoration ("auto") races a page's own
+  // scroll-to-top-on-mount effect on client-side (Wouter) route changes and
+  // can win, leaving the new page scrolled to wherever the old one was
+  // (caught live on /terms: hard-loading it landed at the top, but clicking
+  // its footer link from a scrolled-down landing page didn't). Disabling it
+  // hands scroll position fully to the app, which is what individual pages'
+  // own scrollTo(0, 0) effects already assume.
+  useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
