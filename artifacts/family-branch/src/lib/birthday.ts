@@ -46,6 +46,24 @@ export function daysUntilBirthday(birthday: string): number {
   return daysUntil;
 }
 
+const AVG_DAYS_PER_MONTH = 30.44;
+
+/** How far away a birthday is, in whichever unit reads more naturally: days
+ * for anything within about a month, otherwise the nearest whole month.
+ * Uses an average month length and *rounds* (rather than floors/ceils) so
+ * the days/months switch lands at the real midpoint (~45.5 days) instead of
+ * jumping at a fixed day count -- otherwise a birthday just under 2 months
+ * out could round down to "1 month" while one just over 1 month out rounds
+ * up to "2 months", which is the inconsistency this is meant to avoid. */
+export function formatDaysUntil(daysUntil: number, opts: { compact?: boolean } = {}): string {
+  const { compact = false } = opts;
+  if (daysUntil === 0) return "Today!";
+  if (daysUntil === 1) return "Tomorrow";
+  if (daysUntil <= 30) return compact ? `In ${daysUntil}d` : `In ${daysUntil} days`;
+  const months = Math.round(daysUntil / AVG_DAYS_PER_MONTH);
+  return compact ? `In ${months}mo` : `In about ${months} month${months === 1 ? "" : "s"}`;
+}
+
 /** Opens the user's SMS or email app pre-filled with a birthday message,
  * falling back to a toast when there's no contact info to reach them by. */
 export function sendBirthdayWish(

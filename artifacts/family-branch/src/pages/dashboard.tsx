@@ -2,11 +2,11 @@ import { useGetUnitSummary, getGetUnitSummaryQueryKey, useGetUpcomingBirthdays, 
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Link as LinkIcon, Gift, MailPlus, Cake, Phone } from "lucide-react";
+import { Users, Link as LinkIcon, Gift, UserPlus, Cake, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { parseDateLocal, getAgeTurning } from "@/lib/birthday";
+import { parseDateLocal, getAgeTurning, formatDaysUntil } from "@/lib/birthday";
 
 // A single connection-progress stat card.
 // Shows the count prominently, a label, and a subtle "X of N" fraction
@@ -105,10 +105,10 @@ export default function Dashboard() {
           <h1 className="text-4xl font-serif font-bold text-foreground">Welcome back, {user?.firstName}</h1>
         </div>
         {user?.isAdmin && (
-          <Link href="/members">
+          <Link href="/members?add=1">
             <Button className="rounded-full shadow-sm">
-              <MailPlus className="w-4 h-4 mr-2" />
-              Add Member
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Family Member
             </Button>
           </Link>
         )}
@@ -172,7 +172,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-sm text-accent">{b.daysUntil === 0 ? 'Today!' : `In ${b.daysUntil} days`}</p>
+                      <p className="font-medium text-sm text-accent">{formatDaysUntil(b.daysUntil)}</p>
                       <p className="text-xs text-muted-foreground">
                         {parseDateLocal(b.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         {getAgeTurning(b.birthday, b.showBirthYear) !== null && ` · Turns ${getAgeTurning(b.birthday, b.showBirthYear)}`}

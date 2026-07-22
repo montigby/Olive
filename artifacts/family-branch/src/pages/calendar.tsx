@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Cake, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { parseDateLocal, formatBirthdayDate, getAgeTurning, sendBirthdayWish } from "@/lib/birthday";
+import { parseDateLocal, formatBirthdayDate, getAgeTurning, sendBirthdayWish, formatDaysUntil } from "@/lib/birthday";
 
 // ── Calendar helpers ──────────────────────────────────────────────────────────
 
@@ -101,20 +101,20 @@ function DaysUntilBadge({ days }: { days: number }) {
   if (days <= 7) {
     return (
       <Badge className="bg-primary/15 text-primary text-[11px] font-semibold shrink-0">
-        In {days}d
+        {formatDaysUntil(days, { compact: true })}
       </Badge>
     );
   }
   if (days <= 30) {
     return (
       <Badge variant="secondary" className="text-[11px] font-semibold shrink-0">
-        In {days}d
+        {formatDaysUntil(days, { compact: true })}
       </Badge>
     );
   }
   return (
     <Badge variant="outline" className="text-[11px] font-semibold shrink-0">
-      In {days}d
+      {formatDaysUntil(days, { compact: true })}
     </Badge>
   );
 }

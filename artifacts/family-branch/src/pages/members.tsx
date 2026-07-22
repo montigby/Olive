@@ -101,6 +101,16 @@ export default function Members() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  // Deep link from elsewhere in the app (e.g. the dashboard's "Add Family
+  // Member" button) straight into the add-member flow, instead of just
+  // landing on the directory and leaving the user to find the button.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("add") === "1") {
+      setIsAddOpen(true);
+      window.history.replaceState(null, "", "/members");
+    }
+  }, []);
   const [inviteTokenMap, setInviteTokenMap] = useState<Record<string, string>>({});
   const [sortMode, setSortMode] = useState<"added" | "az" | "za" | "side">("added");
   const [search, setSearch] = useState("");
@@ -334,7 +344,7 @@ export default function Members() {
             <DialogTrigger asChild>
               <Button className="rounded-full shadow-sm whitespace-nowrap w-full sm:w-auto">
                 <UserPlus className="w-4 h-4 mr-2" />
-                Add Member
+                Add Family Member
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
