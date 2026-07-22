@@ -14,6 +14,7 @@ import Register from "@/pages/register";
 import InviteClaim from "@/pages/invite-claim";
 import Join from "@/pages/join";
 import Privacy from "@/pages/privacy";
+import Terms from "@/pages/terms";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Welcome   = lazy(() => import("@/pages/welcome"));
@@ -69,6 +70,7 @@ function AppRouter() {
       <Route path="/invite/:token"   component={InviteClaim} />
       <Route path="/join/:token"     component={Join}        />
       <Route path="/privacy"         component={Privacy}     />
+      <Route path="/terms"           component={Terms}       />
 
       {/* Protected — order matters: more-specific paths first */}
       <Route path="/home"              component={HomeViewPage} />

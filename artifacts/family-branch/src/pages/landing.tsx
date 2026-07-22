@@ -145,7 +145,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <FadeIn>
             <p className="text-sm font-semibold tracking-wide uppercase mb-4" style={{ color: GREEN }}>
-              Your family's second brain
+              For families who want to stay close
             </p>
             <h1 className="font-serif text-4xl md:text-6xl font-medium leading-[1.1] mb-6">
               The Place Your Family's Memory Lives.
@@ -159,7 +159,7 @@ export default function Landing() {
                 Create Your Family Directory
               </Button>
             </Link>
-            <p className="text-sm mt-4" style={{ color: "#8A8580" }}>Free to get started. Takes less than 2 minutes.</p>
+            <p className="text-sm mt-4" style={{ color: "#6B6560" }}>Free to get started. Takes less than 2 minutes.</p>
           </FadeIn>
           <FadeIn delay={0.15}>
             <PhotoPlaceholder variant="a" className="w-full aspect-square md:aspect-[4/5]" />
@@ -173,7 +173,7 @@ export default function Landing() {
           {[
             { icon: RefreshCw, title: "Always Current", body: "Everyone updates their own information." },
             { icon: Lock, title: "Private", body: "Only your family can see your family." },
-            { icon: Sparkles, title: "AI Assisted", body: "Olive remembers so you don't have to." },
+            { icon: Sparkles, title: "Never Forgets", body: "Olive remembers so you don't have to." },
           ].map((item, i) => (
             <FadeIn key={item.title} delay={i * 0.1}>
               <div
@@ -263,7 +263,7 @@ export default function Landing() {
       <section className="px-6 py-24">
         <div className="max-w-3xl mx-auto text-center">
           <FadeIn>
-            <h2 className="font-serif text-3xl md:text-5xl font-medium mb-14">Your Family's Second Brain</h2>
+            <h2 className="font-serif text-3xl md:text-5xl font-medium mb-14">What Olive Remembers For You</h2>
           </FadeIn>
           <div className="flex flex-col gap-3 items-stretch text-left">
             {[
@@ -444,7 +444,7 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-6 text-sm" style={{ color: "#6B6560" }}>
             <Link href="/privacy"><span className="hover:opacity-70 cursor-pointer">Privacy</span></Link>
-            <span className="hover:opacity-70 cursor-pointer">Terms</span>
+            <Link href="/terms"><span className="hover:opacity-70 cursor-pointer">Terms</span></Link>
             <span className="hover:opacity-70 cursor-pointer">Contact</span>
           </div>
           <div className="flex items-center gap-4" style={{ color: "#6B6560" }}>
@@ -453,7 +453,7 @@ export default function Landing() {
             <Twitter className="w-4 h-4" />
           </div>
         </div>
-        <p className="text-center text-xs mt-8" style={{ color: "#A8A39D" }}>
+        <p className="text-center text-sm mt-8" style={{ color: "#6B6560" }}>
           © {new Date().getFullYear()} Olive. All rights reserved.
         </p>
       </footer>
@@ -480,7 +480,7 @@ function PhoneMockup() {
                 <div className="w-8 h-8 rounded-full shrink-0" style={{ backgroundColor: GOLD }} />
                 <div className="min-w-0">
                   <p className="text-xs font-semibold truncate">{p.name}</p>
-                  <p className="text-[10px]" style={{ color: "#8A8580" }}>{p.sub}</p>
+                  <p className="text-[10px]" style={{ color: "#6B6560" }}>{p.sub}</p>
                 </div>
               </div>
             ))}
