@@ -303,7 +303,7 @@ export default function Members() {
           <p className="text-muted-foreground mt-1">Manage the members in your family unit.</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-end gap-2">
           <div className="flex items-center gap-2">
             {/* Search */}
             <div className="relative flex-1 sm:flex-initial">

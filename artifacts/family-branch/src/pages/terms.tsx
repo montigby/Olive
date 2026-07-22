@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, BookUser } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,13 +8,9 @@ const LAST_UPDATED = "July 22, 2026";
 export default function Terms() {
   const [, setLocation] = useLocation();
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      setLocation("/");
-    }
-  };
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -22,8 +19,8 @@ export default function Terms() {
           variant="ghost"
           size="icon"
           className="rounded-full"
-          onClick={handleBack}
-          aria-label="Go back"
+          onClick={() => setLocation("/")}
+          aria-label="Back to landing page"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
