@@ -133,7 +133,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           exposing scrolled page content underneath); tab icons/labels stay visually raised via
           the h-14 inner row. Padding is the larger of a flat 0.5rem or the device's actual home-
           indicator safe area, so notched phones don't have the tab bar sitting under the gesture bar. */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-1px_8px_rgba(0,0,0,0.08)] pb-[max(0.5rem,env(safe-area-inset-bottom))] print:hidden">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-1px_8px_rgba(0,0,0,0.08)] pb-[max(0.5rem,env(safe-area-inset-bottom))] pointer-fine:pb-4 print:hidden">
         <div className="flex items-stretch h-14">
           {navItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/dashboard" && item.href !== "/home" && location.startsWith(item.href));
