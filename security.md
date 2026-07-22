@@ -2,6 +2,8 @@
 
 Last updated: 2026-07-21 — full route-level access control audit (6 broken-access-control bugs found & fixed) + first pnpm audit run (see below). Original audit: 2026-07-13, punch list closed 2026-07-15, memories re-audit earlier same day. Re-run this audit periodically (see "Keeping This Current" at the bottom) since security isn't a one-time checklist.
 
+**2026-07-22, minor:** added `photoUrl` to `GET /family-units/:unitId/birthdays`'s response (`summary.ts`) so the Dashboard/Birthdays UI could show real photos instead of only initials. Checked before shipping: this endpoint already returns `phone`/`email` unconditionally once tier-filtering (`tier <= 2`) admits an entry — no per-field `hidePhoto` toggle exists anywhere in the app (Directory already shows photos to anyone with visibility into a profile), so this follows the exact same exposure pattern already accepted elsewhere. Not a new gap.
+
 This is Olive's version of a generic "security basics for non-developers building fast with AI" guide, rewritten against Olive's actual stack (Vercel + Supabase Postgres + Express + Drizzle ORM + React, not Replit) and checked against the real codebase rather than written as generic advice. Every section below says what Olive actually does today, not just what it should do.
 
 Olive holds real personal data for real families — addresses, phone numbers, birthdays, kids' information. Getting this right matters more than it would for a typical side project, because the whole product's pitch is trust.

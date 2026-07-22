@@ -2,17 +2,37 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-07-21.
+Last updated: 2026-07-22.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
 
-**Vercel account access was restored 2026-07-21** (see `vercel_account_access.md` memory — the GitHub/email account-conflict blocker from 2026-07-20 is resolved). This unblocks everything below that was previously stuck on dashboard access.
+**`32bc868` confirmed built successfully** — user screenshot of the Vercel Deployments tab showed it Ready/Production (this closes the one open item from the 2026-07-21 session).
 
-**One thing to confirm first, if not already done:** commit `32bc868` (the dependency security-patch commit, last one pushed 2026-07-21) needs a manual check in the Vercel dashboard's Deployments tab to confirm it actually **built successfully** — a healthy `/api/healthz` only proves the *previous* successful deploy is still serving traffic, not that this one built. Local verification was typecheck + `pnpm audit` only; the real esbuild build couldn't run locally (pre-existing Windows-only gap, see `local_dev_environment.md` memory) so this is the one blind spot from that session.
+**The 2026-07-21 manual smoke test still hasn't been done**: log in, open the family tree page (both as admin and, if available, a non-admin/linked-unit viewer), add a member, generate an invite link for them, toggle Settings → Member Permissions, check a profile page's visibility tiers look right, and add a memory with a photo. Two full sessions of additional changes have landed on top since that test was written (see below) without it ever being run — treat it as covering everything through `30d91cf`, not just the original punch list.
 
-**Then run the manual smoke test** the user was given at the end of the 2026-07-21 session (not yet confirmed done): log in, open the family tree page (both as admin and, if available, a non-admin/linked-unit viewer), add a member, generate an invite link for them, toggle Settings → Member Permissions, check a profile page's visibility tiers look right, and add a memory with a photo. All of today's fixes were *additive* restrictions, so the failure mode to watch for is a legitimate action now wrongly 403ing — not a security hole reopening.
+**New capability worth using for the smoke test:** Claude now has a Chrome automation tool (`claude-in-chrome` skill) that can drive the user's actual logged-in browser — including authenticated pages like Dashboard/Directory/Birthdays, which local dev can't reach (no `DATABASE_URL` locally). This is a real upgrade over "deploy and hope," not just a nice-to-have — it caught a genuine bug this session (see scroll-restoration entry below) that typecheck + code review both missed. Reach for it before claiming any UI change is verified live.
+
+## 🟡 2026-07-22 session recap
+
+A long session split across three threads: reviewing an old "build a business" course-material folder for reusable ideas, a round of UI/UX fixes prompted by user screenshots, and using live-browser verification for the first time.
+
+**Shipped (all committed and pushed, `main` through `30d91cf`):**
+- **Terms of Service page** (`terms.tsx`) — the footer link was dead; built to match `privacy.tsx`'s structure/tone, wired into the router and landing footer.
+- **Landing page, grandparent-audience fixes** — fixed two real WCAG contrast failures (as low as 2.36:1) on caption/footer text computed by hand; cut two bits of tech jargon ("second brain," "AI Assisted") that read oddly for a non-technical, older audience and risked triggering AI-skepticism before the FAQ's reassurance is even seen. Also fixed a stale FAQ answer claiming the printable directory "isn't built yet" — it already ships (`members.tsx`'s Print button).
+- **Add Family Member clarity** — the dashboard button linked to the bare directory page and used a mail/envelope icon that visually implied "send an invite," though the action creates a placeholder profile with no email involved. Now deep-links into the actual add-member dialog (`?add=1`) and uses `UserPlus` to match the Directory page's own button; both relabeled "Add Family Member."
+- **Birthday countdown switches to months past ~30 days out** — was showing raw unbounded day counts ("In 218 days") on both the Dashboard widget and the full Birthdays page. New shared `formatDaysUntil()` in `lib/birthday.ts` rounds to the nearest month using an average month length (not floor/ceil), so the 1-vs-2-month switch lands at the true midpoint (~45.5 days) rather than a fixed cutoff — researched against date-fns and GitLab/Primer's relative-time conventions first.
+- **Site-wide avatar unification** — new shared `PersonAvatar` component (`components/PersonAvatar.tsx`) replaces ad hoc avatar styling that had three different fallback colors and no consistent size scale across Home/Dashboard/Directory/Birthdays/nav/tree/profile. Sized per Material Design's list/card guidance and WCAG contrast research (bold/larger initials text to clear the "large text" 3:1 threshold, since the brand green at 10% tint sits right at ~4.4:1 for normal text). Found and fixed the actual reason Dashboard and Birthdays never showed real photos: both share one backend endpoint whose response never included `photoUrl` — added it to the route, `openapi.yaml`, and hand-patched the generated type (a full `orval codegen` pulled in ~650 unrelated lines of already-tracked spec drift — see `openapi_drift.md` memory — so was reverted in favor of a surgical patch).
+- **Desktop nav padding decoupled from mobile** — the bottom tab bar is only `md:hidden`, so a desktop browser window under 768px wide renders the identical mobile nav; its safe-area-based padding looked cramped without an actual device safe-area. Now uses the `pointer-fine` CSS variant to target input type instead of just viewport width, so real touch devices and narrow desktop windows can be tuned independently.
+- **Directory header no longer clips at narrow desktop widths** — the search/sort/print/Add-Family-Member row had no wrap point; added `flex-wrap` so the button drops to its own line instead of running off-screen.
+- **Privacy/Terms: scroll-to-top + back-arrow always to landing** — both pages inherited scroll position from whatever page linked to them (landing's footer requires scrolling to the bottom first) and their back arrow used browser history instead of a fixed destination. Fixed with a mount-time `scrollTo(0,0)` **plus** disabling the browser's native `history.scrollRestoration` app-wide (`App.tsx`) — the native behavior was racing the page's own effect on Wouter client-side transitions and winning. This second part was only caught by testing the real click flow in a live browser; a hard page reload alone looked correct and would have shipped the bug.
+
+**Not done / still open:**
+- [ ] The 2026-07-21 manual smoke test (see START HERE above)
+- [ ] Monetization model decision — researched this session (see `business_model.md` memory), user is leaning freemium but explicitly not committing yet
+- [ ] Legal business entity registration — unconfirmed whether this has been done; can't check from the codebase
+- [ ] `HANDOFF.md` is stale (dated 2026-05-26) — wasn't touched this session, PROGRESS.md is the reliably-current source
 
 **2026-07-21 was a huge session — full recap:**
 1. Memories-of-the-deceased feature (built 2026-07-20) — deploy now confirmable, but the actual end-to-end manual verification (mark deceased → opt in → add memory → confirm prompt email + tier targeting) still hasn't been done. See section below.

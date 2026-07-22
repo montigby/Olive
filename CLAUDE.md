@@ -64,6 +64,9 @@ JWT Bearer token, stored in `localStorage.getItem("oliveToken")`. Verified by `r
 ### `formatPerson`
 The canonical implementation lives in `artifacts/api-server/src/routes/auth.ts` and is exported. Import from there. Never redefine it in another file.
 
+### `PersonAvatar`
+The canonical avatar component lives in `artifacts/family-branch/src/components/PersonAvatar.tsx` — always use it for a person's photo/initials circle instead of composing `Avatar`/`AvatarFallback`/`AvatarImage` directly. It takes `firstName`, `lastName`, `photoUrl`, and a `size` (`xs`/`sm`/`md`/`lg`/`xl`) that controls a matched size/border/font scale; don't invent a new size ad hoc. A 2026-07-22 audit found the same avatar pattern re-implemented with three different fallback colors and no shared size scale across Home/Dashboard/Directory/Birthdays/nav/tree/profile before this existed.
+
 ### New family members
 Whenever a new person is inserted into `personsTable`, call `syncPersonToRelationshipLayer` afterwards. This is currently done in:
 - `artifacts/api-server/src/routes/members.ts` (REST add)
