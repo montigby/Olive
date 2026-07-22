@@ -384,7 +384,7 @@ export default function Landing() {
                 },
                 {
                   q: "Can I print a family directory?",
-                  a: "Not yet, but it's on our roadmap — we know how useful a printed copy is for the grandparents who'd rather not look at a screen.",
+                  a: "Yes. The Directory page has a print button that lays out everyone's contact info on paper — handy for the grandparents who'd rather not look at a screen.",
                 },
                 {
                   q: "Can I connect multiple generations?",
