@@ -247,7 +247,17 @@ router.delete("/persons/:personId", requireAuth, async (req, res) => {
   // Deleting a person removes their row entirely -- if they're the last
   // admin, this would leave the family unit with zero admins, same as
   // demoting them via the PATCH endpoint above. Applies even to self-delete.
-  if (target.isAdmin && (await isLastAdminInUnit(target.id, target.familyUnitId))) {
+  // Exception: if they're the *only* person left in the unit at all, there's
+  // no one left to orphan -- deleting them removes the whole (now-empty)
+  // unit below instead of leaving a leaderless family behind.
+  const otherMembers = await db
+    .select({ id: personsTable.id })
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, target.familyUnitId))
+    .limit(2);
+  const isSoleMember = otherMembers.length === 1 && otherMembers[0].id === target.id;
+
+  if (target.isAdmin && !isSoleMember && (await isLastAdminInUnit(target.id, target.familyUnitId))) {
     res.status(409).json({
       error: "Conflict",
       message: "Cannot remove the last admin in a family. Grant admin access to someone else first.",
