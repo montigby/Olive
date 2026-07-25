@@ -141,6 +141,7 @@ Nothing currently open here — the "memories of those who've passed" feature th
 
 ## 🔵 Backlog (Roughly Priority Order)
 
+- [ ] **No self-serve account / family-unit deletion exists anywhere in the app** — found 2026-07-24 while trying to clean up an isolated test family created to verify email delivery (see `local_dev_environment.md` memory): there is no delete-account or delete-family-unit endpoint at all, only per-person deletion (`DELETE /persons/:personId`, admin/self-only). A real user who wants to leave or delete their family's data entirely currently has no way to do so short of asking for a direct Supabase SQL delete. Worth fixing before onboarding real families beyond testing — also a privacy-page credibility gap (the Privacy page discusses "data control" without this existing). User flagged this as something to figure out eventually.
 - [ ] Home page real life-events feed — current "Recent updates" feed isn't sourced from the actual `life_events` table, just inferred activity; not yet discussed whether to wire in real data
 - [ ] Invite/claiming flow — the "not listed → create new profile" self-service path inside `/join` is intentionally unreachable in the UI (backend/component code left intact); worth finishing later if ever prioritized
 - [ ] Geographic map of family members — not started, no lat/long fields exist yet
