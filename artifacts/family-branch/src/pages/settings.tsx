@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   useGetFamilyUnit, getGetFamilyUnitQueryKey,
   useUpdateFamilyUnit,
@@ -7,6 +7,7 @@ import {
   useAcceptLinkRequest,
   useDeclineLinkRequest,
   useListMembers, getListMembersQueryKey,
+  useDeletePerson,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -132,6 +133,7 @@ export default function Settings() {
             </Link>
           </CardContent>
         </Card>
+        <DeleteAccountCard personId={user?.id ?? ""} />
       </div>
     );
   }
@@ -267,6 +269,7 @@ export default function Settings() {
       <SharedInviteCard unitId={unitId} />
       <PendingClaimsCard unitId={unitId} />
       <ChangePasswordCard />
+      <DeleteAccountCard personId={user?.id ?? ""} />
     </div>
   );
 }
@@ -338,6 +341,100 @@ function ChangePasswordCard() {
           </Button>
         </form>
       </CardContent>
+    </Card>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Delete account — available to all users, deliberately placed last on the
+// page and gated behind a typed confirmation. Someone just skimming Settings
+// shouldn't be able to reach this by misclicking; someone who's committed to
+// leaving should still be able to find and finish it in under a minute.
+// ──────────────────────────────────────────────────────────────────────────
+function DeleteAccountCard({ personId }: { personId: string }) {
+  const { logout } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  const deleteMutation = useDeletePerson();
+
+  const handleDelete = () => {
+    if (!personId) return;
+    deleteMutation.mutate(
+      { personId },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          logout();
+          setLocation("/");
+        },
+        onError: (error: any) => {
+          toast({
+            variant: "destructive",
+            title: "Couldn't delete your account",
+            description: error?.message,
+          });
+        },
+      },
+    );
+  };
+
+  return (
+    <Card className="border-none shadow-sm bg-card">
+      <CardHeader>
+        <CardTitle className="font-serif text-xl">Delete Account</CardTitle>
+        <CardDescription>Permanently remove your profile and sign-in from Olive.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          variant="outline"
+          className="text-destructive border-destructive/40 hover:bg-destructive hover:text-white"
+          onClick={() => setOpen(true)}
+        >
+          Delete my account
+        </Button>
+      </CardContent>
+
+      <AlertDialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setConfirmText("");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes your profile, contact info, and login. Anyone else in your family keeps
+              their own profiles. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Type <span className="font-mono">DELETE</span> to confirm
+            </label>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              className="bg-background"
+              autoComplete="off"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={confirmText !== "DELETE" || deleteMutation.isPending}
+              onClick={handleDelete}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete my account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

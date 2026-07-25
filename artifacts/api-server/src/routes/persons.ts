@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { personsTable, accountsTable, relationshipsTable, peopleTable, lifeEventsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { personsTable, accountsTable, relationshipsTable, peopleTable, lifeEventsTable, familyUnitsTable } from "@workspace/db";
+import { eq, or } from "drizzle-orm";
 import { UpdatePersonBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
@@ -255,8 +255,55 @@ router.delete("/persons/:personId", requireAuth, async (req, res) => {
     return;
   }
 
+  // Best-effort cleanup of the supplementary relationship-graph layer --
+  // people/relationships share persons' UUIDs by convention only, not by FK,
+  // so nothing else will remove these rows once the person is gone.
+  await db
+    .delete(relationshipsTable)
+    .where(or(eq(relationshipsTable.fromPerson, personId), eq(relationshipsTable.toPerson, personId)))
+    .catch(() => {});
+  await db.delete(peopleTable).where(eq(peopleTable.id, personId)).catch(() => {});
+
   await db.delete(accountsTable).where(eq(accountsTable.personId, personId));
-  await db.delete(personsTable).where(eq(personsTable.id, personId));
+
+  try {
+    await db.delete(personsTable).where(eq(personsTable.id, personId));
+  } catch (err: any) {
+    // unit_link_requests.connectorPersonId/requestedBy reference persons with
+    // ON DELETE RESTRICT (unlike everything else here, which cascades) -- a
+    // person who initiated or is the connector on a still-pending cross-family
+    // link request can't be deleted until that request is resolved.
+    if (err?.code === "23503") {
+      res.status(409).json({
+        error: "Conflict",
+        message:
+          "Can't delete this profile while it's tied to a pending cross-family connection request. Resolve that request first, then try again.",
+      });
+      return;
+    }
+    throw err;
+  }
+
+  // If that was the last person in the family unit, the unit is now an empty
+  // orphan -- persons.familyUnitId cascades away everything that points at
+  // the unit, but nothing removes an emptied-out unit itself. This can only
+  // happen when the deleted person was the unit's sole admin, since the
+  // "never zero admins" invariant guarantees any unit with >=1 person has
+  // >=1 admin -- so this never fires while other people's data is at stake.
+  const [remaining] = await db
+    .select({ id: personsTable.id })
+    .from(personsTable)
+    .where(eq(personsTable.familyUnitId, target.familyUnitId))
+    .limit(1);
+
+  if (!remaining) {
+    await db
+      .delete(familyUnitsTable)
+      .where(eq(familyUnitsTable.id, target.familyUnitId))
+      .catch((err: any) => {
+        console.error("[persons.delete] failed to clean up empty family unit:", err?.message ?? err);
+      });
+  }
 
   res.json({ message: "Person deleted" });
 });
