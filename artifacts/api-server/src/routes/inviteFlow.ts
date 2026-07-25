@@ -933,7 +933,7 @@ router.post(
         status: "rejected",
         approverPersonId: req.auth!.personId,
         decidedAt: new Date(),
-        claimerSignal: sql`jsonb_set(coalesce(claimer_signal, '{}'::jsonb), '{rejectionReason}', to_jsonb(${reason ?? null}::text))`,
+        claimerSignal: sql`jsonb_set(coalesce(claimer_signal, '{}'::jsonb), '{rejectionReason}', coalesce(to_jsonb(${reason}::text), 'null'::jsonb))`,
       })
       .where(eq(claimRequestsTable.id, claimId));
 
