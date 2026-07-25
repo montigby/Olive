@@ -51,6 +51,7 @@ Primarily grandparents who want to stay connected with grandkids and extended fa
 - **Invite flows** — a per-person targeted invite link (instant claim, no review needed) and a shared family-wide join link (claims require admin approval, since a shared link can't be pre-vetted)
 - **Privacy statement page**, linked from every entry point
 - **Mobile-first fixes** — touch targets, dialog scrolling, directory toolbar layout, bottom-nav positioning, all specifically audited for a mobile-heavy, less tech-savvy audience
+- **Self-serve account deletion** — a confirmation-gated "Delete Account" option in Settings, available to every user; deleting the last person in a family unit automatically cleans up the now-empty family too
 
 ## Features (Explicitly Deprioritized, Not Missing by Accident)
 - Family tree visualization polish (`tree.tsx`) — functional but not actively improved
