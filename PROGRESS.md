@@ -2,14 +2,19 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-07-22.
+Last updated: 2026-07-24.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
 
-**The manual smoke test (originally flagged 2026-07-21) is now done**, run live via `claude-in-chrome` against production through `d818419`: logged in as admin (Jackson), added a family member, generated a per-person invite link, toggled Settings → Member Permissions on/off, marked a person deceased → opted into memory collection → added a memory with a photo (full end-to-end), then repeated a visibility pass logged in as a real non-admin (Zachary) — Directory/Settings/profile-tier restrictions all confirmed correct. Test person deleted afterward via the AI chat delete flow (worked correctly, asked for confirmation first). Two things still not covered:
-- **Email delivery confirmation** (does an invite email / memory-prompt email actually land, not just "the app says it sent") — needs inbox access, which wasn't given go-ahead to poke around in this session.
+**Email delivery confirmed live (2026-07-24)** — closes the last open item from the 2026-07-21/22 smoke test below. Verified via a fully isolated throwaway test family (registered fresh via `/register`, never touched real family data): added one unclaimed test person, generated a shared `/join` link, submitted a claim against it from a second email alias, and confirmed the resulting admin-notification email (`sendClaimPendingNotification`) landed in a real inbox within seconds — correct subject, body, and sender (`notifications@myolive.app`). While checking the inbox, also spotted two real production emails that had already landed previously without anyone confirming it: a day-before birthday reminder (`sendDayBeforeReminder`) and a weekly digest (`sendWeeklyDigest`). That leaves only `sendMemoryPrompt` unconfirmed by direct observation — same Resend client/domain as the other three (low risk), just not yet literally seen firing, since no real deceased+memory-collecting profile currently exists.
+
+**Real bug found + fixed during cleanup (commit `11a4e93`, deployed and verified live)**: clicking "Reject" on a pending claim in Settings has been throwing an Internal Server Error since the claim-approval flow shipped. The frontend never sends a `reason`, so `to_jsonb(NULL::text)` evaluates to SQL `NULL`, which makes the whole `jsonb_set(...)` expression `NULL` and violates `claimer_signal`'s `NOT NULL` constraint on every reject — meaning **every admin's "Reject" click has been silently failing in production** (claim stays pending, admin sees a generic error toast). Fixed by coalescing to a JSON `null` literal before the `jsonb_set` call (`artifacts/api-server/src/routes/inviteFlow.ts`). Confirmed fixed live — rejected the test claim successfully post-deploy.
+
+**Cleanup note**: the throwaway "Email Delivery Test Family" unit (admin `smithjac007+oliveadmintest@gmail.com`) still exists as an empty orphan — the test person was deleted (AI chat delete flow) and the test claim rejected, but there's **no delete-account / delete-family-unit endpoint anywhere in the app**. Harmless (fully isolated, no real data in it), but worth knowing this gap exists at all — no user has any self-serve way to delete their account today. Not urgent, just flagging.
+
+**The manual smoke test (originally flagged 2026-07-21) is done** — run live via `claude-in-chrome` against production through `d818419`: logged in as admin (Jackson), added a family member, generated a per-person invite link, toggled Settings → Member Permissions on/off, marked a person deceased → opted into memory collection → added a memory with a photo (full end-to-end), then repeated a visibility pass logged in as a real non-admin (Zachary) — Directory/Settings/profile-tier restrictions all confirmed correct. Test person deleted afterward via the AI chat delete flow (worked correctly, asked for confirmation first). One thing still not covered:
 - **The "shut out entirely" cross-unit visibility tier** — this family unit only has 9 directly-related members (parents/siblings/grandmother), so there's no linked second family unit in the test data to verify a viewer from a *different* linked family gets fully blocked. Would need a second linked family-unit account.
 
 **Two bugs found during the smoke test:**
@@ -168,6 +173,7 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 
 ## Recently Shipped (Condensed Changelog)
 For full detail, `git log` is authoritative. Highlights, most recent first:
+- **Claim-reject 500 fix + email delivery verification** (2026-07-24, `11a4e93`) — found live while verifying Resend delivery via an isolated test family; see START HERE above for full detail
 - **Relationship-label fallback fix** (2026-07-22, `d818419`) — found via live smoke-testing; see START HERE above for full detail
 - **2026-07-21 security sweep** (see "START HERE" at the top for full detail) — 6 broken-access-control bugs across `members.ts`/`linkRequests.ts`/`familyUnits.ts`, memories photoUrls tracking-pixel gap, CORS 500s, `membersCanInvite` validation bypass, `parentPersonId` PATCH no-op, acute `openapi.yaml` drift, 4 dependency CVEs patched — `8b9511a`, `7899363`, `c7c90bd`, `152d09f`, `c6b1060`, `1e94fa3`, `e6927d5`, `b5bb35a`, `4d03985`, `9c9c1a6`, `cbd5e43`, `32bc868`
 - Memories-of-the-deceased feature built (2026-07-20) — see "Built, Not Yet Live" section above for full scope and outstanding steps — `eb965c4`, `f7f04fe`
