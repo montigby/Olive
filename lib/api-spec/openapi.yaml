@@ -26,6 +26,16 @@ tags:
     description: Extended family group operations
   - name: summary
     description: Summary and dashboard data
+  - name: life-events
+    description: Life event operations (graduations, marriages, moves, etc.)
+  - name: memories
+    description: Memories-of-the-deceased operations
+  - name: home-feed
+    description: Post-invite welcome / home-feed dashboard data
+  - name: ai
+    description: AI chat assistant operations
+  - name: invite-flow
+    description: Shared-invite-link + claim-request system (phase 2 invite flow)
 
 paths:
   /healthz:
@@ -156,6 +166,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change the current account's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordBody"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: New password must be at least 8 characters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Current password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─── Persons ────────────────────────────────────────────────────
   /persons/{personId}:
     get:
@@ -217,6 +264,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+
+  /persons/{personId}/admin:
+    patch:
+      operationId: updatePersonAdmin
+      tags: [persons]
+      summary: Grant or revoke admin rights for a claimed member (admin only, same unit)
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePersonAdminBody"
+      responses:
+        "200":
+          description: Updated person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          description: isAdmin must be a boolean, or the target profile isn't claimed yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden -- target person is not in the caller's family unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Person not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Cannot remove the last admin in a family
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ─── Family Units ────────────────────────────────────────────────
   /family-units:
@@ -337,6 +429,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Person"
+
+  /family-units/{unitId}/relationships:
+    get:
+      operationId: listUnitRelationships
+      tags: [members]
+      summary: Get all explicit relationship edges for a family unit
+      description: >-
+        Edge direction for parent-type edges is from_person = child,
+        to_person = parent (see relationships table convention).
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Relationship edges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelationshipEdge"
+        "403":
+          description: Forbidden -- caller is not a member of this unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ─── Invites ─────────────────────────────────────────────────────
   /family-units/{unitId}/members/{personId}/invite:
@@ -617,6 +735,715 @@ paths:
                 items:
                   $ref: "#/components/schemas/BirthdayEntry"
 
+  # ─── Life Events ─────────────────────────────────────────────────
+  /persons/{personId}/life-events:
+    get:
+      operationId: listLifeEvents
+      tags: [life-events]
+      summary: List life events for a person (same family unit only)
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: Life events, sorted by event date ascending
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LifeEvent"
+        "403":
+          description: Forbidden -- viewer is not in the target's family unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Person not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: createLifeEvent
+      tags: [life-events]
+      summary: Log a life event for a person (admin, parent of the person, or self)
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLifeEventBody"
+      responses:
+        "201":
+          description: Life event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LifeEvent"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Person not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /life-events/{eventId}:
+    patch:
+      operationId: updateLifeEvent
+      tags: [life-events]
+      summary: >-
+        Update a life event (creator, same-family admin, or a parent of the
+        event's subject)
+      parameters:
+        - $ref: "#/components/parameters/eventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLifeEventBody"
+      responses:
+        "200":
+          description: Updated life event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LifeEvent"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Life event not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteLifeEvent
+      tags: [life-events]
+      summary: >-
+        Delete a life event (creator, same-family admin, or a parent of the
+        event's subject)
+      parameters:
+        - $ref: "#/components/parameters/eventId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Life event not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── Memories ────────────────────────────────────────────────────
+  /persons/{personId}/memories:
+    get:
+      operationId: listMemories
+      tags: [memories]
+      summary: >-
+        List memories about a (typically deceased) person, visible to the
+        whole family unit
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: Memories, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemoryWithContributor"
+        "403":
+          description: Forbidden -- viewer is not in the target's family unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Person not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: createMemory
+      tags: [memories]
+      summary: >-
+        Contribute a memory about a person. Requires memory collection to be
+        turned on for that profile
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMemoryBody"
+      responses:
+        "201":
+          description: Memory created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Memory"
+        "400":
+          description: >-
+            Validation error, or memory collection isn't turned on for this
+            profile yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden -- contributor is not in the target's family unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Person not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /memories/{memoryId}:
+    patch:
+      operationId: updateMemory
+      tags: [memories]
+      summary: Update a memory (contributor only)
+      parameters:
+        - $ref: "#/components/parameters/memoryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemoryBody"
+      responses:
+        "200":
+          description: Updated memory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Memory"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden -- you can only edit your own memory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Memory not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteMemory
+      tags: [memories]
+      summary: Delete a memory (contributor or same-family admin)
+      parameters:
+        - $ref: "#/components/parameters/memoryId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Memory not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /persons/{personId}/memory-collection:
+    post:
+      operationId: setMemoryCollectionEnabled
+      tags: [memories]
+      summary: >-
+        Turn memory collection on (any family member, deceased profiles
+        only) or off (admin only) for a person
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetMemoryCollectionBody"
+      responses:
+        "200":
+          description: Updated memory-collection state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryCollectionToggleResponse"
+        "400":
+          description: >-
+            enabled must be a boolean, or the profile isn't marked deceased
+            yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Person not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /persons/{personId}/memory-prompts/optout:
+    post:
+      operationId: optOutOfMemoryPrompts
+      tags: [memories]
+      summary: >-
+        Stop future memory-prompt emails about this specific deceased
+        person for the caller only
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ─── Home Feed ───────────────────────────────────────────────────
+  /family-units/{unitId}/home-feed:
+    get:
+      operationId: getHomeFeed
+      tags: [home-feed]
+      summary: >-
+        Get all data for the post-invite welcome / home-feed screen in one
+        round-trip
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Home feed data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeFeedResponse"
+        "403":
+          description: Forbidden -- caller is not a member of this unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Unit or member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── AI ──────────────────────────────────────────────────────────
+  /ai/chat:
+    post:
+      operationId: aiChat
+      tags: [ai]
+      summary: >-
+        Chat with the Olive AI assistant, which can add/update/delete family
+        members, log life events, and save memories via tool calls
+      description: >-
+        Rate-limited to 30 requests per 15 minutes per person (or IP, if
+        unauthenticated context is somehow reached).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatBody"
+      responses:
+        "200":
+          description: Assistant reply, plus any structured side effects performed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden -- unitId does not match the caller's family unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests -- rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── Invite Flow (phase 2: shared invite link + claim requests) ───
+  /family-units/{unitId}/invite-tokens:
+    post:
+      operationId: regenerateInviteToken
+      tags: [invite-flow]
+      summary: >-
+        Revoke any active shared invite token for this unit and mint a new
+        one (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "201":
+          description: New invite token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteTokenCreated"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    get:
+      operationId: getActiveInviteToken
+      tags: [invite-flow]
+      summary: >-
+        Get the currently-active shared invite token for this unit. Admins
+        always have access; non-admins only when the unit allows
+        member-sent invites
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+      responses:
+        "200":
+          description: Active invite token, or null if none
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteTokenActiveResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /join/{token}:
+    get:
+      operationId: resolveJoinToken
+      tags: [invite-flow]
+      summary: >-
+        Resolve a shared invite token to its family display name and
+        inviter (public -- no auth required, never leaks the member list)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Token is live
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinTokenInfo"
+        "404":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Token has been revoked, expired, or reached its use limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /claims/match:
+    post:
+      operationId: matchClaimCandidates
+      tags: [invite-flow]
+      summary: >-
+        Fuzzy-match a claimer-supplied name against unclaimed, non-deceased
+        people in the invite token's family (public -- no auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimsMatchBody"
+      responses:
+        "200":
+          description: >-
+            Up to 4 candidates with disambiguation hints (overflow: true
+            means more than 4 matched)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimsMatchResponse"
+        "400":
+          description: Token and name are required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Invalid, revoked, expired, or exhausted token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /claims:
+    post:
+      operationId: createClaimRequest
+      tags: [invite-flow]
+      summary: >-
+        Create a claim request against an invite token, either claiming an
+        existing unclaimed profile or registering as a brand-new person
+        (public -- no auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClaimBody"
+      responses:
+        "201":
+          description: Claim request created, pending admin approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimCreatedResponse"
+        "400":
+          description: Missing required fields, invalid type, or password too short
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Target profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Target profile already claimed by someone else
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Invalid, revoked, expired, or exhausted token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /claims/{claimId}:
+    get:
+      operationId: getClaimStatus
+      tags: [invite-flow]
+      summary: >-
+        Poll a claim request's status by its (unguessable) id (public -- no
+        auth required)
+      parameters:
+        - $ref: "#/components/parameters/claimId"
+      responses:
+        "200":
+          description: Claim status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimStatusResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /family-units/{unitId}/claims:
+    get:
+      operationId: listClaimRequests
+      tags: [invite-flow]
+      summary: List claim requests for a unit's approval inbox (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+        - name: status
+          in: query
+          required: false
+          description: Defaults to "pending"
+          schema:
+            type: string
+            enum: [pending, approved, rejected, superseded]
+            default: pending
+      responses:
+        "200":
+          description: >-
+            Matching claim requests, with the password hash stripped from
+            each claimer_signal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimsInboxResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /family-units/{unitId}/claims/{claimId}/approve:
+    post:
+      operationId: approveClaimRequest
+      tags: [invite-flow]
+      summary: >-
+        Approve a pending claim request: materializes the account, binds
+        ownership, and (for create_new) wires any attaching relationships
+        (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+        - $ref: "#/components/parameters/claimId"
+      responses:
+        "200":
+          description: Approved -- includes a fresh JWT for the newly-bound person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimApproveResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Claim not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >-
+            Already decided, self-approval blocked, target no longer
+            claimable, or email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Claim is missing stored credentials or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /family-units/{unitId}/claims/{claimId}/reject:
+    post:
+      operationId: rejectClaimRequest
+      tags: [invite-flow]
+      summary: Reject a pending claim request (admin only)
+      parameters:
+        - $ref: "#/components/parameters/unitId"
+        - $ref: "#/components/parameters/claimId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectClaimBody"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Claim not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already decided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   parameters:
     personId:
@@ -629,6 +1456,30 @@ components:
 
     unitId:
       name: unitId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    eventId:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    memoryId:
+      name: memoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    claimId:
+      name: claimId
       in: path
       required: true
       schema:
@@ -658,6 +1509,13 @@ components:
         message:
           type: string
       required: [message]
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
 
     # ─── Waitlist ──────────────────────────────────────────────────
     WaitlistSignupBody:
@@ -716,6 +1574,16 @@ components:
           type: string
           description: JWT session token
       required: [person, token]
+
+    ChangePasswordBody:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+      required: [currentPassword, newPassword]
 
     # ─── Person ────────────────────────────────────────────────────
     Person:
@@ -988,6 +1856,13 @@ components:
         hideOtherSocial:
           type: boolean
 
+    UpdatePersonAdminBody:
+      type: object
+      properties:
+        isAdmin:
+          type: boolean
+      required: [isAdmin]
+
     # ─── Family Unit ───────────────────────────────────────────────
     FamilyUnit:
       type: object
@@ -1088,6 +1963,29 @@ components:
           format: uuid
           nullable: true
       required: [firstName, lastName, relationshipLabel]
+
+    RelationshipEdge:
+      type: object
+      description: >-
+        An explicit relationship-layer edge. For parent-type edges,
+        fromPerson is the child and toPerson is the parent.
+      properties:
+        fromPerson:
+          type: string
+          format: uuid
+        toPerson:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - biological_parent
+            - adoptive_parent
+            - step_parent
+            - spouse
+            - ex_spouse
+            - partner
+      required: [fromPerson, toPerson, type]
 
     # ─── Invites ───────────────────────────────────────────────────
     InviteResponse:
@@ -1394,3 +2292,667 @@ components:
         - showBirthYear
         - unitName
         - daysUntil
+
+    # ─── Life Events ───────────────────────────────────────────────
+    LifeEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum: [graduation, marriage, new_baby, moved, new_job, death, custom]
+        eventDate:
+          type: string
+          description: Date in YYYY-MM-DD format
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+          nullable: true
+      required: [id, familyId, personId, eventType, eventDate, createdAt]
+
+    CreateLifeEventBody:
+      type: object
+      properties:
+        eventType:
+          type: string
+          enum: [graduation, marriage, new_baby, moved, new_job, death, custom]
+        eventDate:
+          type: string
+          description: Date in YYYY-MM-DD format
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        notes:
+          type: string
+          nullable: true
+          maxLength: 500
+      required: [eventType, eventDate]
+
+    UpdateLifeEventBody:
+      type: object
+      properties:
+        eventType:
+          type: string
+          enum: [graduation, marriage, new_baby, moved, new_job, death, custom]
+        eventDate:
+          type: string
+          description: Date in YYYY-MM-DD format
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        notes:
+          type: string
+          nullable: true
+          maxLength: 500
+
+    # ─── Memories ──────────────────────────────────────────────────
+    Memory:
+      type: object
+      description: Raw memory row, as returned from create/update.
+      properties:
+        id:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        familyUnitId:
+          type: string
+          format: uuid
+        contributorPersonId:
+          type: string
+          format: uuid
+          nullable: true
+        body:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+          description: >-
+            Inline data: URIs only (client-side resized before upload) --
+            never raw external URLs. At most 3.
+        promptText:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, personId, familyUnitId, body, photoUrls, createdAt, updatedAt]
+
+    MemoryWithContributor:
+      type: object
+      description: Shape returned by the list-memories endpoint, enriched for display.
+      properties:
+        id:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        body:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+        promptText:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        contributorPersonId:
+          type: string
+          format: uuid
+          nullable: true
+        contributorName:
+          type: string
+          description: Contributor's full name, or "A family member" if they've since left the unit
+        contributorRelationship:
+          type: string
+          nullable: true
+          description: The contributor's relationship to the viewer, if computable
+        canEdit:
+          type: boolean
+          description: True only for the memory's own contributor
+        canDelete:
+          type: boolean
+          description: True for the contributor or a same-family admin
+      required:
+        - id
+        - personId
+        - body
+        - photoUrls
+        - createdAt
+        - updatedAt
+        - contributorName
+        - canEdit
+        - canDelete
+
+    CreateMemoryBody:
+      type: object
+      properties:
+        body:
+          type: string
+          maxLength: 4000
+        photoUrls:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            description: Must be an inline "data:image/...;base64," URI
+        promptText:
+          type: string
+          nullable: true
+      required: [body]
+
+    UpdateMemoryBody:
+      type: object
+      properties:
+        body:
+          type: string
+          maxLength: 4000
+        photoUrls:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            description: Must be an inline "data:image/...;base64," URI
+
+    SetMemoryCollectionBody:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required: [enabled]
+
+    MemoryCollectionToggleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        memoryCollectionEnabled:
+          type: boolean
+      required: [id, memoryCollectionEnabled]
+
+    # ─── Home Feed ─────────────────────────────────────────────────
+    HomeFeedBirthdayEntry:
+      type: object
+      properties:
+        memberId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        initials:
+          type: string
+        birthMonth:
+          type: integer
+        birthDay:
+          type: integer
+        daysUntil:
+          type: integer
+          description: 0-30 for upcoming; 358-364 for a birthday in the past 7 days
+        ageTurning:
+          type: integer
+          nullable: true
+          description: Null when birth year is a placeholder or hidden (showBirthYear false)
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+      required:
+        - memberId
+        - firstName
+        - lastName
+        - initials
+        - birthMonth
+        - birthDay
+        - daysUntil
+
+    HomeFeedRecentUpdate:
+      type: object
+      properties:
+        memberId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        changeType:
+          type: string
+          enum: [joined, photo, phone, address, profile]
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        avatarUrl:
+          type: string
+          nullable: true
+        initials:
+          type: string
+      required: [memberId, name, changeType, description, timestamp, initials]
+
+    HomeFeedResponse:
+      type: object
+      properties:
+        member:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            firstName:
+              type: string
+            profileCompleteness:
+              type: integer
+              description: 0-100, +20 for each of phone/photo/email/birthday plus a 20 base
+            missingPriorityField:
+              type: string
+              nullable: true
+              enum: [phone, photo, email, birthday]
+          required: [id, firstName, profileCompleteness, missingPriorityField]
+        family:
+          type: object
+          properties:
+            unitName:
+              type: string
+          required: [unitName]
+        upcomingBirthdays:
+          type: array
+          items:
+            $ref: "#/components/schemas/HomeFeedBirthdayEntry"
+        stats:
+          type: object
+          properties:
+            birthdaysThisMonth:
+              type: integer
+            newContactsCount:
+              type: integer
+              description: Visible members (excluding viewer) created in the last 30 days
+          required: [birthdaysThisMonth, newContactsCount]
+        recentUpdates:
+          type: array
+          items:
+            $ref: "#/components/schemas/HomeFeedRecentUpdate"
+      required: [member, family, upcomingBirthdays, stats, recentUpdates]
+
+    # ─── AI ────────────────────────────────────────────────────────
+    AiChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+      required: [role, content]
+
+    AiChatBody:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiChatMessage"
+        unitId:
+          type: string
+          format: uuid
+          description: Must match the caller's own family unit
+      required: [messages, unitId]
+
+    AiChatResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        memberAdded:
+          allOf:
+            - $ref: "#/components/schemas/Person"
+          nullable: true
+        memberUpdated:
+          allOf:
+            - $ref: "#/components/schemas/Person"
+          nullable: true
+        lifeEventAdded:
+          type: object
+          nullable: true
+          properties:
+            personName:
+              type: string
+            eventType:
+              type: string
+          required: [personName, eventType]
+        memoryAdded:
+          type: object
+          nullable: true
+          properties:
+            personName:
+              type: string
+          required: [personName]
+        memberDeleted:
+          type: object
+          nullable: true
+          properties:
+            name:
+              type: string
+          required: [name]
+      required: [reply, memberAdded, memberUpdated, lifeEventAdded, memoryAdded, memberDeleted]
+
+    # ─── Invite Flow (phase 2) ─────────────────────────────────────
+    InviteTokenCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+        url:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, token, url, createdAt]
+
+    InviteTokenDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+        url:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        maxUses:
+          type: integer
+          nullable: true
+        useCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, token, url, expiresAt, maxUses, useCount, createdAt]
+
+    InviteTokenActiveResponse:
+      type: object
+      properties:
+        active:
+          allOf:
+            - $ref: "#/components/schemas/InviteTokenDetails"
+          nullable: true
+      required: [active]
+
+    JoinTokenInfo:
+      type: object
+      properties:
+        family:
+          type: object
+          properties:
+            unitName:
+              type: string
+          required: [unitName]
+        inviter:
+          type: object
+          nullable: true
+          properties:
+            firstName:
+              type: string
+            lastName:
+              type: string
+          required: [firstName, lastName]
+      required: [family, inviter]
+
+    ClaimRelationshipAnswers:
+      type: object
+      description: Optional disambiguation answers used to narrow candidate matches.
+      properties:
+        parentIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        spouseId:
+          type: string
+          format: uuid
+
+    ClaimsMatchBody:
+      type: object
+      properties:
+        token:
+          type: string
+        name:
+          type: string
+          minLength: 2
+        relationshipAnswers:
+          $ref: "#/components/schemas/ClaimRelationshipAnswers"
+      required: [token, name]
+
+    ClaimCandidate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+          nullable: true
+        parents:
+          type: array
+          maxItems: 2
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              firstName:
+                type: string
+            required: [id, firstName]
+        spouse:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            firstName:
+              type: string
+          required: [id, firstName]
+        birthYear:
+          type: integer
+          nullable: true
+      required: [id, firstName, lastName, parents, spouse, birthYear]
+
+    ClaimsMatchResponse:
+      type: object
+      properties:
+        overflow:
+          type: boolean
+          description: True if more than 4 candidates matched (candidates list is capped at 4)
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClaimCandidate"
+      required: [overflow, candidates]
+
+    ClaimAttachingRelationship:
+      type: object
+      properties:
+        relatedPersonId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          description: >-
+            One of the relationship-edge types (e.g. spouse, partner,
+            biological_parent, adoptive_parent, step_parent). Only
+            meaningful for type = create_new.
+      required: [relatedPersonId, type]
+
+    CreateClaimBody:
+      type: object
+      description: >-
+        For type = claim_existing, targetPersonId is required. For type =
+        create_new, attachingRelationships may be supplied instead.
+      properties:
+        token:
+          type: string
+        type:
+          type: string
+          enum: [claim_existing, create_new]
+        targetPersonId:
+          type: string
+          format: uuid
+          description: Required when type is claim_existing
+        claimerEmail:
+          type: string
+          format: email
+        claimerPassword:
+          type: string
+          minLength: 8
+        claimerName:
+          type: string
+        relationshipAnswers:
+          $ref: "#/components/schemas/ClaimRelationshipAnswers"
+        attachingRelationships:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClaimAttachingRelationship"
+      required: [token, type, claimerEmail, claimerPassword, claimerName]
+
+    ClaimCreatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, approved, rejected, superseded]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, status, createdAt]
+
+    ClaimStatusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, approved, rejected, superseded]
+        type:
+          type: string
+          enum: [claim_existing, create_new]
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, status, type, createdAt]
+
+    ClaimInboxEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [claim_existing, create_new]
+        targetPersonId:
+          type: string
+          format: uuid
+          nullable: true
+        claimerDisplayName:
+          type: string
+        claimerContact:
+          type: string
+          nullable: true
+        claimerSignal:
+          type: object
+          additionalProperties: true
+          description: >-
+            Sanitized claimer_signal JSONB (passwordHash stripped) --
+            typically contains relationshipAnswers, attachingRelationships,
+            arrival, and (for rejected claims) rejectionReason.
+        status:
+          type: string
+          enum: [pending, approved, rejected, superseded]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - claimerDisplayName
+        - claimerSignal
+        - status
+        - createdAt
+
+    ClaimsInboxResponse:
+      type: object
+      properties:
+        claims:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClaimInboxEntry"
+      required: [claims]
+
+    ClaimApproveResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        personId:
+          type: string
+          format: uuid
+        token:
+          type: string
+          nullable: true
+          description: JWT for the newly-bound person, so they're logged in immediately
+      required: [ok, personId, token]
+
+    RejectClaimBody:
+      type: object
+      properties:
+        reason:
+          type: string
+          nullable: true
