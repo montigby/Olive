@@ -2,11 +2,20 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-07-25.
+Last updated: 2026-07-27.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
+
+**Niece/Nephew/In-law relative picker shipped (2026-07-27, commit `4541eeb`)** — closes backlog item #26 in `suggestions_shortlist.md`. The Add Family Member dialog's "which relative" picker previously only appeared for Grandson/Granddaughter (`isGrandchildRole`); anyone added as Niece/Nephew, or via the old generic "In-Law" catch-all option, became a graph orphan even though `syncPersonToRelationshipLayer` (`artifacts/api-server/src/lib/syncRelationship.ts`) already had edge logic for those roles — it just never received a `parentPersonId` from this dialog to use. Fixed by:
+- Replacing the generic "In-Law" option with specific **Brother-in-law**/**Sister-in-law** entries, matching what the AI chat path already produces (the generic label could never match the backend's exact-string branch).
+- Extending the picker to **Niece/Nephew** (candidates: Brother/Sister + their in-law spouses, label "Child of") and **Brother-in-law/Sister-in-law** (candidates: Brother/Sister, label "Married to" since it's a spouse pick not a parent pick).
+- Always resetting the picker selection on role change, since the valid candidate list differs per role.
+
+**Live-verified end-to-end (not just typechecked)** against a throwaway test family (`smithjac007+relpicker@gmail.com`, since deleted via self-serve delete): added a Brother, then a Niece "child of" him, then a Sister-in-law "married to" him, and confirmed via a direct `GET /family-units/:unitId/relationships` call (now itself documented, see below) that the real edges landed correctly — `Nia --biological_parent--> Sam`, and the symmetric `Mia <--spouse--> Sam` pair. Confirms the fix works at the data layer, not just the UI.
+
+**OpenAPI Phase 2 documentation shipped (2026-07-27, commit `968bb80`)** — closes the Phase 2 half of `openapi_drift.md`. Hand-patched `lib/api-spec/openapi.yaml` to document all 8 previously-undocumented endpoint groups that existed and worked in production but never had spec backing: life-events (4), memories (6), `GET .../home-feed`, `POST /ai/chat`, the full invite-token/join/claims system (9), `POST /auth/change-password`, `PATCH /persons/:id/admin`, and `GET .../relationships` (this last one actually lives in `members.ts`, not `familyUnits.ts` as originally assumed). No `orval codegen` run and no generated client files touched, per the established precedent (a full regen previously pulled in ~650 unrelated lines at once). Independently re-verified after a background agent did the work: YAML parses cleanly, all 200 `$ref`s resolve, all 10 pre-existing schemas still intact.
 
 **Self-serve account deletion shipped (2026-07-25)** — closes backlog item (formerly #27 in `suggestions_shortlist.md`). `DELETE /api/persons/:personId` already allowed self-delete on the backend but had no UI; added a low-key, typed-confirmation-gated "Delete Account" card to Settings (`artifacts/family-branch/src/pages/settings.tsx`, visible to every user, deliberately placed last on the page so it's findable if you're looking but not something you'd hit by accident). Deleting the last person left in a family unit now also hard-deletes the now-empty `family_units` row (only possible when that person was the unit's sole admin, so it never fires while anyone else's data is at stake). Commits `7b3c5a2`, `3d510aa` (a real bug caught via live testing — the pre-existing last-admin guard blocked a sole admin from deleting themselves at all, which was exactly the scenario this needed to handle; fixed by exempting the sole-remaining-member case).
 
