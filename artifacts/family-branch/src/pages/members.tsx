@@ -63,19 +63,29 @@ import { Badge } from "@/components/ui/badge";
 const RELATIONSHIP_OPTIONS = [
   {
     group: "Women",
-    options: ["Daughter", "Granddaughter", "Sister", "Aunt", "Niece", "Wife", "Mom", "Grandma", "Nana", "Stepdaughter"],
+    options: ["Daughter", "Granddaughter", "Sister", "Sister-in-law", "Aunt", "Niece", "Wife", "Mom", "Grandma", "Nana", "Stepdaughter"],
   },
   {
     group: "Men",
-    options: ["Son", "Grandson", "Brother", "Uncle", "Nephew", "Husband", "Dad", "Grandpa", "Papa", "Stepson"],
+    options: ["Son", "Grandson", "Brother", "Brother-in-law", "Uncle", "Nephew", "Husband", "Dad", "Grandpa", "Papa", "Stepson"],
   },
   {
     group: "Other",
-    options: ["Partner", "Spouse", "Cousin", "In-Law", "Stepparent", "Guardian", "Other"],
+    options: ["Partner", "Spouse", "Cousin", "Stepparent", "Guardian", "Other"],
   },
 ];
 
 const ALL_ROLES = RELATIONSHIP_OPTIONS.flatMap((g) => g.options);
+
+// Roles where the new person hangs off a specific existing member rather than
+// the admin directly -- the dialog needs a second picker so
+// syncPersonToRelationshipLayer (artifacts/api-server/src/lib/syncRelationship.ts)
+// gets a parentPersonId and can create a real graph edge instead of leaving
+// the person a graph orphan (see suggestions_shortlist.md item #26).
+const GRANDCHILD_ROLES = ["Grandson", "Granddaughter"];
+const NIECE_NEPHEW_ROLES = ["Niece", "Nephew"];
+const SIBLING_IN_LAW_ROLES = ["Brother-in-law", "Sister-in-law"];
+const PARENT_PICKER_ROLES = [...GRANDCHILD_ROLES, ...NIECE_NEPHEW_ROLES, ...SIBLING_IN_LAW_ROLES];
 
 // Auto-default the new Gender field from which group a relationship role
 // was picked from (e.g. "Sister" -> Female) -- still freely editable, since
@@ -137,7 +147,10 @@ export default function Members() {
   });
 
   const selectedRole = form.watch("relationshipLabel");
-  const isGrandchildRole = ["Grandson", "Granddaughter"].includes(selectedRole);
+  const needsParentPicker = PARENT_PICKER_ROLES.includes(selectedRole);
+  const isSiblingInLawRole = SIBLING_IN_LAW_ROLES.includes(selectedRole);
+  const parentPickerLabel = isSiblingInLawRole ? "Married to" : "Child of";
+  const parentPickerPlaceholder = isSiblingInLawRole ? "Select spouse's sibling..." : "Select parent...";
 
   const onSubmit = (data: AddMemberForm) => {
     addMemberMutation.mutate(
@@ -230,10 +243,23 @@ export default function Members() {
     }
   };
 
-  // Members eligible to be a "parent" in the tree (children who can have their own kids)
-  const parentCandidates = (members || []).filter((m) =>
-    ["Son", "Daughter", "Stepson", "Stepdaughter"].includes(m.relationshipLabel)
-  );
+  // Members eligible to be picked in the second "parent" dropdown -- who's
+  // valid depends on which relationship role is selected above (a grandchild
+  // hangs off the admin's own kids, a niece/nephew off a sibling or their
+  // spouse, an in-law sibling's spouse off the sibling they married).
+  const parentCandidates = useMemo(() => {
+    if (!members) return [];
+    if (GRANDCHILD_ROLES.includes(selectedRole)) {
+      return members.filter((m) => ["Son", "Daughter", "Stepson", "Stepdaughter"].includes(m.relationshipLabel));
+    }
+    if (NIECE_NEPHEW_ROLES.includes(selectedRole)) {
+      return members.filter((m) => ["Brother", "Sister", "Brother-in-law", "Sister-in-law"].includes(m.relationshipLabel));
+    }
+    if (SIBLING_IN_LAW_ROLES.includes(selectedRole)) {
+      return members.filter((m) => ["Brother", "Sister"].includes(m.relationshipLabel));
+    }
+    return [];
+  }, [members, selectedRole]);
 
   // Sorted / grouped member list for display
   type MemberSection = { heading: string | null; items: typeof members };
@@ -395,10 +421,10 @@ export default function Members() {
                         <Select
                           onValueChange={(val) => {
                             field.onChange(val);
-                            // Clear parent if not a grandchild role
-                            if (!["Grandson", "Granddaughter"].includes(val)) {
-                              form.setValue("parentPersonId", null);
-                            }
+                            // The candidate list depends on the role (see parentCandidates
+                            // above), so any previous selection may no longer be valid --
+                            // always reset it rather than trying to carry it over.
+                            form.setValue("parentPersonId", null);
                             // Default gender from the role's group (Women/Men) --
                             // still freely editable below via the Gender field.
                             form.setValue("gender", GENDER_BY_ROLE[val] ?? null);
@@ -456,21 +482,23 @@ export default function Members() {
                     )}
                   />
 
-                  {/* Parent picker — shown for grandchild roles */}
-                  {isGrandchildRole && parentCandidates.length > 0 && (
+                  {/* Parent picker — shown for grandchild, niece/nephew, and
+                      in-law-sibling roles, which all need to know which
+                      existing member they hang off of (see PARENT_PICKER_ROLES) */}
+                  {needsParentPicker && parentCandidates.length > 0 && (
                     <FormField
                       control={form.control}
                       name="parentPersonId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Child of</FormLabel>
+                          <FormLabel>{parentPickerLabel}</FormLabel>
                           <Select
                             onValueChange={(val) => field.onChange(val === "none" ? null : val)}
                             value={field.value ?? "none"}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select parent..." />
+                                <SelectValue placeholder={parentPickerPlaceholder} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
