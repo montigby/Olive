@@ -1,6 +1,6 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { db } from "@workspace/db";
 import { personsTable, lifeEventsTable, accountsTable, relationshipsTable, memoriesTable } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
@@ -16,13 +16,16 @@ const router = Router();
 
 // Caps OpenAI spend per person -- each request can trigger several tool
 // calls, so this is deliberately request-count-based rather than trying to
-// track token cost per call.
+// track token cost per call. requireAuth runs before this limiter (see the
+// route below), so req.auth.personId is always set in practice -- the IP
+// fallback is defensive only, but still normalized via ipKeyGenerator for
+// the same IPv6-subnet-rotation reason as the login limiter in auth.ts.
 const aiChatLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.auth?.personId ?? req.ip ?? "unknown",
+  keyGenerator: (req) => req.auth?.personId ?? ipKeyGenerator(req.ip ?? "unknown"),
   message: { error: "Too many requests", message: "Please slow down and try again shortly." },
 });
 

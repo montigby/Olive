@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { db } from "@workspace/db";
 import {
   personsTable,
@@ -16,13 +16,17 @@ import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 const router = Router();
 
 // Caps brute-force password guessing against a single email while staying
-// generous for a real family member fumbling their own password.
+// generous for a real family member fumbling their own password. Login is
+// pre-auth by definition, so this always keys on IP -- ipKeyGenerator
+// normalizes IPv6 to a subnet prefix instead of the raw address, since an
+// attacker can otherwise rotate through effectively unlimited distinct
+// addresses within their own assigned IPv6 prefix to dodge the cap.
 const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}:${req.body?.email ?? ""}`,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip ?? "unknown")}:${req.body?.email ?? ""}`,
   message: { error: "Too many login attempts", message: "Please try again in a few minutes." },
 });
 
