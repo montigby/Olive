@@ -91,6 +91,28 @@ A long session split across three threads: reviewing an old "build a business" c
 
 ---
 
+## 🟡 Memories of the Deceased — end-to-end verified 2026-08-04, one real gap found
+
+Ran a full live test against production with a throwaway test family (registered fresh, self-deleted afterward, no debris left): added "Mary" as Mom, marked her deceased with a date of passing, opted into memory collection, added a text memory, then checked the admin's real inbox for the promised immediate prompt email.
+
+**Confirmed working:**
+- Marking deceased + date of passing correctly auto-creates a "Passing" life event with the right date
+- The opt-in prompt UI ("Start collecting memories of {name}?") appears exactly as spec'd right after marking someone deceased
+- Opt-in flips `memoryCollectionEnabled` correctly; "Turn off memory collection" shows as admin-only, matching the asymmetric-friction design
+- Adding a memory works end-to-end: publish-as-submitted immediately (no moderation queue), correct contributor attribution ("Jack MemTest · Me"), Edit/Delete controls present for the contributor
+
+**Real gap found, traced to the code:** the original spec (`legacy_memories_feature.md`) says the first prompt to each contributor is "sent immediately upon opt-in." This was never actually wired up. `POST /persons/:personId/memory-collection` (the opt-in endpoint, `memories.ts`) only flips the flag — it never calls `sendMemoryPrompt`. The *only* place `sendMemoryPrompt` is ever called is the daily Vercel cron (`GET /api/cron/memory-prompts`, `cron.ts`), meaning a family could wait up to a day (or longer depending on time-of-day) after opting in before any contributor gets prompted, not "immediately." Confirmed via a real 10+-second wait and an `in:anywhere` Gmail search — no email arrived after opt-in.
+
+**What IS confirmed correct, just untested live** (verified by reading `cron.ts`/`memoryPrompts.ts`, not by triggering the actual cron — no `CRON_SECRET` available locally): tier-based targeting (tier ≤ 2 relative to the deceased, self excluded), per-recipient opt-out checks, the 21-day minimum cadence between prompts, and prompt sequencing (`pickNextPrompt` always returns the generic prompt first when a recipient's log is empty, then rotates through categories) — all look correctly implemented for whenever the cron does run.
+
+**Still open:**
+- [ ] Decide whether to close the gap (send the generic prompt immediately from the opt-in endpoint, reusing the cron's targeting logic for just that one deceased person) or update the spec/docs to say "next cron cycle" instead — this is a product call, not purely technical
+- [ ] Confirm the daily cron actually fires and Resend delivers (needs `CRON_SECRET`, which the user has in Vercel but wasn't used in this test)
+- [ ] Confirm the `/api/cron/memory-prompts` Vercel cron job is within plan limits — still needs the dashboard
+- [ ] Photo-attached memories (up to 3 photos) — not exercised in this pass, only text
+
+Historical build/deploy notes below are superseded by the above for "is it verified" purposes.
+
 ## 🟡 Memories of the Deceased — BUILT 2026-07-20, Vercel access restored 2026-07-21, still not manually verified end-to-end
 
 Full feature scoped via direct interview with the user (now personally driving this feature, not the supervisor) and built same-day. Deceased flag + date of passing on a profile, opt-in memory collection (any family member can start it, admin-only to stop), memories with text + up to 3 photos, publish-as-submitted with contributor edit / contributor-or-admin delete, a 45-prompt bank across 6 categories that rotates and avoids repeats for years, a daily cron that targets close relatives via the existing tier/graph system (not a blanket send) and emails prompts through Resend, an AI chat tool for adding memories conversationally, auto-logged life event + birthday-reminder exclusion when someone is marked deceased.
