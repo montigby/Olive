@@ -3,6 +3,7 @@ import { db, personsTable, memoriesTable, memoryPromptOptoutsTable } from "@work
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { describeRelationship } from "../lib/visibility";
+import { sendMemoryPromptsForPerson } from "../lib/memoryPromptSender";
 
 const router = Router();
 
@@ -255,6 +256,14 @@ router.post("/persons/:personId/memory-collection", requireAuth, async (req, res
     .set({ memoryCollectionEnabled: enabled })
     .where(eq(personsTable.id, personId))
     .returning();
+
+  // Fire the first prompt immediately rather than waiting for the next
+  // cron sweep -- best-effort, never throws (see memoryPromptSender.ts).
+  // Awaited (not fire-and-forget) because a serverless function isn't
+  // guaranteed to keep running after it responds.
+  if (enabled) {
+    await sendMemoryPromptsForPerson(personId);
+  }
 
   res.json({ id: updated.id, memoryCollectionEnabled: updated.memoryCollectionEnabled });
 });
