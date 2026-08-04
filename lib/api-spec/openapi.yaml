@@ -62,14 +62,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WaitlistSignupBody"
+              $ref: "#/components/schemas/JoinWaitlistBody"
       responses:
         "201":
           description: Added to the waitlist (idempotent -- re-submitting the same email is not an error)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WaitlistSignupResponse"
+                $ref: "#/components/schemas/JoinWaitlistResponse"
         "400":
           description: Validation error
           content:
@@ -548,14 +548,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MergePreviewBody"
+              $ref: "#/components/schemas/PreviewInviteMergeBody"
       responses:
         "200":
           description: Merge preview -- the placeholder and the matched existing account
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MergePreviewResponse"
+                $ref: "#/components/schemas/PreviewInviteMergeResponse"
         "400":
           description: Invalid or expired token
           content:
@@ -585,14 +585,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MergeConfirmBody"
+              $ref: "#/components/schemas/ConfirmInviteMergeBody"
       responses:
         "200":
           description: Merge completed and logged in
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MergeConfirmResponse"
+                $ref: "#/components/schemas/ConfirmInviteMergeResponse"
         "400":
           description: Invalid or expired token
           content:
@@ -1518,7 +1518,7 @@ components:
       required: [ok]
 
     # ─── Waitlist ──────────────────────────────────────────────────
-    WaitlistSignupBody:
+    JoinWaitlistBody:
       type: object
       properties:
         email:
@@ -1526,7 +1526,7 @@ components:
           format: email
       required: [email]
 
-    WaitlistSignupResponse:
+    JoinWaitlistResponse:
       type: object
       properties:
         ok:
@@ -2030,7 +2030,7 @@ components:
           minLength: 8
       required: [email, password]
 
-    MergePreviewBody:
+    PreviewInviteMergeBody:
       type: object
       description: >-
         Re-authenticates the invitee's existing Olive account by email +
@@ -2043,7 +2043,7 @@ components:
           type: string
       required: [email, password]
 
-    MergePreviewResponse:
+    PreviewInviteMergeResponse:
       type: object
       properties:
         placeholder:
@@ -2083,7 +2083,7 @@ components:
           required: [id, firstName, lastName, email, familyUnitId]
       required: [placeholder, existingPerson]
 
-    MergeConfirmBody:
+    ConfirmInviteMergeBody:
       type: object
       properties:
         email:
@@ -2093,7 +2093,7 @@ components:
           type: string
       required: [email, password]
 
-    MergeConfirmResponse:
+    ConfirmInviteMergeResponse:
       type: object
       properties:
         token:

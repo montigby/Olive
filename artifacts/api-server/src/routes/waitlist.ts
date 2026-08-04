@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { waitlistSignupsTable } from "@workspace/db";
-import { WaitlistSignupBody } from "@workspace/api-zod";
+import { JoinWaitlistBody } from "@workspace/api-zod";
 
 const router = Router();
 
@@ -9,7 +9,7 @@ const router = Router();
 // email is not an error (onConflictDoNothing), so a visitor double-clicking
 // or resubmitting the form doesn't see a confusing failure.
 router.post("/waitlist", async (req, res) => {
-  const parsed = WaitlistSignupBody.safeParse(req.body);
+  const parsed = JoinWaitlistBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
     return;

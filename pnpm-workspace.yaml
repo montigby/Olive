@@ -161,7 +161,11 @@ overrides:
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
-  esbuild: "0.27.3"
+  # Bumped 2026-08-04: 0.27.3 -> 0.28.1 to patch GHSA-g7r4-m6w7-qqqr (esbuild
+  # dev-server arbitrary file read on Windows, low severity, not exploitable
+  # in the actual bundled production build -- esbuild here is a build tool,
+  # not a served server -- but cheap to patch anyway).
+  esbuild: "0.28.1"
   # Security patches for known CVEs in api-server's real production dependency
   # chain (express's own transitive deps) -- router@2.2.0 (express 5's router
   # package) hasn't cut a release with a fixed path-to-regexp yet, so this
@@ -172,6 +176,13 @@ overrides:
   qs: "^6.15.3"
   body-parser: "^2.3.0"
   form-data: "^4.0.6"
+  # Added 2026-08-04: patches 3 GHSA advisories (1 high, 2 moderate) in
+  # ip-address, a transitive dep of api-server's express-rate-limit (the
+  # login/AI-chat rate limiter per security.md) -- octal/leading-zero octet
+  # decoding and IPv4-mapped/NAT64 IPv6 misclassification could bypass
+  # SSRF/trust-boundary checks. express-rate-limit itself declares
+  # "ip-address": "^10.2.0", so 10.3.1+ stays within its own compatible range.
+  ip-address: "^10.3.1"
 
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true

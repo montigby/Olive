@@ -373,7 +373,20 @@ export default function Members() {
                 Add Family Member
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent
+              className="sm:max-w-md"
+              onOpenAutoFocus={(event) => {
+                // Radix focuses the first field the instant the dialog mounts, before its
+                // 200ms open animation settles -- on mobile this makes the keyboard's
+                // scroll-into-view use mid-animation geometry and cover the field. Defer
+                // focus until the animation is done instead.
+                event.preventDefault();
+                const container = event.target as HTMLElement | null;
+                window.setTimeout(() => {
+                  container?.querySelector<HTMLInputElement>("input")?.focus();
+                }, 250);
+              }}
+            >
               <DialogHeader>
                 <DialogTitle className="font-serif text-2xl">Add Family Member</DialogTitle>
                 <DialogDescription>

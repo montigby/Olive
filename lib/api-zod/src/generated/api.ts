@@ -17,7 +17,7 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Join the waitlist
  */
-export const WaitlistSignupBody = zod.object({
+export const JoinWaitlistBody = zod.object({
   email: zod.string().email(),
 });
 
@@ -67,13 +67,43 @@ export const LoginResponse = zod.object({
       facebook: zod.string().nullish(),
       tiktok: zod.string().nullish(),
       linkedin: zod.string().nullish(),
+      snapchat: zod.string().nullish(),
+      venmo: zod.string().nullish(),
+      bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
       relationshipLabel: zod.string(),
+      viewerRelationshipLabel: zod
+        .string()
+        .optional()
+        .describe(
+          'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+        ),
+      gender: zod
+        .enum(["male", "female"])
+        .nullish()
+        .describe(
+          'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+        ),
+      parentPersonId: zod.string().uuid().nullish(),
       familyUnitId: zod.string().uuid(),
       isAdmin: zod.boolean(),
       claimed: zod.boolean(),
       claimedAt: zod.coerce.date().nullish(),
       inviteExpiresAt: zod.coerce.date().nullish(),
+      tier2ContactField: zod.enum(["phone", "email"]),
+      confirmedMembersOnly: zod.boolean(),
+      hideAddress: zod.boolean(),
+      hideInstagram: zod.boolean(),
+      hideFacebook: zod.boolean(),
+      hideTiktok: zod.boolean(),
+      hideLinkedin: zod.boolean(),
+      hideSnapchat: zod.boolean(),
+      hideVenmo: zod.boolean(),
+      hideBereal: zod.boolean(),
+      hideOtherSocial: zod.boolean(),
+      deceased: zod.boolean(),
+      dateOfPassing: zod.string().nullish(),
+      memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     })
@@ -86,6 +116,7 @@ export const LoginResponse = zod.object({
           parentUnitId: zod.string().uuid().nullish(),
           parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
           parentLinkedAt: zod.coerce.date().nullish(),
+          membersCanInvite: zod.boolean(),
           createdAt: zod.coerce.date(),
           memberCount: zod.number(),
           claimedCount: zod.number(),
@@ -124,13 +155,43 @@ export const GetMeResponse = zod
     facebook: zod.string().nullish(),
     tiktok: zod.string().nullish(),
     linkedin: zod.string().nullish(),
+    snapchat: zod.string().nullish(),
+    venmo: zod.string().nullish(),
+    bereal: zod.string().nullish(),
     otherSocial: zod.string().nullish(),
     relationshipLabel: zod.string(),
+    viewerRelationshipLabel: zod
+      .string()
+      .optional()
+      .describe(
+        'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+      ),
+    gender: zod
+      .enum(["male", "female"])
+      .nullish()
+      .describe(
+        'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+      ),
+    parentPersonId: zod.string().uuid().nullish(),
     familyUnitId: zod.string().uuid(),
     isAdmin: zod.boolean(),
     claimed: zod.boolean(),
     claimedAt: zod.coerce.date().nullish(),
     inviteExpiresAt: zod.coerce.date().nullish(),
+    tier2ContactField: zod.enum(["phone", "email"]),
+    confirmedMembersOnly: zod.boolean(),
+    hideAddress: zod.boolean(),
+    hideInstagram: zod.boolean(),
+    hideFacebook: zod.boolean(),
+    hideTiktok: zod.boolean(),
+    hideLinkedin: zod.boolean(),
+    hideSnapchat: zod.boolean(),
+    hideVenmo: zod.boolean(),
+    hideBereal: zod.boolean(),
+    hideOtherSocial: zod.boolean(),
+    deceased: zod.boolean(),
+    dateOfPassing: zod.string().nullish(),
+    memoryCollectionEnabled: zod.boolean(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   })
@@ -143,12 +204,27 @@ export const GetMeResponse = zod
         parentUnitId: zod.string().uuid().nullish(),
         parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
         parentLinkedAt: zod.coerce.date().nullish(),
+        membersCanInvite: zod.boolean(),
         createdAt: zod.coerce.date(),
         memberCount: zod.number(),
         claimedCount: zod.number(),
       }),
     }),
   );
+
+/**
+ * @summary Change the current account's password
+ */
+export const changePasswordBodyNewPasswordMin = 8;
+
+export const ChangePasswordBody = zod.object({
+  currentPassword: zod.string(),
+  newPassword: zod.string().min(changePasswordBodyNewPasswordMin),
+});
+
+export const ChangePasswordResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 /**
  * @summary Get a person profile
@@ -175,13 +251,43 @@ export const GetPersonResponse = zod.object({
   facebook: zod.string().nullish(),
   tiktok: zod.string().nullish(),
   linkedin: zod.string().nullish(),
+  snapchat: zod.string().nullish(),
+  venmo: zod.string().nullish(),
+  bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
   relationshipLabel: zod.string(),
+  viewerRelationshipLabel: zod
+    .string()
+    .optional()
+    .describe(
+      'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+    ),
+  gender: zod
+    .enum(["male", "female"])
+    .nullish()
+    .describe(
+      'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+    ),
+  parentPersonId: zod.string().uuid().nullish(),
   familyUnitId: zod.string().uuid(),
   isAdmin: zod.boolean(),
   claimed: zod.boolean(),
   claimedAt: zod.coerce.date().nullish(),
   inviteExpiresAt: zod.coerce.date().nullish(),
+  tier2ContactField: zod.enum(["phone", "email"]),
+  confirmedMembersOnly: zod.boolean(),
+  hideAddress: zod.boolean(),
+  hideInstagram: zod.boolean(),
+  hideFacebook: zod.boolean(),
+  hideTiktok: zod.boolean(),
+  hideLinkedin: zod.boolean(),
+  hideSnapchat: zod.boolean(),
+  hideVenmo: zod.boolean(),
+  hideBereal: zod.boolean(),
+  hideOtherSocial: zod.boolean(),
+  deceased: zod.boolean(),
+  dateOfPassing: zod.string().nullish(),
+  memoryCollectionEnabled: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -250,13 +356,43 @@ export const UpdatePersonResponse = zod.object({
   facebook: zod.string().nullish(),
   tiktok: zod.string().nullish(),
   linkedin: zod.string().nullish(),
+  snapchat: zod.string().nullish(),
+  venmo: zod.string().nullish(),
+  bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
   relationshipLabel: zod.string(),
+  viewerRelationshipLabel: zod
+    .string()
+    .optional()
+    .describe(
+      'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+    ),
+  gender: zod
+    .enum(["male", "female"])
+    .nullish()
+    .describe(
+      'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+    ),
+  parentPersonId: zod.string().uuid().nullish(),
   familyUnitId: zod.string().uuid(),
   isAdmin: zod.boolean(),
   claimed: zod.boolean(),
   claimedAt: zod.coerce.date().nullish(),
   inviteExpiresAt: zod.coerce.date().nullish(),
+  tier2ContactField: zod.enum(["phone", "email"]),
+  confirmedMembersOnly: zod.boolean(),
+  hideAddress: zod.boolean(),
+  hideInstagram: zod.boolean(),
+  hideFacebook: zod.boolean(),
+  hideTiktok: zod.boolean(),
+  hideLinkedin: zod.boolean(),
+  hideSnapchat: zod.boolean(),
+  hideVenmo: zod.boolean(),
+  hideBereal: zod.boolean(),
+  hideOtherSocial: zod.boolean(),
+  deceased: zod.boolean(),
+  dateOfPassing: zod.string().nullish(),
+  memoryCollectionEnabled: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -270,6 +406,76 @@ export const DeletePersonParams = zod.object({
 
 export const DeletePersonResponse = zod.object({
   message: zod.string(),
+});
+
+/**
+ * @summary Grant or revoke admin rights for a claimed member (admin only, same unit)
+ */
+export const UpdatePersonAdminParams = zod.object({
+  personId: zod.coerce.string().uuid(),
+});
+
+export const UpdatePersonAdminBody = zod.object({
+  isAdmin: zod.boolean(),
+});
+
+export const UpdatePersonAdminResponse = zod.object({
+  id: zod.string().uuid(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  photoUrl: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  addressLine1: zod.string().nullish(),
+  addressCity: zod.string().nullish(),
+  addressState: zod.string().nullish(),
+  addressZip: zod.string().nullish(),
+  addressCountry: zod.string().nullish(),
+  birthday: zod.string().nullish(),
+  showBirthYear: zod.boolean(),
+  instagram: zod.string().nullish(),
+  facebook: zod.string().nullish(),
+  tiktok: zod.string().nullish(),
+  linkedin: zod.string().nullish(),
+  snapchat: zod.string().nullish(),
+  venmo: zod.string().nullish(),
+  bereal: zod.string().nullish(),
+  otherSocial: zod.string().nullish(),
+  relationshipLabel: zod.string(),
+  viewerRelationshipLabel: zod
+    .string()
+    .optional()
+    .describe(
+      'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+    ),
+  gender: zod
+    .enum(["male", "female"])
+    .nullish()
+    .describe(
+      'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+    ),
+  parentPersonId: zod.string().uuid().nullish(),
+  familyUnitId: zod.string().uuid(),
+  isAdmin: zod.boolean(),
+  claimed: zod.boolean(),
+  claimedAt: zod.coerce.date().nullish(),
+  inviteExpiresAt: zod.coerce.date().nullish(),
+  tier2ContactField: zod.enum(["phone", "email"]),
+  confirmedMembersOnly: zod.boolean(),
+  hideAddress: zod.boolean(),
+  hideInstagram: zod.boolean(),
+  hideFacebook: zod.boolean(),
+  hideTiktok: zod.boolean(),
+  hideLinkedin: zod.boolean(),
+  hideSnapchat: zod.boolean(),
+  hideVenmo: zod.boolean(),
+  hideBereal: zod.boolean(),
+  hideOtherSocial: zod.boolean(),
+  deceased: zod.boolean(),
+  dateOfPassing: zod.string().nullish(),
+  memoryCollectionEnabled: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });
 
 /**
@@ -311,6 +517,7 @@ export const GetFamilyUnitResponse = zod
     parentUnitId: zod.string().uuid().nullish(),
     parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
     parentLinkedAt: zod.coerce.date().nullish(),
+    membersCanInvite: zod.boolean(),
     createdAt: zod.coerce.date(),
     memberCount: zod.number(),
     claimedCount: zod.number(),
@@ -336,13 +543,43 @@ export const GetFamilyUnitResponse = zod
           facebook: zod.string().nullish(),
           tiktok: zod.string().nullish(),
           linkedin: zod.string().nullish(),
+          snapchat: zod.string().nullish(),
+          venmo: zod.string().nullish(),
+          bereal: zod.string().nullish(),
           otherSocial: zod.string().nullish(),
           relationshipLabel: zod.string(),
+          viewerRelationshipLabel: zod
+            .string()
+            .optional()
+            .describe(
+              'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+            ),
+          gender: zod
+            .enum(["male", "female"])
+            .nullish()
+            .describe(
+              'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+            ),
+          parentPersonId: zod.string().uuid().nullish(),
           familyUnitId: zod.string().uuid(),
           isAdmin: zod.boolean(),
           claimed: zod.boolean(),
           claimedAt: zod.coerce.date().nullish(),
           inviteExpiresAt: zod.coerce.date().nullish(),
+          tier2ContactField: zod.enum(["phone", "email"]),
+          confirmedMembersOnly: zod.boolean(),
+          hideAddress: zod.boolean(),
+          hideInstagram: zod.boolean(),
+          hideFacebook: zod.boolean(),
+          hideTiktok: zod.boolean(),
+          hideLinkedin: zod.boolean(),
+          hideSnapchat: zod.boolean(),
+          hideVenmo: zod.boolean(),
+          hideBereal: zod.boolean(),
+          hideOtherSocial: zod.boolean(),
+          deceased: zod.boolean(),
+          dateOfPassing: zod.string().nullish(),
+          memoryCollectionEnabled: zod.boolean(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date(),
         }),
@@ -369,6 +606,7 @@ export const UpdateFamilyUnitResponse = zod.object({
   parentUnitId: zod.string().uuid().nullish(),
   parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
   parentLinkedAt: zod.coerce.date().nullish(),
+  membersCanInvite: zod.boolean(),
   createdAt: zod.coerce.date(),
   memberCount: zod.number(),
   claimedCount: zod.number(),
@@ -399,13 +637,43 @@ export const ListMembersResponseItem = zod.object({
   facebook: zod.string().nullish(),
   tiktok: zod.string().nullish(),
   linkedin: zod.string().nullish(),
+  snapchat: zod.string().nullish(),
+  venmo: zod.string().nullish(),
+  bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
   relationshipLabel: zod.string(),
+  viewerRelationshipLabel: zod
+    .string()
+    .optional()
+    .describe(
+      'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+    ),
+  gender: zod
+    .enum(["male", "female"])
+    .nullish()
+    .describe(
+      'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+    ),
+  parentPersonId: zod.string().uuid().nullish(),
   familyUnitId: zod.string().uuid(),
   isAdmin: zod.boolean(),
   claimed: zod.boolean(),
   claimedAt: zod.coerce.date().nullish(),
   inviteExpiresAt: zod.coerce.date().nullish(),
+  tier2ContactField: zod.enum(["phone", "email"]),
+  confirmedMembersOnly: zod.boolean(),
+  hideAddress: zod.boolean(),
+  hideInstagram: zod.boolean(),
+  hideFacebook: zod.boolean(),
+  hideTiktok: zod.boolean(),
+  hideLinkedin: zod.boolean(),
+  hideSnapchat: zod.boolean(),
+  hideVenmo: zod.boolean(),
+  hideBereal: zod.boolean(),
+  hideOtherSocial: zod.boolean(),
+  deceased: zod.boolean(),
+  dateOfPassing: zod.string().nullish(),
+  memoryCollectionEnabled: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -425,6 +693,34 @@ export const AddMemberBody = zod.object({
   gender: zod.enum(["male", "female"]).nullish(),
   parentPersonId: zod.string().uuid().nullish(),
 });
+
+/**
+ * Edge direction for parent-type edges is from_person = child, to_person = parent (see relationships table convention).
+ * @summary Get all explicit relationship edges for a family unit
+ */
+export const ListUnitRelationshipsParams = zod.object({
+  unitId: zod.coerce.string().uuid(),
+});
+
+export const ListUnitRelationshipsResponseItem = zod
+  .object({
+    fromPerson: zod.string().uuid(),
+    toPerson: zod.string().uuid(),
+    type: zod.enum([
+      "biological_parent",
+      "adoptive_parent",
+      "step_parent",
+      "spouse",
+      "ex_spouse",
+      "partner",
+    ]),
+  })
+  .describe(
+    "An explicit relationship-layer edge. For parent-type edges, fromPerson is the child and toPerson is the parent.",
+  );
+export const ListUnitRelationshipsResponse = zod.array(
+  ListUnitRelationshipsResponseItem,
+);
 
 /**
  * @summary Generate or regenerate an invite link for a member (admin only)
@@ -490,13 +786,43 @@ export const ClaimProfileResponse = zod.object({
       facebook: zod.string().nullish(),
       tiktok: zod.string().nullish(),
       linkedin: zod.string().nullish(),
+      snapchat: zod.string().nullish(),
+      venmo: zod.string().nullish(),
+      bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
       relationshipLabel: zod.string(),
+      viewerRelationshipLabel: zod
+        .string()
+        .optional()
+        .describe(
+          'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+        ),
+      gender: zod
+        .enum(["male", "female"])
+        .nullish()
+        .describe(
+          'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+        ),
+      parentPersonId: zod.string().uuid().nullish(),
       familyUnitId: zod.string().uuid(),
       isAdmin: zod.boolean(),
       claimed: zod.boolean(),
       claimedAt: zod.coerce.date().nullish(),
       inviteExpiresAt: zod.coerce.date().nullish(),
+      tier2ContactField: zod.enum(["phone", "email"]),
+      confirmedMembersOnly: zod.boolean(),
+      hideAddress: zod.boolean(),
+      hideInstagram: zod.boolean(),
+      hideFacebook: zod.boolean(),
+      hideTiktok: zod.boolean(),
+      hideLinkedin: zod.boolean(),
+      hideSnapchat: zod.boolean(),
+      hideVenmo: zod.boolean(),
+      hideBereal: zod.boolean(),
+      hideOtherSocial: zod.boolean(),
+      deceased: zod.boolean(),
+      dateOfPassing: zod.string().nullish(),
+      memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     })
@@ -509,6 +835,7 @@ export const ClaimProfileResponse = zod.object({
           parentUnitId: zod.string().uuid().nullish(),
           parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
           parentLinkedAt: zod.coerce.date().nullish(),
+          membersCanInvite: zod.boolean(),
           createdAt: zod.coerce.date(),
           memberCount: zod.number(),
           claimedCount: zod.number(),
@@ -516,6 +843,131 @@ export const ClaimProfileResponse = zod.object({
       }),
     ),
   token: zod.string().describe("JWT session token"),
+});
+
+/**
+ * @summary Preview merging an invited placeholder profile into the invitee's existing Olive account (re-authenticates the existing account by email/password; does not write anything yet)
+ */
+export const PreviewInviteMergeParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const PreviewInviteMergeBody = zod
+  .object({
+    email: zod.string().email(),
+    password: zod.string(),
+  })
+  .describe(
+    "Re-authenticates the invitee's existing Olive account by email + password (not a new-account password minimum -- this is a login).",
+  );
+
+export const PreviewInviteMergeResponse = zod.object({
+  placeholder: zod.object({
+    id: zod.string().uuid(),
+    firstName: zod.string(),
+    lastName: zod.string(),
+    relationshipLabel: zod.string(),
+    unitName: zod.string(),
+    unitId: zod.string().uuid(),
+  }),
+  existingPerson: zod.object({
+    id: zod.string().uuid(),
+    firstName: zod.string(),
+    lastName: zod.string(),
+    email: zod.string().nullable(),
+    familyUnitId: zod.string().uuid(),
+  }),
+});
+
+/**
+ * @summary Confirm the merge previewed above and log in as the merged account
+ */
+export const ConfirmInviteMergeParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const ConfirmInviteMergeBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const ConfirmInviteMergeResponse = zod.object({
+  token: zod.string().describe("JWT session token"),
+  person: zod
+    .object({
+      id: zod.string().uuid(),
+      firstName: zod.string(),
+      lastName: zod.string(),
+      photoUrl: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      email: zod.string().nullish(),
+      addressLine1: zod.string().nullish(),
+      addressCity: zod.string().nullish(),
+      addressState: zod.string().nullish(),
+      addressZip: zod.string().nullish(),
+      addressCountry: zod.string().nullish(),
+      birthday: zod.string().nullish(),
+      showBirthYear: zod.boolean(),
+      instagram: zod.string().nullish(),
+      facebook: zod.string().nullish(),
+      tiktok: zod.string().nullish(),
+      linkedin: zod.string().nullish(),
+      snapchat: zod.string().nullish(),
+      venmo: zod.string().nullish(),
+      bereal: zod.string().nullish(),
+      otherSocial: zod.string().nullish(),
+      relationshipLabel: zod.string(),
+      viewerRelationshipLabel: zod
+        .string()
+        .optional()
+        .describe(
+          'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+        ),
+      gender: zod
+        .enum(["male", "female"])
+        .nullish()
+        .describe(
+          'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+        ),
+      parentPersonId: zod.string().uuid().nullish(),
+      familyUnitId: zod.string().uuid(),
+      isAdmin: zod.boolean(),
+      claimed: zod.boolean(),
+      claimedAt: zod.coerce.date().nullish(),
+      inviteExpiresAt: zod.coerce.date().nullish(),
+      tier2ContactField: zod.enum(["phone", "email"]),
+      confirmedMembersOnly: zod.boolean(),
+      hideAddress: zod.boolean(),
+      hideInstagram: zod.boolean(),
+      hideFacebook: zod.boolean(),
+      hideTiktok: zod.boolean(),
+      hideLinkedin: zod.boolean(),
+      hideSnapchat: zod.boolean(),
+      hideVenmo: zod.boolean(),
+      hideBereal: zod.boolean(),
+      hideOtherSocial: zod.boolean(),
+      deceased: zod.boolean(),
+      dateOfPassing: zod.string().nullish(),
+      memoryCollectionEnabled: zod.boolean(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    })
+    .and(
+      zod.object({
+        familyUnit: zod.object({
+          id: zod.string().uuid(),
+          unitName: zod.string(),
+          unitCode: zod.string(),
+          parentUnitId: zod.string().uuid().nullish(),
+          parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
+          parentLinkedAt: zod.coerce.date().nullish(),
+          membersCanInvite: zod.boolean(),
+          createdAt: zod.coerce.date(),
+          memberCount: zod.number(),
+          claimedCount: zod.number(),
+        }),
+      }),
+    ),
 });
 
 /**
@@ -639,13 +1091,43 @@ export const GetFamilyTreeResponse = zod.object({
         facebook: zod.string().nullish(),
         tiktok: zod.string().nullish(),
         linkedin: zod.string().nullish(),
+        snapchat: zod.string().nullish(),
+        venmo: zod.string().nullish(),
+        bereal: zod.string().nullish(),
         otherSocial: zod.string().nullish(),
         relationshipLabel: zod.string(),
+        viewerRelationshipLabel: zod
+          .string()
+          .optional()
+          .describe(
+            'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+          ),
+        gender: zod
+          .enum(["male", "female"])
+          .nullish()
+          .describe(
+            'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+          ),
+        parentPersonId: zod.string().uuid().nullish(),
         familyUnitId: zod.string().uuid(),
         isAdmin: zod.boolean(),
         claimed: zod.boolean(),
         claimedAt: zod.coerce.date().nullish(),
         inviteExpiresAt: zod.coerce.date().nullish(),
+        tier2ContactField: zod.enum(["phone", "email"]),
+        confirmedMembersOnly: zod.boolean(),
+        hideAddress: zod.boolean(),
+        hideInstagram: zod.boolean(),
+        hideFacebook: zod.boolean(),
+        hideTiktok: zod.boolean(),
+        hideLinkedin: zod.boolean(),
+        hideSnapchat: zod.boolean(),
+        hideVenmo: zod.boolean(),
+        hideBereal: zod.boolean(),
+        hideOtherSocial: zod.boolean(),
+        deceased: zod.boolean(),
+        dateOfPassing: zod.string().nullish(),
+        memoryCollectionEnabled: zod.boolean(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
       }),
@@ -675,52 +1157,387 @@ export const GetUnitSummaryResponse = zod.object({
   linkedUnits: zod.number(),
   pendingInvites: zod.number(),
   pendingLinkRequests: zod.number(),
+  birthdayCount: zod.number().describe("Members with a birthday this month"),
+  phoneCount: zod.number().describe("Members with a phone number on file"),
 });
 
 /**
- * @summary Preview merge: authenticate existing account and return placeholder + existing person data
+ * @summary Get upcoming birthdays in the unit and linked units
  */
-export const MergePreviewParams = zod.object({
-  token: zod.coerce.string(),
+export const GetUpcomingBirthdaysParams = zod.object({
+  unitId: zod.coerce.string().uuid(),
 });
 
-export const MergePreviewBody = zod.object({
-  email: zod.string().email(),
-  password: zod.string(),
+export const GetUpcomingBirthdaysResponseItem = zod.object({
+  personId: zod.string().uuid(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  photoUrl: zod.string().nullish(),
+  relationshipLabel: zod.string(),
+  viewerRelationshipLabel: zod
+    .string()
+    .optional()
+    .describe(
+      "The birthday person's relationship to the currently-authenticated viewer, computed on read. Omitted for cross-linked-unit entries -- callers should fall back to relationshipLabel.",
+    ),
+  birthday: zod.string(),
+  showBirthYear: zod.boolean(),
+  unitName: zod.string(),
+  daysUntil: zod.number().describe("Days until their next birthday"),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+});
+export const GetUpcomingBirthdaysResponse = zod.array(
+  GetUpcomingBirthdaysResponseItem,
+);
+
+/**
+ * @summary List life events for a person (same family unit only)
+ */
+export const ListLifeEventsParams = zod.object({
+  personId: zod.coerce.string().uuid(),
 });
 
-export const MergePreviewResponse = zod.object({
-  placeholder: zod.object({
+export const ListLifeEventsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  familyId: zod.string().uuid(),
+  personId: zod.string().uuid(),
+  eventType: zod.enum([
+    "graduation",
+    "marriage",
+    "new_baby",
+    "moved",
+    "new_job",
+    "death",
+    "custom",
+  ]),
+  eventDate: zod.string().describe("Date in YYYY-MM-DD format"),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  createdBy: zod.string().uuid().nullish(),
+});
+export const ListLifeEventsResponse = zod.array(ListLifeEventsResponseItem);
+
+/**
+ * @summary Log a life event for a person (admin, parent of the person, or self)
+ */
+export const CreateLifeEventParams = zod.object({
+  personId: zod.coerce.string().uuid(),
+});
+
+export const createLifeEventBodyEventDateRegExp = new RegExp(
+  "^\\d{4}-\\d{2}-\\d{2}$",
+);
+export const createLifeEventBodyNotesMax = 500;
+
+export const CreateLifeEventBody = zod.object({
+  eventType: zod.enum([
+    "graduation",
+    "marriage",
+    "new_baby",
+    "moved",
+    "new_job",
+    "death",
+    "custom",
+  ]),
+  eventDate: zod
+    .string()
+    .regex(createLifeEventBodyEventDateRegExp)
+    .describe("Date in YYYY-MM-DD format"),
+  notes: zod.string().max(createLifeEventBodyNotesMax).nullish(),
+});
+
+/**
+ * @summary Update a life event (creator, same-family admin, or a parent of the event's subject)
+ */
+export const UpdateLifeEventParams = zod.object({
+  eventId: zod.coerce.string().uuid(),
+});
+
+export const updateLifeEventBodyEventDateRegExp = new RegExp(
+  "^\\d{4}-\\d{2}-\\d{2}$",
+);
+export const updateLifeEventBodyNotesMax = 500;
+
+export const UpdateLifeEventBody = zod.object({
+  eventType: zod
+    .enum([
+      "graduation",
+      "marriage",
+      "new_baby",
+      "moved",
+      "new_job",
+      "death",
+      "custom",
+    ])
+    .optional(),
+  eventDate: zod
+    .string()
+    .regex(updateLifeEventBodyEventDateRegExp)
+    .optional()
+    .describe("Date in YYYY-MM-DD format"),
+  notes: zod.string().max(updateLifeEventBodyNotesMax).nullish(),
+});
+
+export const UpdateLifeEventResponse = zod.object({
+  id: zod.string().uuid(),
+  familyId: zod.string().uuid(),
+  personId: zod.string().uuid(),
+  eventType: zod.enum([
+    "graduation",
+    "marriage",
+    "new_baby",
+    "moved",
+    "new_job",
+    "death",
+    "custom",
+  ]),
+  eventDate: zod.string().describe("Date in YYYY-MM-DD format"),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  createdBy: zod.string().uuid().nullish(),
+});
+
+/**
+ * @summary Delete a life event (creator, same-family admin, or a parent of the event's subject)
+ */
+export const DeleteLifeEventParams = zod.object({
+  eventId: zod.coerce.string().uuid(),
+});
+
+export const DeleteLifeEventResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List memories about a (typically deceased) person, visible to the whole family unit
+ */
+export const ListMemoriesParams = zod.object({
+  personId: zod.coerce.string().uuid(),
+});
+
+export const ListMemoriesResponseItem = zod
+  .object({
     id: zod.string().uuid(),
-    firstName: zod.string(),
-    lastName: zod.string(),
-    relationshipLabel: zod.string(),
-    unitName: zod.string(),
-    unitId: zod.string().uuid(),
-  }),
-  existingPerson: zod.object({
+    personId: zod.string().uuid(),
+    body: zod.string(),
+    photoUrls: zod.array(zod.string()),
+    promptText: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+    contributorPersonId: zod.string().uuid().nullish(),
+    contributorName: zod
+      .string()
+      .describe(
+        "Contributor's full name, or \"A family member\" if they've since left the unit",
+      ),
+    contributorRelationship: zod
+      .string()
+      .nullish()
+      .describe("The contributor's relationship to the viewer, if computable"),
+    canEdit: zod
+      .boolean()
+      .describe("True only for the memory's own contributor"),
+    canDelete: zod
+      .boolean()
+      .describe("True for the contributor or a same-family admin"),
+  })
+  .describe(
+    "Shape returned by the list-memories endpoint, enriched for display.",
+  );
+export const ListMemoriesResponse = zod.array(ListMemoriesResponseItem);
+
+/**
+ * @summary Contribute a memory about a person. Requires memory collection to be turned on for that profile
+ */
+export const CreateMemoryParams = zod.object({
+  personId: zod.coerce.string().uuid(),
+});
+
+export const createMemoryBodyBodyMax = 4000;
+
+export const createMemoryBodyPhotoUrlsMax = 3;
+
+export const CreateMemoryBody = zod.object({
+  body: zod.string().max(createMemoryBodyBodyMax),
+  photoUrls: zod
+    .array(
+      zod
+        .string()
+        .describe('Must be an inline \"data:image\/...;base64,\" URI'),
+    )
+    .max(createMemoryBodyPhotoUrlsMax)
+    .optional(),
+  promptText: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a memory (contributor only)
+ */
+export const UpdateMemoryParams = zod.object({
+  memoryId: zod.coerce.string().uuid(),
+});
+
+export const updateMemoryBodyBodyMax = 4000;
+
+export const updateMemoryBodyPhotoUrlsMax = 3;
+
+export const UpdateMemoryBody = zod.object({
+  body: zod.string().max(updateMemoryBodyBodyMax).optional(),
+  photoUrls: zod
+    .array(
+      zod
+        .string()
+        .describe('Must be an inline \"data:image\/...;base64,\" URI'),
+    )
+    .max(updateMemoryBodyPhotoUrlsMax)
+    .optional(),
+});
+
+export const UpdateMemoryResponse = zod
+  .object({
     id: zod.string().uuid(),
-    firstName: zod.string(),
-    lastName: zod.string(),
-    email: zod.string().nullish(),
+    personId: zod.string().uuid(),
     familyUnitId: zod.string().uuid(),
-  }),
+    contributorPersonId: zod.string().uuid().nullish(),
+    body: zod.string(),
+    photoUrls: zod
+      .array(zod.string())
+      .describe(
+        "Inline data: URIs only (client-side resized before upload) -- never raw external URLs. At most 3.",
+      ),
+    promptText: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .describe("Raw memory row, as returned from create\/update.");
+
+/**
+ * @summary Delete a memory (contributor or same-family admin)
+ */
+export const DeleteMemoryParams = zod.object({
+  memoryId: zod.coerce.string().uuid(),
+});
+
+export const DeleteMemoryResponse = zod.object({
+  ok: zod.boolean(),
 });
 
 /**
- * @summary Confirm merge: re-authenticate and execute the account merge
+ * @summary Turn memory collection on (any family member, deceased profiles only) or off (admin only) for a person
  */
-export const MergeConfirmParams = zod.object({
-  token: zod.coerce.string(),
+export const SetMemoryCollectionEnabledParams = zod.object({
+  personId: zod.coerce.string().uuid(),
 });
 
-export const MergeConfirmBody = zod.object({
-  email: zod.string().email(),
-  password: zod.string(),
+export const SetMemoryCollectionEnabledBody = zod.object({
+  enabled: zod.boolean(),
 });
 
-export const MergeConfirmResponse = zod.object({
-  person: zod
+export const SetMemoryCollectionEnabledResponse = zod.object({
+  id: zod.string().uuid(),
+  memoryCollectionEnabled: zod.boolean(),
+});
+
+/**
+ * @summary Stop future memory-prompt emails about this specific deceased person for the caller only
+ */
+export const OptOutOfMemoryPromptsParams = zod.object({
+  personId: zod.coerce.string().uuid(),
+});
+
+export const OptOutOfMemoryPromptsResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get all data for the post-invite welcome / home-feed screen in one round-trip
+ */
+export const GetHomeFeedParams = zod.object({
+  unitId: zod.coerce.string().uuid(),
+});
+
+export const GetHomeFeedResponse = zod.object({
+  member: zod.object({
+    id: zod.string().uuid(),
+    firstName: zod.string(),
+    profileCompleteness: zod
+      .number()
+      .describe(
+        "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base",
+      ),
+    missingPriorityField: zod
+      .enum(["phone", "photo", "email", "birthday"])
+      .nullable(),
+  }),
+  family: zod.object({
+    unitName: zod.string(),
+  }),
+  upcomingBirthdays: zod.array(
+    zod.object({
+      memberId: zod.string().uuid(),
+      firstName: zod.string(),
+      lastName: zod.string(),
+      avatarUrl: zod.string().nullish(),
+      initials: zod.string(),
+      birthMonth: zod.number(),
+      birthDay: zod.number(),
+      daysUntil: zod
+        .number()
+        .describe(
+          "0-30 for upcoming; 358-364 for a birthday in the past 7 days",
+        ),
+      ageTurning: zod
+        .number()
+        .nullish()
+        .describe(
+          "Null when birth year is a placeholder or hidden (showBirthYear false)",
+        ),
+      phone: zod.string().nullish(),
+      email: zod.string().nullish(),
+    }),
+  ),
+  stats: zod.object({
+    birthdaysThisMonth: zod.number(),
+    newContactsCount: zod
+      .number()
+      .describe(
+        "Visible members (excluding viewer) created in the last 30 days",
+      ),
+  }),
+  recentUpdates: zod.array(
+    zod.object({
+      memberId: zod.string().uuid(),
+      name: zod.string(),
+      changeType: zod.enum(["joined", "photo", "phone", "address", "profile"]),
+      description: zod.string(),
+      timestamp: zod.coerce.date(),
+      avatarUrl: zod.string().nullish(),
+      initials: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * Rate-limited to 30 requests per 15 minutes per person (or IP, if unauthenticated context is somehow reached).
+ * @summary Chat with the Olive AI assistant, which can add/update/delete family members, log life events, and save memories via tool calls
+ */
+export const AiChatBody = zod.object({
+  messages: zod.array(
+    zod.object({
+      role: zod.enum(["user", "assistant"]),
+      content: zod.string(),
+    }),
+  ),
+  unitId: zod
+    .string()
+    .uuid()
+    .describe("Must match the caller's own family unit"),
+});
+
+export const AiChatResponse = zod.object({
+  reply: zod.string(),
+  memberAdded: zod
     .object({
       id: zod.string().uuid(),
       firstName: zod.string(),
@@ -739,51 +1556,347 @@ export const MergeConfirmResponse = zod.object({
       facebook: zod.string().nullish(),
       tiktok: zod.string().nullish(),
       linkedin: zod.string().nullish(),
+      snapchat: zod.string().nullish(),
+      venmo: zod.string().nullish(),
+      bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
       relationshipLabel: zod.string(),
+      viewerRelationshipLabel: zod
+        .string()
+        .optional()
+        .describe(
+          'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+        ),
+      gender: zod
+        .enum(["male", "female"])
+        .nullish()
+        .describe(
+          'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+        ),
+      parentPersonId: zod.string().uuid().nullish(),
       familyUnitId: zod.string().uuid(),
       isAdmin: zod.boolean(),
       claimed: zod.boolean(),
       claimedAt: zod.coerce.date().nullish(),
       inviteExpiresAt: zod.coerce.date().nullish(),
+      tier2ContactField: zod.enum(["phone", "email"]),
+      confirmedMembersOnly: zod.boolean(),
+      hideAddress: zod.boolean(),
+      hideInstagram: zod.boolean(),
+      hideFacebook: zod.boolean(),
+      hideTiktok: zod.boolean(),
+      hideLinkedin: zod.boolean(),
+      hideSnapchat: zod.boolean(),
+      hideVenmo: zod.boolean(),
+      hideBereal: zod.boolean(),
+      hideOtherSocial: zod.boolean(),
+      deceased: zod.boolean(),
+      dateOfPassing: zod.string().nullish(),
+      memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     })
-    .and(
-      zod.object({
-        familyUnit: zod.object({
-          id: zod.string().uuid(),
-          unitName: zod.string(),
-          unitCode: zod.string(),
-          parentUnitId: zod.string().uuid().nullish(),
-          parentLinkStatus: zod.enum(["none", "pending", "accepted"]),
-          parentLinkedAt: zod.coerce.date().nullish(),
-          createdAt: zod.coerce.date(),
-          memberCount: zod.number(),
-          claimedCount: zod.number(),
-        }),
-      }),
-    ),
-  token: zod.string().describe("JWT session token"),
+    .nullable(),
+  memberUpdated: zod
+    .object({
+      id: zod.string().uuid(),
+      firstName: zod.string(),
+      lastName: zod.string(),
+      photoUrl: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      email: zod.string().nullish(),
+      addressLine1: zod.string().nullish(),
+      addressCity: zod.string().nullish(),
+      addressState: zod.string().nullish(),
+      addressZip: zod.string().nullish(),
+      addressCountry: zod.string().nullish(),
+      birthday: zod.string().nullish(),
+      showBirthYear: zod.boolean(),
+      instagram: zod.string().nullish(),
+      facebook: zod.string().nullish(),
+      tiktok: zod.string().nullish(),
+      linkedin: zod.string().nullish(),
+      snapchat: zod.string().nullish(),
+      venmo: zod.string().nullish(),
+      bereal: zod.string().nullish(),
+      otherSocial: zod.string().nullish(),
+      relationshipLabel: zod.string(),
+      viewerRelationshipLabel: zod
+        .string()
+        .optional()
+        .describe(
+          'The target\'s relationship to the currently-authenticated viewer (e.g. \"Sibling\", \"Parent\", \"Me\"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin\'s perspective at creation time. Omitted when it can\'t be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel.',
+        ),
+      gender: zod
+        .enum(["male", "female"])
+        .nullish()
+        .describe(
+          'Unset (null) means not specified \/ prefer not to say. Drives gendered relationship terms (e.g. \"Brother\" vs \"Sister\") in viewerRelationshipLabel -- neutral terms are used when null.',
+        ),
+      parentPersonId: zod.string().uuid().nullish(),
+      familyUnitId: zod.string().uuid(),
+      isAdmin: zod.boolean(),
+      claimed: zod.boolean(),
+      claimedAt: zod.coerce.date().nullish(),
+      inviteExpiresAt: zod.coerce.date().nullish(),
+      tier2ContactField: zod.enum(["phone", "email"]),
+      confirmedMembersOnly: zod.boolean(),
+      hideAddress: zod.boolean(),
+      hideInstagram: zod.boolean(),
+      hideFacebook: zod.boolean(),
+      hideTiktok: zod.boolean(),
+      hideLinkedin: zod.boolean(),
+      hideSnapchat: zod.boolean(),
+      hideVenmo: zod.boolean(),
+      hideBereal: zod.boolean(),
+      hideOtherSocial: zod.boolean(),
+      deceased: zod.boolean(),
+      dateOfPassing: zod.string().nullish(),
+      memoryCollectionEnabled: zod.boolean(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    })
+    .nullable(),
+  lifeEventAdded: zod
+    .object({
+      personName: zod.string(),
+      eventType: zod.string(),
+    })
+    .nullable(),
+  memoryAdded: zod
+    .object({
+      personName: zod.string(),
+    })
+    .nullable(),
+  memberDeleted: zod
+    .object({
+      name: zod.string(),
+    })
+    .nullable(),
 });
 
 /**
- * @summary Get upcoming birthdays in the unit and linked units
+ * @summary Revoke any active shared invite token for this unit and mint a new one (admin only)
  */
-export const GetUpcomingBirthdaysParams = zod.object({
+export const RegenerateInviteTokenParams = zod.object({
   unitId: zod.coerce.string().uuid(),
 });
 
-export const GetUpcomingBirthdaysResponseItem = zod.object({
-  personId: zod.string().uuid(),
-  firstName: zod.string(),
-  lastName: zod.string(),
-  relationshipLabel: zod.string(),
-  birthday: zod.string(),
-  showBirthYear: zod.boolean(),
-  unitName: zod.string(),
-  daysUntil: zod.number().describe("Days until their next birthday"),
+/**
+ * @summary Get the currently-active shared invite token for this unit. Admins always have access; non-admins only when the unit allows member-sent invites
+ */
+export const GetActiveInviteTokenParams = zod.object({
+  unitId: zod.coerce.string().uuid(),
 });
-export const GetUpcomingBirthdaysResponse = zod.array(
-  GetUpcomingBirthdaysResponseItem,
-);
+
+export const GetActiveInviteTokenResponse = zod.object({
+  active: zod
+    .object({
+      id: zod.string().uuid(),
+      token: zod.string(),
+      url: zod.string(),
+      expiresAt: zod.coerce.date().nullable(),
+      maxUses: zod.number().nullable(),
+      useCount: zod.number(),
+      createdAt: zod.coerce.date(),
+    })
+    .nullable(),
+});
+
+/**
+ * @summary Resolve a shared invite token to its family display name and inviter (public -- no auth required, never leaks the member list)
+ */
+export const ResolveJoinTokenParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const ResolveJoinTokenResponse = zod.object({
+  family: zod.object({
+    unitName: zod.string(),
+  }),
+  inviter: zod
+    .object({
+      firstName: zod.string(),
+      lastName: zod.string(),
+    })
+    .nullable(),
+});
+
+/**
+ * @summary Fuzzy-match a claimer-supplied name against unclaimed, non-deceased people in the invite token's family (public -- no auth required)
+ */
+export const matchClaimCandidatesBodyNameMin = 2;
+
+export const MatchClaimCandidatesBody = zod.object({
+  token: zod.string(),
+  name: zod.string().min(matchClaimCandidatesBodyNameMin),
+  relationshipAnswers: zod
+    .object({
+      parentIds: zod.array(zod.string().uuid()).optional(),
+      spouseId: zod.string().uuid().optional(),
+    })
+    .optional()
+    .describe(
+      "Optional disambiguation answers used to narrow candidate matches.",
+    ),
+});
+
+export const matchClaimCandidatesResponseCandidatesItemParentsMax = 2;
+
+export const MatchClaimCandidatesResponse = zod.object({
+  overflow: zod
+    .boolean()
+    .describe(
+      "True if more than 4 candidates matched (candidates list is capped at 4)",
+    ),
+  candidates: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      firstName: zod.string(),
+      lastName: zod.string().nullable(),
+      parents: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            firstName: zod.string(),
+          }),
+        )
+        .max(matchClaimCandidatesResponseCandidatesItemParentsMax),
+      spouse: zod
+        .object({
+          id: zod.string().uuid(),
+          firstName: zod.string(),
+        })
+        .nullable(),
+      birthYear: zod.number().nullable(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a claim request against an invite token, either claiming an existing unclaimed profile or registering as a brand-new person (public -- no auth required)
+ */
+export const createClaimRequestBodyClaimerPasswordMin = 8;
+
+export const CreateClaimRequestBody = zod
+  .object({
+    token: zod.string(),
+    type: zod.enum(["claim_existing", "create_new"]),
+    targetPersonId: zod
+      .string()
+      .uuid()
+      .optional()
+      .describe("Required when type is claim_existing"),
+    claimerEmail: zod.string().email(),
+    claimerPassword: zod.string().min(createClaimRequestBodyClaimerPasswordMin),
+    claimerName: zod.string(),
+    relationshipAnswers: zod
+      .object({
+        parentIds: zod.array(zod.string().uuid()).optional(),
+        spouseId: zod.string().uuid().optional(),
+      })
+      .optional()
+      .describe(
+        "Optional disambiguation answers used to narrow candidate matches.",
+      ),
+    attachingRelationships: zod
+      .array(
+        zod.object({
+          relatedPersonId: zod.string().uuid(),
+          type: zod
+            .string()
+            .describe(
+              "One of the relationship-edge types (e.g. spouse, partner, biological_parent, adoptive_parent, step_parent). Only meaningful for type = create_new.",
+            ),
+        }),
+      )
+      .optional(),
+  })
+  .describe(
+    "For type = claim_existing, targetPersonId is required. For type = create_new, attachingRelationships may be supplied instead.",
+  );
+
+/**
+ * @summary Poll a claim request's status by its (unguessable) id (public -- no auth required)
+ */
+export const GetClaimStatusParams = zod.object({
+  claimId: zod.coerce.string().uuid(),
+});
+
+export const GetClaimStatusResponse = zod.object({
+  id: zod.string().uuid(),
+  status: zod.enum(["pending", "approved", "rejected", "superseded"]),
+  type: zod.enum(["claim_existing", "create_new"]),
+  decidedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List claim requests for a unit's approval inbox (admin only)
+ */
+export const ListClaimRequestsParams = zod.object({
+  unitId: zod.coerce.string().uuid(),
+});
+
+export const listClaimRequestsQueryStatusDefault = `pending`;
+
+export const ListClaimRequestsQueryParams = zod.object({
+  status: zod
+    .enum(["pending", "approved", "rejected", "superseded"])
+    .default(listClaimRequestsQueryStatusDefault)
+    .describe('Defaults to \"pending\"'),
+});
+
+export const ListClaimRequestsResponse = zod.object({
+  claims: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      type: zod.enum(["claim_existing", "create_new"]),
+      targetPersonId: zod.string().uuid().nullish(),
+      claimerDisplayName: zod.string(),
+      claimerContact: zod.string().nullish(),
+      claimerSignal: zod
+        .record(zod.string(), zod.unknown())
+        .describe(
+          "Sanitized claimer_signal JSONB (passwordHash stripped) -- typically contains relationshipAnswers, attachingRelationships, arrival, and (for rejected claims) rejectionReason.",
+        ),
+      status: zod.enum(["pending", "approved", "rejected", "superseded"]),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Approve a pending claim request: materializes the account, binds ownership, and (for create_new) wires any attaching relationships (admin only)
+ */
+export const ApproveClaimRequestParams = zod.object({
+  unitId: zod.coerce.string().uuid(),
+  claimId: zod.coerce.string().uuid(),
+});
+
+export const ApproveClaimRequestResponse = zod.object({
+  ok: zod.boolean(),
+  personId: zod.string().uuid(),
+  token: zod
+    .string()
+    .nullable()
+    .describe(
+      "JWT for the newly-bound person, so they're logged in immediately",
+    ),
+});
+
+/**
+ * @summary Reject a pending claim request (admin only)
+ */
+export const RejectClaimRequestParams = zod.object({
+  unitId: zod.coerce.string().uuid(),
+  claimId: zod.coerce.string().uuid(),
+});
+
+export const RejectClaimRequestBody = zod.object({
+  reason: zod.string().nullish(),
+});
+
+export const RejectClaimRequestResponse = zod.object({
+  ok: zod.boolean(),
+});

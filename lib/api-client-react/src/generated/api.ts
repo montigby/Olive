@@ -18,36 +18,64 @@ import type {
 
 import type {
   AddMemberBody,
+  AiChatBody,
+  AiChatResponse,
   AuthResponse,
   BirthdayEntry,
+  ChangePasswordBody,
+  ClaimApproveResponse,
+  ClaimCreatedResponse,
   ClaimProfileBody,
+  ClaimStatusResponse,
+  ClaimsInboxResponse,
+  ClaimsMatchBody,
+  ClaimsMatchResponse,
+  ConfirmInviteMergeBody,
+  ConfirmInviteMergeResponse,
+  CreateClaimBody,
   CreateFamilyUnitBody,
+  CreateLifeEventBody,
   CreateLinkRequestBody,
+  CreateMemoryBody,
   ErrorResponse,
   FamilyTree,
   FamilyUnit,
   FamilyUnitSummary,
   FamilyUnitWithMembers,
   HealthStatus,
+  HomeFeedResponse,
   InviteDetails,
   InviteResponse,
+  InviteTokenActiveResponse,
+  InviteTokenCreated,
+  JoinTokenInfo,
+  JoinWaitlistBody,
+  JoinWaitlistResponse,
+  LifeEvent,
   LinkRequest,
   LinkRequestsResponse,
+  ListClaimRequestsParams,
   LoginBody,
-  MergeConfirmBody,
-  MergeConfirmResponse,
-  MergePreviewBody,
-  MergePreviewResponse,
+  Memory,
+  MemoryCollectionToggleResponse,
+  MemoryWithContributor,
   MessageResponse,
+  OkResponse,
   Person,
   PersonWithUnit,
+  PreviewInviteMergeBody,
+  PreviewInviteMergeResponse,
   RegisterBody,
+  RejectClaimBody,
+  RelationshipEdge,
   SearchFamilyUnitsParams,
+  SetMemoryCollectionBody,
   UnitSummary,
   UpdateFamilyUnitBody,
+  UpdateLifeEventBody,
+  UpdateMemoryBody,
+  UpdatePersonAdminBody,
   UpdatePersonBody,
-  WaitlistSignupBody,
-  WaitlistSignupResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -142,14 +170,14 @@ export const getJoinWaitlistUrl = () => {
 };
 
 export const joinWaitlist = async (
-  waitlistSignupBody: WaitlistSignupBody,
+  joinWaitlistBody: JoinWaitlistBody,
   options?: RequestInit,
-): Promise<WaitlistSignupResponse> => {
-  return customFetch<WaitlistSignupResponse>(getJoinWaitlistUrl(), {
+): Promise<JoinWaitlistResponse> => {
+  return customFetch<JoinWaitlistResponse>(getJoinWaitlistUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(waitlistSignupBody),
+    body: JSON.stringify(joinWaitlistBody),
   });
 };
 
@@ -160,14 +188,14 @@ export const getJoinWaitlistMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof joinWaitlist>>,
     TError,
-    { data: BodyType<WaitlistSignupBody> },
+    { data: BodyType<JoinWaitlistBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof joinWaitlist>>,
   TError,
-  { data: BodyType<WaitlistSignupBody> },
+  { data: BodyType<JoinWaitlistBody> },
   TContext
 > => {
   const mutationKey = ["joinWaitlist"];
@@ -181,7 +209,7 @@ export const getJoinWaitlistMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof joinWaitlist>>,
-    { data: BodyType<WaitlistSignupBody> }
+    { data: BodyType<JoinWaitlistBody> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -194,7 +222,7 @@ export const getJoinWaitlistMutationOptions = <
 export type JoinWaitlistMutationResult = NonNullable<
   Awaited<ReturnType<typeof joinWaitlist>>
 >;
-export type JoinWaitlistMutationBody = BodyType<WaitlistSignupBody>;
+export type JoinWaitlistMutationBody = BodyType<JoinWaitlistBody>;
 export type JoinWaitlistMutationError = ErrorType<ErrorResponse>;
 
 /**
@@ -207,14 +235,14 @@ export const useJoinWaitlist = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof joinWaitlist>>,
     TError,
-    { data: BodyType<WaitlistSignupBody> },
+    { data: BodyType<JoinWaitlistBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof joinWaitlist>>,
   TError,
-  { data: BodyType<WaitlistSignupBody> },
+  { data: BodyType<JoinWaitlistBody> },
   TContext
 > => {
   return useMutation(getJoinWaitlistMutationOptions(options));
@@ -537,6 +565,92 @@ export function useGetMe<
 }
 
 /**
+ * @summary Change the current account's password
+ */
+export const getChangePasswordUrl = () => {
+  return `/api/auth/change-password`;
+};
+
+export const changePassword = async (
+  changePasswordBody: ChangePasswordBody,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getChangePasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(changePasswordBody),
+  });
+};
+
+export const getChangePasswordMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changePassword>>,
+    TError,
+    { data: BodyType<ChangePasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changePassword>>,
+  TError,
+  { data: BodyType<ChangePasswordBody> },
+  TContext
+> => {
+  const mutationKey = ["changePassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changePassword>>,
+    { data: BodyType<ChangePasswordBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return changePassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChangePasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof changePassword>>
+>;
+export type ChangePasswordMutationBody = BodyType<ChangePasswordBody>;
+export type ChangePasswordMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Change the current account's password
+ */
+export const useChangePassword = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changePassword>>,
+    TError,
+    { data: BodyType<ChangePasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof changePassword>>,
+  TError,
+  { data: BodyType<ChangePasswordBody> },
+  TContext
+> => {
+  return useMutation(getChangePasswordMutationOptions(options));
+};
+
+/**
  * @summary Get a person profile
  */
 export const getGetPersonUrl = (personId: string) => {
@@ -790,6 +904,93 @@ export const useDeletePerson = <
   TContext
 > => {
   return useMutation(getDeletePersonMutationOptions(options));
+};
+
+/**
+ * @summary Grant or revoke admin rights for a claimed member (admin only, same unit)
+ */
+export const getUpdatePersonAdminUrl = (personId: string) => {
+  return `/api/persons/${personId}/admin`;
+};
+
+export const updatePersonAdmin = async (
+  personId: string,
+  updatePersonAdminBody: UpdatePersonAdminBody,
+  options?: RequestInit,
+): Promise<Person> => {
+  return customFetch<Person>(getUpdatePersonAdminUrl(personId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePersonAdminBody),
+  });
+};
+
+export const getUpdatePersonAdminMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePersonAdmin>>,
+    TError,
+    { personId: string; data: BodyType<UpdatePersonAdminBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePersonAdmin>>,
+  TError,
+  { personId: string; data: BodyType<UpdatePersonAdminBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePersonAdmin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePersonAdmin>>,
+    { personId: string; data: BodyType<UpdatePersonAdminBody> }
+  > = (props) => {
+    const { personId, data } = props ?? {};
+
+    return updatePersonAdmin(personId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePersonAdminMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePersonAdmin>>
+>;
+export type UpdatePersonAdminMutationBody = BodyType<UpdatePersonAdminBody>;
+export type UpdatePersonAdminMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Grant or revoke admin rights for a claimed member (admin only, same unit)
+ */
+export const useUpdatePersonAdmin = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePersonAdmin>>,
+    TError,
+    { personId: string; data: BodyType<UpdatePersonAdminBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePersonAdmin>>,
+  TError,
+  { personId: string; data: BodyType<UpdatePersonAdminBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePersonAdminMutationOptions(options));
 };
 
 /**
@@ -1324,6 +1525,96 @@ export const useAddMember = <
 };
 
 /**
+ * Edge direction for parent-type edges is from_person = child, to_person = parent (see relationships table convention).
+ * @summary Get all explicit relationship edges for a family unit
+ */
+export const getListUnitRelationshipsUrl = (unitId: string) => {
+  return `/api/family-units/${unitId}/relationships`;
+};
+
+export const listUnitRelationships = async (
+  unitId: string,
+  options?: RequestInit,
+): Promise<RelationshipEdge[]> => {
+  return customFetch<RelationshipEdge[]>(getListUnitRelationshipsUrl(unitId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListUnitRelationshipsQueryKey = (unitId: string) => {
+  return [`/api/family-units/${unitId}/relationships`] as const;
+};
+
+export const getListUnitRelationshipsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listUnitRelationships>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listUnitRelationships>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListUnitRelationshipsQueryKey(unitId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listUnitRelationships>>
+  > = ({ signal }) =>
+    listUnitRelationships(unitId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!unitId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listUnitRelationships>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListUnitRelationshipsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listUnitRelationships>>
+>;
+export type ListUnitRelationshipsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get all explicit relationship edges for a family unit
+ */
+
+export function useListUnitRelationships<
+  TData = Awaited<ReturnType<typeof listUnitRelationships>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listUnitRelationships>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUnitRelationshipsQueryOptions(unitId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Generate or regenerate an invite link for a member (admin only)
  */
 export const getGenerateInviteUrl = (unitId: string, personId: string) => {
@@ -1578,6 +1869,186 @@ export const useClaimProfile = <
   TContext
 > => {
   return useMutation(getClaimProfileMutationOptions(options));
+};
+
+/**
+ * @summary Preview merging an invited placeholder profile into the invitee's existing Olive account (re-authenticates the existing account by email/password; does not write anything yet)
+ */
+export const getPreviewInviteMergeUrl = (token: string) => {
+  return `/api/invites/${token}/merge/preview`;
+};
+
+export const previewInviteMerge = async (
+  token: string,
+  previewInviteMergeBody: PreviewInviteMergeBody,
+  options?: RequestInit,
+): Promise<PreviewInviteMergeResponse> => {
+  return customFetch<PreviewInviteMergeResponse>(
+    getPreviewInviteMergeUrl(token),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(previewInviteMergeBody),
+    },
+  );
+};
+
+export const getPreviewInviteMergeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewInviteMerge>>,
+    TError,
+    { token: string; data: BodyType<PreviewInviteMergeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewInviteMerge>>,
+  TError,
+  { token: string; data: BodyType<PreviewInviteMergeBody> },
+  TContext
+> => {
+  const mutationKey = ["previewInviteMerge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewInviteMerge>>,
+    { token: string; data: BodyType<PreviewInviteMergeBody> }
+  > = (props) => {
+    const { token, data } = props ?? {};
+
+    return previewInviteMerge(token, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewInviteMergeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewInviteMerge>>
+>;
+export type PreviewInviteMergeMutationBody = BodyType<PreviewInviteMergeBody>;
+export type PreviewInviteMergeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Preview merging an invited placeholder profile into the invitee's existing Olive account (re-authenticates the existing account by email/password; does not write anything yet)
+ */
+export const usePreviewInviteMerge = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewInviteMerge>>,
+    TError,
+    { token: string; data: BodyType<PreviewInviteMergeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewInviteMerge>>,
+  TError,
+  { token: string; data: BodyType<PreviewInviteMergeBody> },
+  TContext
+> => {
+  return useMutation(getPreviewInviteMergeMutationOptions(options));
+};
+
+/**
+ * @summary Confirm the merge previewed above and log in as the merged account
+ */
+export const getConfirmInviteMergeUrl = (token: string) => {
+  return `/api/invites/${token}/merge/confirm`;
+};
+
+export const confirmInviteMerge = async (
+  token: string,
+  confirmInviteMergeBody: ConfirmInviteMergeBody,
+  options?: RequestInit,
+): Promise<ConfirmInviteMergeResponse> => {
+  return customFetch<ConfirmInviteMergeResponse>(
+    getConfirmInviteMergeUrl(token),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(confirmInviteMergeBody),
+    },
+  );
+};
+
+export const getConfirmInviteMergeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmInviteMerge>>,
+    TError,
+    { token: string; data: BodyType<ConfirmInviteMergeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmInviteMerge>>,
+  TError,
+  { token: string; data: BodyType<ConfirmInviteMergeBody> },
+  TContext
+> => {
+  const mutationKey = ["confirmInviteMerge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmInviteMerge>>,
+    { token: string; data: BodyType<ConfirmInviteMergeBody> }
+  > = (props) => {
+    const { token, data } = props ?? {};
+
+    return confirmInviteMerge(token, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmInviteMergeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmInviteMerge>>
+>;
+export type ConfirmInviteMergeMutationBody = BodyType<ConfirmInviteMergeBody>;
+export type ConfirmInviteMergeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Confirm the merge previewed above and log in as the merged account
+ */
+export const useConfirmInviteMerge = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmInviteMerge>>,
+    TError,
+    { token: string; data: BodyType<ConfirmInviteMergeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmInviteMerge>>,
+  TError,
+  { token: string; data: BodyType<ConfirmInviteMergeBody> },
+  TContext
+> => {
+  return useMutation(getConfirmInviteMergeMutationOptions(options));
 };
 
 /**
@@ -2187,43 +2658,131 @@ export function useGetUpcomingBirthdays<
 }
 
 /**
- * @summary Preview merge: authenticate existing account and return placeholder + existing person
+ * @summary List life events for a person (same family unit only)
  */
-export const getMergePreviewUrl = (token: string) => {
-  return `/api/invites/${token}/merge/preview`;
+export const getListLifeEventsUrl = (personId: string) => {
+  return `/api/persons/${personId}/life-events`;
 };
 
-export const mergePreview = async (
-  token: string,
-  mergePreviewBody: MergePreviewBody,
+export const listLifeEvents = async (
+  personId: string,
   options?: RequestInit,
-): Promise<MergePreviewResponse> => {
-  return customFetch<MergePreviewResponse>(getMergePreviewUrl(token), {
+): Promise<LifeEvent[]> => {
+  return customFetch<LifeEvent[]>(getListLifeEventsUrl(personId), {
     ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(mergePreviewBody),
+    method: "GET",
   });
 };
 
-export const getMergePreviewMutationOptions = <
+export const getListLifeEventsQueryKey = (personId: string) => {
+  return [`/api/persons/${personId}/life-events`] as const;
+};
+
+export const getListLifeEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLifeEvents>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  personId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLifeEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListLifeEventsQueryKey(personId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listLifeEvents>>> = ({
+    signal,
+  }) => listLifeEvents(personId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!personId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLifeEvents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLifeEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLifeEvents>>
+>;
+export type ListLifeEventsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List life events for a person (same family unit only)
+ */
+
+export function useListLifeEvents<
+  TData = Awaited<ReturnType<typeof listLifeEvents>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  personId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLifeEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLifeEventsQueryOptions(personId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Log a life event for a person (admin, parent of the person, or self)
+ */
+export const getCreateLifeEventUrl = (personId: string) => {
+  return `/api/persons/${personId}/life-events`;
+};
+
+export const createLifeEvent = async (
+  personId: string,
+  createLifeEventBody: CreateLifeEventBody,
+  options?: RequestInit,
+): Promise<LifeEvent> => {
+  return customFetch<LifeEvent>(getCreateLifeEventUrl(personId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createLifeEventBody),
+  });
+};
+
+export const getCreateLifeEventMutationOptions = <
   TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof mergePreview>>,
+    Awaited<ReturnType<typeof createLifeEvent>>,
     TError,
-    { token: string; data: BodyType<MergePreviewBody> },
+    { personId: string; data: BodyType<CreateLifeEventBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof mergePreview>>,
+  Awaited<ReturnType<typeof createLifeEvent>>,
   TError,
-  { token: string; data: BodyType<MergePreviewBody> },
+  { personId: string; data: BodyType<CreateLifeEventBody> },
   TContext
 > => {
-  const mutationKey = ["mergePreview"];
+  const mutationKey = ["createLifeEvent"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -2233,80 +2792,84 @@ export const getMergePreviewMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof mergePreview>>,
-    { token: string; data: BodyType<MergePreviewBody> }
+    Awaited<ReturnType<typeof createLifeEvent>>,
+    { personId: string; data: BodyType<CreateLifeEventBody> }
   > = (props) => {
-    const { token, data } = props ?? {};
-    return mergePreview(token, data, requestOptions);
+    const { personId, data } = props ?? {};
+
+    return createLifeEvent(personId, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type MergePreviewMutationResult = NonNullable<
-  Awaited<ReturnType<typeof mergePreview>>
+export type CreateLifeEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createLifeEvent>>
 >;
-export type MergePreviewMutationBody = BodyType<MergePreviewBody>;
-export type MergePreviewMutationError = ErrorType<ErrorResponse>;
+export type CreateLifeEventMutationBody = BodyType<CreateLifeEventBody>;
+export type CreateLifeEventMutationError = ErrorType<ErrorResponse>;
 
-export const useMergePreview = <
+/**
+ * @summary Log a life event for a person (admin, parent of the person, or self)
+ */
+export const useCreateLifeEvent = <
   TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof mergePreview>>,
+    Awaited<ReturnType<typeof createLifeEvent>>,
     TError,
-    { token: string; data: BodyType<MergePreviewBody> },
+    { personId: string; data: BodyType<CreateLifeEventBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof mergePreview>>,
+  Awaited<ReturnType<typeof createLifeEvent>>,
   TError,
-  { token: string; data: BodyType<MergePreviewBody> },
+  { personId: string; data: BodyType<CreateLifeEventBody> },
   TContext
 > => {
-  return useMutation(getMergePreviewMutationOptions(options));
+  return useMutation(getCreateLifeEventMutationOptions(options));
 };
 
 /**
- * @summary Confirm merge: re-authenticate and execute the account merge
+ * @summary Update a life event (creator, same-family admin, or a parent of the event's subject)
  */
-export const getMergeConfirmUrl = (token: string) => {
-  return `/api/invites/${token}/merge/confirm`;
+export const getUpdateLifeEventUrl = (eventId: string) => {
+  return `/api/life-events/${eventId}`;
 };
 
-export const mergeConfirm = async (
-  token: string,
-  mergeConfirmBody: MergeConfirmBody,
+export const updateLifeEvent = async (
+  eventId: string,
+  updateLifeEventBody: UpdateLifeEventBody,
   options?: RequestInit,
-): Promise<MergeConfirmResponse> => {
-  return customFetch<MergeConfirmResponse>(getMergeConfirmUrl(token), {
+): Promise<LifeEvent> => {
+  return customFetch<LifeEvent>(getUpdateLifeEventUrl(eventId), {
     ...options,
-    method: "POST",
+    method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(mergeConfirmBody),
+    body: JSON.stringify(updateLifeEventBody),
   });
 };
 
-export const getMergeConfirmMutationOptions = <
+export const getUpdateLifeEventMutationOptions = <
   TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof mergeConfirm>>,
+    Awaited<ReturnType<typeof updateLifeEvent>>,
     TError,
-    { token: string; data: BodyType<MergeConfirmBody> },
+    { eventId: string; data: BodyType<UpdateLifeEventBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof mergeConfirm>>,
+  Awaited<ReturnType<typeof updateLifeEvent>>,
   TError,
-  { token: string; data: BodyType<MergeConfirmBody> },
+  { eventId: string; data: BodyType<UpdateLifeEventBody> },
   TContext
 > => {
-  const mutationKey = ["mergeConfirm"];
+  const mutationKey = ["updateLifeEvent"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -2316,38 +2879,1638 @@ export const getMergeConfirmMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof mergeConfirm>>,
-    { token: string; data: BodyType<MergeConfirmBody> }
+    Awaited<ReturnType<typeof updateLifeEvent>>,
+    { eventId: string; data: BodyType<UpdateLifeEventBody> }
   > = (props) => {
-    const { token, data } = props ?? {};
-    return mergeConfirm(token, data, requestOptions);
+    const { eventId, data } = props ?? {};
+
+    return updateLifeEvent(eventId, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type MergeConfirmMutationResult = NonNullable<
-  Awaited<ReturnType<typeof mergeConfirm>>
+export type UpdateLifeEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateLifeEvent>>
 >;
-export type MergeConfirmMutationBody = BodyType<MergeConfirmBody>;
-export type MergeConfirmMutationError = ErrorType<ErrorResponse>;
+export type UpdateLifeEventMutationBody = BodyType<UpdateLifeEventBody>;
+export type UpdateLifeEventMutationError = ErrorType<ErrorResponse>;
 
-export const useMergeConfirm = <
+/**
+ * @summary Update a life event (creator, same-family admin, or a parent of the event's subject)
+ */
+export const useUpdateLifeEvent = <
   TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof mergeConfirm>>,
+    Awaited<ReturnType<typeof updateLifeEvent>>,
     TError,
-    { token: string; data: BodyType<MergeConfirmBody> },
+    { eventId: string; data: BodyType<UpdateLifeEventBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof mergeConfirm>>,
+  Awaited<ReturnType<typeof updateLifeEvent>>,
   TError,
-  { token: string; data: BodyType<MergeConfirmBody> },
+  { eventId: string; data: BodyType<UpdateLifeEventBody> },
   TContext
 > => {
-  return useMutation(getMergeConfirmMutationOptions(options));
+  return useMutation(getUpdateLifeEventMutationOptions(options));
+};
+
+/**
+ * @summary Delete a life event (creator, same-family admin, or a parent of the event's subject)
+ */
+export const getDeleteLifeEventUrl = (eventId: string) => {
+  return `/api/life-events/${eventId}`;
+};
+
+export const deleteLifeEvent = async (
+  eventId: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteLifeEventUrl(eventId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteLifeEventMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLifeEvent>>,
+    TError,
+    { eventId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteLifeEvent>>,
+  TError,
+  { eventId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteLifeEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteLifeEvent>>,
+    { eventId: string }
+  > = (props) => {
+    const { eventId } = props ?? {};
+
+    return deleteLifeEvent(eventId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteLifeEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteLifeEvent>>
+>;
+
+export type DeleteLifeEventMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a life event (creator, same-family admin, or a parent of the event's subject)
+ */
+export const useDeleteLifeEvent = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLifeEvent>>,
+    TError,
+    { eventId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteLifeEvent>>,
+  TError,
+  { eventId: string },
+  TContext
+> => {
+  return useMutation(getDeleteLifeEventMutationOptions(options));
+};
+
+/**
+ * @summary List memories about a (typically deceased) person, visible to the whole family unit
+ */
+export const getListMemoriesUrl = (personId: string) => {
+  return `/api/persons/${personId}/memories`;
+};
+
+export const listMemories = async (
+  personId: string,
+  options?: RequestInit,
+): Promise<MemoryWithContributor[]> => {
+  return customFetch<MemoryWithContributor[]>(getListMemoriesUrl(personId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMemoriesQueryKey = (personId: string) => {
+  return [`/api/persons/${personId}/memories`] as const;
+};
+
+export const getListMemoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMemories>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  personId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMemories>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMemoriesQueryKey(personId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMemories>>> = ({
+    signal,
+  }) => listMemories(personId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!personId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMemories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMemoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMemories>>
+>;
+export type ListMemoriesQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List memories about a (typically deceased) person, visible to the whole family unit
+ */
+
+export function useListMemories<
+  TData = Awaited<ReturnType<typeof listMemories>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  personId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMemories>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMemoriesQueryOptions(personId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Contribute a memory about a person. Requires memory collection to be turned on for that profile
+ */
+export const getCreateMemoryUrl = (personId: string) => {
+  return `/api/persons/${personId}/memories`;
+};
+
+export const createMemory = async (
+  personId: string,
+  createMemoryBody: CreateMemoryBody,
+  options?: RequestInit,
+): Promise<Memory> => {
+  return customFetch<Memory>(getCreateMemoryUrl(personId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createMemoryBody),
+  });
+};
+
+export const getCreateMemoryMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMemory>>,
+    TError,
+    { personId: string; data: BodyType<CreateMemoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMemory>>,
+  TError,
+  { personId: string; data: BodyType<CreateMemoryBody> },
+  TContext
+> => {
+  const mutationKey = ["createMemory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMemory>>,
+    { personId: string; data: BodyType<CreateMemoryBody> }
+  > = (props) => {
+    const { personId, data } = props ?? {};
+
+    return createMemory(personId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMemoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMemory>>
+>;
+export type CreateMemoryMutationBody = BodyType<CreateMemoryBody>;
+export type CreateMemoryMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Contribute a memory about a person. Requires memory collection to be turned on for that profile
+ */
+export const useCreateMemory = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMemory>>,
+    TError,
+    { personId: string; data: BodyType<CreateMemoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMemory>>,
+  TError,
+  { personId: string; data: BodyType<CreateMemoryBody> },
+  TContext
+> => {
+  return useMutation(getCreateMemoryMutationOptions(options));
+};
+
+/**
+ * @summary Update a memory (contributor only)
+ */
+export const getUpdateMemoryUrl = (memoryId: string) => {
+  return `/api/memories/${memoryId}`;
+};
+
+export const updateMemory = async (
+  memoryId: string,
+  updateMemoryBody: UpdateMemoryBody,
+  options?: RequestInit,
+): Promise<Memory> => {
+  return customFetch<Memory>(getUpdateMemoryUrl(memoryId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateMemoryBody),
+  });
+};
+
+export const getUpdateMemoryMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMemory>>,
+    TError,
+    { memoryId: string; data: BodyType<UpdateMemoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMemory>>,
+  TError,
+  { memoryId: string; data: BodyType<UpdateMemoryBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMemory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMemory>>,
+    { memoryId: string; data: BodyType<UpdateMemoryBody> }
+  > = (props) => {
+    const { memoryId, data } = props ?? {};
+
+    return updateMemory(memoryId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMemoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMemory>>
+>;
+export type UpdateMemoryMutationBody = BodyType<UpdateMemoryBody>;
+export type UpdateMemoryMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update a memory (contributor only)
+ */
+export const useUpdateMemory = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMemory>>,
+    TError,
+    { memoryId: string; data: BodyType<UpdateMemoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMemory>>,
+  TError,
+  { memoryId: string; data: BodyType<UpdateMemoryBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMemoryMutationOptions(options));
+};
+
+/**
+ * @summary Delete a memory (contributor or same-family admin)
+ */
+export const getDeleteMemoryUrl = (memoryId: string) => {
+  return `/api/memories/${memoryId}`;
+};
+
+export const deleteMemory = async (
+  memoryId: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteMemoryUrl(memoryId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMemoryMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMemory>>,
+    TError,
+    { memoryId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMemory>>,
+  TError,
+  { memoryId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteMemory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMemory>>,
+    { memoryId: string }
+  > = (props) => {
+    const { memoryId } = props ?? {};
+
+    return deleteMemory(memoryId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMemoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMemory>>
+>;
+
+export type DeleteMemoryMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a memory (contributor or same-family admin)
+ */
+export const useDeleteMemory = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMemory>>,
+    TError,
+    { memoryId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMemory>>,
+  TError,
+  { memoryId: string },
+  TContext
+> => {
+  return useMutation(getDeleteMemoryMutationOptions(options));
+};
+
+/**
+ * @summary Turn memory collection on (any family member, deceased profiles only) or off (admin only) for a person
+ */
+export const getSetMemoryCollectionEnabledUrl = (personId: string) => {
+  return `/api/persons/${personId}/memory-collection`;
+};
+
+export const setMemoryCollectionEnabled = async (
+  personId: string,
+  setMemoryCollectionBody: SetMemoryCollectionBody,
+  options?: RequestInit,
+): Promise<MemoryCollectionToggleResponse> => {
+  return customFetch<MemoryCollectionToggleResponse>(
+    getSetMemoryCollectionEnabledUrl(personId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(setMemoryCollectionBody),
+    },
+  );
+};
+
+export const getSetMemoryCollectionEnabledMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setMemoryCollectionEnabled>>,
+    TError,
+    { personId: string; data: BodyType<SetMemoryCollectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setMemoryCollectionEnabled>>,
+  TError,
+  { personId: string; data: BodyType<SetMemoryCollectionBody> },
+  TContext
+> => {
+  const mutationKey = ["setMemoryCollectionEnabled"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setMemoryCollectionEnabled>>,
+    { personId: string; data: BodyType<SetMemoryCollectionBody> }
+  > = (props) => {
+    const { personId, data } = props ?? {};
+
+    return setMemoryCollectionEnabled(personId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetMemoryCollectionEnabledMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setMemoryCollectionEnabled>>
+>;
+export type SetMemoryCollectionEnabledMutationBody =
+  BodyType<SetMemoryCollectionBody>;
+export type SetMemoryCollectionEnabledMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Turn memory collection on (any family member, deceased profiles only) or off (admin only) for a person
+ */
+export const useSetMemoryCollectionEnabled = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setMemoryCollectionEnabled>>,
+    TError,
+    { personId: string; data: BodyType<SetMemoryCollectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setMemoryCollectionEnabled>>,
+  TError,
+  { personId: string; data: BodyType<SetMemoryCollectionBody> },
+  TContext
+> => {
+  return useMutation(getSetMemoryCollectionEnabledMutationOptions(options));
+};
+
+/**
+ * @summary Stop future memory-prompt emails about this specific deceased person for the caller only
+ */
+export const getOptOutOfMemoryPromptsUrl = (personId: string) => {
+  return `/api/persons/${personId}/memory-prompts/optout`;
+};
+
+export const optOutOfMemoryPrompts = async (
+  personId: string,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getOptOutOfMemoryPromptsUrl(personId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getOptOutOfMemoryPromptsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof optOutOfMemoryPrompts>>,
+    TError,
+    { personId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof optOutOfMemoryPrompts>>,
+  TError,
+  { personId: string },
+  TContext
+> => {
+  const mutationKey = ["optOutOfMemoryPrompts"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof optOutOfMemoryPrompts>>,
+    { personId: string }
+  > = (props) => {
+    const { personId } = props ?? {};
+
+    return optOutOfMemoryPrompts(personId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type OptOutOfMemoryPromptsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof optOutOfMemoryPrompts>>
+>;
+
+export type OptOutOfMemoryPromptsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Stop future memory-prompt emails about this specific deceased person for the caller only
+ */
+export const useOptOutOfMemoryPrompts = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof optOutOfMemoryPrompts>>,
+    TError,
+    { personId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof optOutOfMemoryPrompts>>,
+  TError,
+  { personId: string },
+  TContext
+> => {
+  return useMutation(getOptOutOfMemoryPromptsMutationOptions(options));
+};
+
+/**
+ * @summary Get all data for the post-invite welcome / home-feed screen in one round-trip
+ */
+export const getGetHomeFeedUrl = (unitId: string) => {
+  return `/api/family-units/${unitId}/home-feed`;
+};
+
+export const getHomeFeed = async (
+  unitId: string,
+  options?: RequestInit,
+): Promise<HomeFeedResponse> => {
+  return customFetch<HomeFeedResponse>(getGetHomeFeedUrl(unitId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetHomeFeedQueryKey = (unitId: string) => {
+  return [`/api/family-units/${unitId}/home-feed`] as const;
+};
+
+export const getGetHomeFeedQueryOptions = <
+  TData = Awaited<ReturnType<typeof getHomeFeed>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getHomeFeed>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetHomeFeedQueryKey(unitId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getHomeFeed>>> = ({
+    signal,
+  }) => getHomeFeed(unitId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!unitId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getHomeFeed>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetHomeFeedQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getHomeFeed>>
+>;
+export type GetHomeFeedQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get all data for the post-invite welcome / home-feed screen in one round-trip
+ */
+
+export function useGetHomeFeed<
+  TData = Awaited<ReturnType<typeof getHomeFeed>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getHomeFeed>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetHomeFeedQueryOptions(unitId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Rate-limited to 30 requests per 15 minutes per person (or IP, if unauthenticated context is somehow reached).
+ * @summary Chat with the Olive AI assistant, which can add/update/delete family members, log life events, and save memories via tool calls
+ */
+export const getAiChatUrl = () => {
+  return `/api/ai/chat`;
+};
+
+export const aiChat = async (
+  aiChatBody: AiChatBody,
+  options?: RequestInit,
+): Promise<AiChatResponse> => {
+  return customFetch<AiChatResponse>(getAiChatUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiChatBody),
+  });
+};
+
+export const getAiChatMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiChat>>,
+    TError,
+    { data: BodyType<AiChatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiChat>>,
+  TError,
+  { data: BodyType<AiChatBody> },
+  TContext
+> => {
+  const mutationKey = ["aiChat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiChat>>,
+    { data: BodyType<AiChatBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiChat(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiChatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiChat>>
+>;
+export type AiChatMutationBody = BodyType<AiChatBody>;
+export type AiChatMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Chat with the Olive AI assistant, which can add/update/delete family members, log life events, and save memories via tool calls
+ */
+export const useAiChat = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiChat>>,
+    TError,
+    { data: BodyType<AiChatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiChat>>,
+  TError,
+  { data: BodyType<AiChatBody> },
+  TContext
+> => {
+  return useMutation(getAiChatMutationOptions(options));
+};
+
+/**
+ * @summary Revoke any active shared invite token for this unit and mint a new one (admin only)
+ */
+export const getRegenerateInviteTokenUrl = (unitId: string) => {
+  return `/api/family-units/${unitId}/invite-tokens`;
+};
+
+export const regenerateInviteToken = async (
+  unitId: string,
+  options?: RequestInit,
+): Promise<InviteTokenCreated> => {
+  return customFetch<InviteTokenCreated>(getRegenerateInviteTokenUrl(unitId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRegenerateInviteTokenMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof regenerateInviteToken>>,
+    TError,
+    { unitId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof regenerateInviteToken>>,
+  TError,
+  { unitId: string },
+  TContext
+> => {
+  const mutationKey = ["regenerateInviteToken"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof regenerateInviteToken>>,
+    { unitId: string }
+  > = (props) => {
+    const { unitId } = props ?? {};
+
+    return regenerateInviteToken(unitId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegenerateInviteTokenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof regenerateInviteToken>>
+>;
+
+export type RegenerateInviteTokenMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Revoke any active shared invite token for this unit and mint a new one (admin only)
+ */
+export const useRegenerateInviteToken = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof regenerateInviteToken>>,
+    TError,
+    { unitId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof regenerateInviteToken>>,
+  TError,
+  { unitId: string },
+  TContext
+> => {
+  return useMutation(getRegenerateInviteTokenMutationOptions(options));
+};
+
+/**
+ * @summary Get the currently-active shared invite token for this unit. Admins always have access; non-admins only when the unit allows member-sent invites
+ */
+export const getGetActiveInviteTokenUrl = (unitId: string) => {
+  return `/api/family-units/${unitId}/invite-tokens`;
+};
+
+export const getActiveInviteToken = async (
+  unitId: string,
+  options?: RequestInit,
+): Promise<InviteTokenActiveResponse> => {
+  return customFetch<InviteTokenActiveResponse>(
+    getGetActiveInviteTokenUrl(unitId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetActiveInviteTokenQueryKey = (unitId: string) => {
+  return [`/api/family-units/${unitId}/invite-tokens`] as const;
+};
+
+export const getGetActiveInviteTokenQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActiveInviteToken>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActiveInviteToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetActiveInviteTokenQueryKey(unitId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getActiveInviteToken>>
+  > = ({ signal }) =>
+    getActiveInviteToken(unitId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!unitId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActiveInviteToken>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActiveInviteTokenQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActiveInviteToken>>
+>;
+export type GetActiveInviteTokenQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get the currently-active shared invite token for this unit. Admins always have access; non-admins only when the unit allows member-sent invites
+ */
+
+export function useGetActiveInviteToken<
+  TData = Awaited<ReturnType<typeof getActiveInviteToken>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActiveInviteToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActiveInviteTokenQueryOptions(unitId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Resolve a shared invite token to its family display name and inviter (public -- no auth required, never leaks the member list)
+ */
+export const getResolveJoinTokenUrl = (token: string) => {
+  return `/api/join/${token}`;
+};
+
+export const resolveJoinToken = async (
+  token: string,
+  options?: RequestInit,
+): Promise<JoinTokenInfo> => {
+  return customFetch<JoinTokenInfo>(getResolveJoinTokenUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getResolveJoinTokenQueryKey = (token: string) => {
+  return [`/api/join/${token}`] as const;
+};
+
+export const getResolveJoinTokenQueryOptions = <
+  TData = Awaited<ReturnType<typeof resolveJoinToken>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof resolveJoinToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getResolveJoinTokenQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof resolveJoinToken>>
+  > = ({ signal }) => resolveJoinToken(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof resolveJoinToken>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ResolveJoinTokenQueryResult = NonNullable<
+  Awaited<ReturnType<typeof resolveJoinToken>>
+>;
+export type ResolveJoinTokenQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Resolve a shared invite token to its family display name and inviter (public -- no auth required, never leaks the member list)
+ */
+
+export function useResolveJoinToken<
+  TData = Awaited<ReturnType<typeof resolveJoinToken>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof resolveJoinToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getResolveJoinTokenQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Fuzzy-match a claimer-supplied name against unclaimed, non-deceased people in the invite token's family (public -- no auth required)
+ */
+export const getMatchClaimCandidatesUrl = () => {
+  return `/api/claims/match`;
+};
+
+export const matchClaimCandidates = async (
+  claimsMatchBody: ClaimsMatchBody,
+  options?: RequestInit,
+): Promise<ClaimsMatchResponse> => {
+  return customFetch<ClaimsMatchResponse>(getMatchClaimCandidatesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(claimsMatchBody),
+  });
+};
+
+export const getMatchClaimCandidatesMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchClaimCandidates>>,
+    TError,
+    { data: BodyType<ClaimsMatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof matchClaimCandidates>>,
+  TError,
+  { data: BodyType<ClaimsMatchBody> },
+  TContext
+> => {
+  const mutationKey = ["matchClaimCandidates"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof matchClaimCandidates>>,
+    { data: BodyType<ClaimsMatchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return matchClaimCandidates(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MatchClaimCandidatesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof matchClaimCandidates>>
+>;
+export type MatchClaimCandidatesMutationBody = BodyType<ClaimsMatchBody>;
+export type MatchClaimCandidatesMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fuzzy-match a claimer-supplied name against unclaimed, non-deceased people in the invite token's family (public -- no auth required)
+ */
+export const useMatchClaimCandidates = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchClaimCandidates>>,
+    TError,
+    { data: BodyType<ClaimsMatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof matchClaimCandidates>>,
+  TError,
+  { data: BodyType<ClaimsMatchBody> },
+  TContext
+> => {
+  return useMutation(getMatchClaimCandidatesMutationOptions(options));
+};
+
+/**
+ * @summary Create a claim request against an invite token, either claiming an existing unclaimed profile or registering as a brand-new person (public -- no auth required)
+ */
+export const getCreateClaimRequestUrl = () => {
+  return `/api/claims`;
+};
+
+export const createClaimRequest = async (
+  createClaimBody: CreateClaimBody,
+  options?: RequestInit,
+): Promise<ClaimCreatedResponse> => {
+  return customFetch<ClaimCreatedResponse>(getCreateClaimRequestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createClaimBody),
+  });
+};
+
+export const getCreateClaimRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createClaimRequest>>,
+    TError,
+    { data: BodyType<CreateClaimBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createClaimRequest>>,
+  TError,
+  { data: BodyType<CreateClaimBody> },
+  TContext
+> => {
+  const mutationKey = ["createClaimRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createClaimRequest>>,
+    { data: BodyType<CreateClaimBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createClaimRequest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateClaimRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createClaimRequest>>
+>;
+export type CreateClaimRequestMutationBody = BodyType<CreateClaimBody>;
+export type CreateClaimRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a claim request against an invite token, either claiming an existing unclaimed profile or registering as a brand-new person (public -- no auth required)
+ */
+export const useCreateClaimRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createClaimRequest>>,
+    TError,
+    { data: BodyType<CreateClaimBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createClaimRequest>>,
+  TError,
+  { data: BodyType<CreateClaimBody> },
+  TContext
+> => {
+  return useMutation(getCreateClaimRequestMutationOptions(options));
+};
+
+/**
+ * @summary Poll a claim request's status by its (unguessable) id (public -- no auth required)
+ */
+export const getGetClaimStatusUrl = (claimId: string) => {
+  return `/api/claims/${claimId}`;
+};
+
+export const getClaimStatus = async (
+  claimId: string,
+  options?: RequestInit,
+): Promise<ClaimStatusResponse> => {
+  return customFetch<ClaimStatusResponse>(getGetClaimStatusUrl(claimId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetClaimStatusQueryKey = (claimId: string) => {
+  return [`/api/claims/${claimId}`] as const;
+};
+
+export const getGetClaimStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getClaimStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  claimId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getClaimStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetClaimStatusQueryKey(claimId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getClaimStatus>>> = ({
+    signal,
+  }) => getClaimStatus(claimId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!claimId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getClaimStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetClaimStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getClaimStatus>>
+>;
+export type GetClaimStatusQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Poll a claim request's status by its (unguessable) id (public -- no auth required)
+ */
+
+export function useGetClaimStatus<
+  TData = Awaited<ReturnType<typeof getClaimStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  claimId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getClaimStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetClaimStatusQueryOptions(claimId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List claim requests for a unit's approval inbox (admin only)
+ */
+export const getListClaimRequestsUrl = (
+  unitId: string,
+  params?: ListClaimRequestsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/family-units/${unitId}/claims?${stringifiedParams}`
+    : `/api/family-units/${unitId}/claims`;
+};
+
+export const listClaimRequests = async (
+  unitId: string,
+  params?: ListClaimRequestsParams,
+  options?: RequestInit,
+): Promise<ClaimsInboxResponse> => {
+  return customFetch<ClaimsInboxResponse>(
+    getListClaimRequestsUrl(unitId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListClaimRequestsQueryKey = (
+  unitId: string,
+  params?: ListClaimRequestsParams,
+) => {
+  return [
+    `/api/family-units/${unitId}/claims`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListClaimRequestsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listClaimRequests>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  params?: ListClaimRequestsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listClaimRequests>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListClaimRequestsQueryKey(unitId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listClaimRequests>>
+  > = ({ signal }) =>
+    listClaimRequests(unitId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!unitId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listClaimRequests>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListClaimRequestsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listClaimRequests>>
+>;
+export type ListClaimRequestsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List claim requests for a unit's approval inbox (admin only)
+ */
+
+export function useListClaimRequests<
+  TData = Awaited<ReturnType<typeof listClaimRequests>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  unitId: string,
+  params?: ListClaimRequestsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listClaimRequests>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListClaimRequestsQueryOptions(
+    unitId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve a pending claim request: materializes the account, binds ownership, and (for create_new) wires any attaching relationships (admin only)
+ */
+export const getApproveClaimRequestUrl = (unitId: string, claimId: string) => {
+  return `/api/family-units/${unitId}/claims/${claimId}/approve`;
+};
+
+export const approveClaimRequest = async (
+  unitId: string,
+  claimId: string,
+  options?: RequestInit,
+): Promise<ClaimApproveResponse> => {
+  return customFetch<ClaimApproveResponse>(
+    getApproveClaimRequestUrl(unitId, claimId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getApproveClaimRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveClaimRequest>>,
+    TError,
+    { unitId: string; claimId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveClaimRequest>>,
+  TError,
+  { unitId: string; claimId: string },
+  TContext
+> => {
+  const mutationKey = ["approveClaimRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveClaimRequest>>,
+    { unitId: string; claimId: string }
+  > = (props) => {
+    const { unitId, claimId } = props ?? {};
+
+    return approveClaimRequest(unitId, claimId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveClaimRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveClaimRequest>>
+>;
+
+export type ApproveClaimRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Approve a pending claim request: materializes the account, binds ownership, and (for create_new) wires any attaching relationships (admin only)
+ */
+export const useApproveClaimRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveClaimRequest>>,
+    TError,
+    { unitId: string; claimId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveClaimRequest>>,
+  TError,
+  { unitId: string; claimId: string },
+  TContext
+> => {
+  return useMutation(getApproveClaimRequestMutationOptions(options));
+};
+
+/**
+ * @summary Reject a pending claim request (admin only)
+ */
+export const getRejectClaimRequestUrl = (unitId: string, claimId: string) => {
+  return `/api/family-units/${unitId}/claims/${claimId}/reject`;
+};
+
+export const rejectClaimRequest = async (
+  unitId: string,
+  claimId: string,
+  rejectClaimBody?: RejectClaimBody,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getRejectClaimRequestUrl(unitId, claimId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rejectClaimBody),
+  });
+};
+
+export const getRejectClaimRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectClaimRequest>>,
+    TError,
+    { unitId: string; claimId: string; data: BodyType<RejectClaimBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rejectClaimRequest>>,
+  TError,
+  { unitId: string; claimId: string; data: BodyType<RejectClaimBody> },
+  TContext
+> => {
+  const mutationKey = ["rejectClaimRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rejectClaimRequest>>,
+    { unitId: string; claimId: string; data: BodyType<RejectClaimBody> }
+  > = (props) => {
+    const { unitId, claimId, data } = props ?? {};
+
+    return rejectClaimRequest(unitId, claimId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RejectClaimRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rejectClaimRequest>>
+>;
+export type RejectClaimRequestMutationBody = BodyType<RejectClaimBody>;
+export type RejectClaimRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Reject a pending claim request (admin only)
+ */
+export const useRejectClaimRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectClaimRequest>>,
+    TError,
+    { unitId: string; claimId: string; data: BodyType<RejectClaimBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rejectClaimRequest>>,
+  TError,
+  { unitId: string; claimId: string; data: BodyType<RejectClaimBody> },
+  TContext
+> => {
+  return useMutation(getRejectClaimRequestMutationOptions(options));
 };

@@ -7,7 +7,7 @@ import {
   accountsTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { ClaimProfileBody, MergePreviewBody, MergeConfirmBody } from "@workspace/api-zod";
+import { ClaimProfileBody, PreviewInviteMergeBody, ConfirmInviteMergeBody } from "@workspace/api-zod";
 import { signToken } from "../middlewares/auth";
 import { formatPerson, formatUnit } from "./auth";
 import { isLastAdminInUnit } from "../lib/permissions";
@@ -165,7 +165,7 @@ async function validateInviteToken(token: string) {
 // POST /api/invites/:token/merge/preview
 // Authenticates existing account and returns placeholder + existing person data
 router.post("/invites/:token/merge/preview", async (req, res) => {
-  const parsed = MergePreviewBody.safeParse(req.body);
+  const parsed = PreviewInviteMergeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
     return;
@@ -236,7 +236,7 @@ router.post("/invites/:token/merge/preview", async (req, res) => {
 // Re-authenticates and executes the merge: updates the placeholder to be claimed
 // with the existing account's email, then updates the account to point to the placeholder personId.
 router.post("/invites/:token/merge/confirm", async (req, res) => {
-  const parsed = MergeConfirmBody.safeParse(req.body);
+  const parsed = ConfirmInviteMergeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
     return;

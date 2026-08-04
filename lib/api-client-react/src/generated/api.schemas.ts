@@ -18,11 +18,15 @@ export interface MessageResponse {
   message: string;
 }
 
-export interface WaitlistSignupBody {
+export interface OkResponse {
+  ok: boolean;
+}
+
+export interface JoinWaitlistBody {
   email: string;
 }
 
-export interface WaitlistSignupResponse {
+export interface JoinWaitlistResponse {
   ok: boolean;
 }
 
@@ -43,11 +47,24 @@ export interface LoginBody {
   password: string;
 }
 
-export type PersonGender = (typeof PersonGender)[keyof typeof PersonGender];
+/**
+ * Unset (null) means not specified / prefer not to say. Drives gendered relationship terms (e.g. "Brother" vs "Sister") in viewerRelationshipLabel -- neutral terms are used when null.
+ */
+export type PersonGender =
+  | (typeof PersonGender)[keyof typeof PersonGender]
+  | null;
 
 export const PersonGender = {
   male: "male",
   female: "female",
+} as const;
+
+export type PersonTier2ContactField =
+  (typeof PersonTier2ContactField)[keyof typeof PersonTier2ContactField];
+
+export const PersonTier2ContactField = {
+  phone: "phone",
+  email: "email",
 } as const;
 
 export interface Person {
@@ -73,29 +90,30 @@ export interface Person {
   bereal?: string | null;
   otherSocial?: string | null;
   relationshipLabel: string;
-  /** The target's relationship to the currently-authenticated viewer (e.g. "Sibling", "Parent", "Me"). Omitted when it can't be computed -- callers should fall back to relationshipLabel. */
+  /** The target's relationship to the currently-authenticated viewer (e.g. "Sibling", "Parent", "Me"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin's perspective at creation time. Omitted when it can't be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel. */
   viewerRelationshipLabel?: string;
   /** Unset (null) means not specified / prefer not to say. Drives gendered relationship terms (e.g. "Brother" vs "Sister") in viewerRelationshipLabel -- neutral terms are used when null. */
-  gender?: PersonGender | null;
+  gender?: PersonGender;
+  parentPersonId?: string | null;
   familyUnitId: string;
   isAdmin: boolean;
   claimed: boolean;
   claimedAt?: string | null;
   inviteExpiresAt?: string | null;
-  tier2ContactField?: string | null;
-  confirmedMembersOnly?: boolean | null;
-  hideAddress?: boolean | null;
-  hideInstagram?: boolean | null;
-  hideFacebook?: boolean | null;
-  hideTiktok?: boolean | null;
-  hideLinkedin?: boolean | null;
-  hideSnapchat?: boolean | null;
-  hideVenmo?: boolean | null;
-  hideBereal?: boolean | null;
-  hideOtherSocial?: boolean | null;
-  deceased?: boolean;
+  tier2ContactField: PersonTier2ContactField;
+  confirmedMembersOnly: boolean;
+  hideAddress: boolean;
+  hideInstagram: boolean;
+  hideFacebook: boolean;
+  hideTiktok: boolean;
+  hideLinkedin: boolean;
+  hideSnapchat: boolean;
+  hideVenmo: boolean;
+  hideBereal: boolean;
+  hideOtherSocial: boolean;
+  deceased: boolean;
   dateOfPassing?: string | null;
-  memoryCollectionEnabled?: boolean;
+  memoryCollectionEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -132,6 +150,29 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface ChangePasswordBody {
+  currentPassword: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
+export type UpdatePersonBodyGender =
+  | (typeof UpdatePersonBodyGender)[keyof typeof UpdatePersonBodyGender]
+  | null;
+
+export const UpdatePersonBodyGender = {
+  male: "male",
+  female: "female",
+} as const;
+
+export type UpdatePersonBodyTier2ContactField =
+  (typeof UpdatePersonBodyTier2ContactField)[keyof typeof UpdatePersonBodyTier2ContactField];
+
+export const UpdatePersonBodyTier2ContactField = {
+  phone: "phone",
+  email: "email",
+} as const;
+
 export interface UpdatePersonBody {
   firstName?: string;
   lastName?: string;
@@ -154,11 +195,11 @@ export interface UpdatePersonBody {
   bereal?: string | null;
   otherSocial?: string | null;
   relationshipLabel?: string;
-  gender?: PersonGender | null;
+  gender?: UpdatePersonBodyGender;
   parentPersonId?: string | null;
   deceased?: boolean;
   dateOfPassing?: string | null;
-  tier2ContactField?: "phone" | "email";
+  tier2ContactField?: UpdatePersonBodyTier2ContactField;
   confirmedMembersOnly?: boolean;
   hideAddress?: boolean;
   hideInstagram?: boolean;
@@ -169,6 +210,10 @@ export interface UpdatePersonBody {
   hideVenmo?: boolean;
   hideBereal?: boolean;
   hideOtherSocial?: boolean;
+}
+
+export interface UpdatePersonAdminBody {
+  isAdmin: boolean;
 }
 
 export interface FamilyUnitSummary {
@@ -191,12 +236,42 @@ export interface UpdateFamilyUnitBody {
   membersCanInvite?: boolean;
 }
 
+export type AddMemberBodyGender =
+  | (typeof AddMemberBodyGender)[keyof typeof AddMemberBodyGender]
+  | null;
+
+export const AddMemberBodyGender = {
+  male: "male",
+  female: "female",
+} as const;
+
 export interface AddMemberBody {
   firstName: string;
   lastName: string;
   relationshipLabel: string;
-  gender?: PersonGender | null;
+  gender?: AddMemberBodyGender;
   parentPersonId?: string | null;
+}
+
+export type RelationshipEdgeType =
+  (typeof RelationshipEdgeType)[keyof typeof RelationshipEdgeType];
+
+export const RelationshipEdgeType = {
+  biological_parent: "biological_parent",
+  adoptive_parent: "adoptive_parent",
+  step_parent: "step_parent",
+  spouse: "spouse",
+  ex_spouse: "ex_spouse",
+  partner: "partner",
+} as const;
+
+/**
+ * An explicit relationship-layer edge. For parent-type edges, fromPerson is the child and toPerson is the parent.
+ */
+export interface RelationshipEdge {
+  fromPerson: string;
+  toPerson: string;
+  type: RelationshipEdgeType;
 }
 
 export interface InviteResponse {
@@ -218,6 +293,47 @@ export interface ClaimProfileBody {
   email: string;
   /** @minLength 8 */
   password: string;
+}
+
+/**
+ * Re-authenticates the invitee's existing Olive account by email + password (not a new-account password minimum -- this is a login).
+ */
+export interface PreviewInviteMergeBody {
+  email: string;
+  password: string;
+}
+
+export type PreviewInviteMergeResponsePlaceholder = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  relationshipLabel: string;
+  unitName: string;
+  unitId: string;
+};
+
+export type PreviewInviteMergeResponseExistingPerson = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  familyUnitId: string;
+};
+
+export interface PreviewInviteMergeResponse {
+  placeholder: PreviewInviteMergeResponsePlaceholder;
+  existingPerson: PreviewInviteMergeResponseExistingPerson;
+}
+
+export interface ConfirmInviteMergeBody {
+  email: string;
+  password: string;
+}
+
+export interface ConfirmInviteMergeResponse {
+  /** JWT session token */
+  token: string;
+  person: PersonWithUnit;
 }
 
 export interface CreateLinkRequestBody {
@@ -277,7 +393,9 @@ export interface UnitSummary {
   linkedUnits: number;
   pendingInvites: number;
   pendingLinkRequests: number;
+  /** Members with a birthday this month */
   birthdayCount: number;
+  /** Members with a phone number on file */
   phoneCount: number;
 }
 
@@ -287,45 +405,482 @@ export interface BirthdayEntry {
   lastName: string;
   photoUrl?: string | null;
   relationshipLabel: string;
-  /** The birthday person's relationship to the currently-authenticated viewer. Omitted for cross-linked-unit entries -- callers should fall back to relationshipLabel. */
+  /** The birthday person's relationship to the currently-authenticated viewer, computed on read. Omitted for cross-linked-unit entries -- callers should fall back to relationshipLabel. */
   viewerRelationshipLabel?: string;
   birthday: string;
   showBirthYear: boolean;
   unitName: string;
   /** Days until their next birthday */
   daysUntil: number;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export type LifeEventEventType =
+  (typeof LifeEventEventType)[keyof typeof LifeEventEventType];
+
+export const LifeEventEventType = {
+  graduation: "graduation",
+  marriage: "marriage",
+  new_baby: "new_baby",
+  moved: "moved",
+  new_job: "new_job",
+  death: "death",
+  custom: "custom",
+} as const;
+
+export interface LifeEvent {
+  id: string;
+  familyId: string;
+  personId: string;
+  eventType: LifeEventEventType;
+  /** Date in YYYY-MM-DD format */
+  eventDate: string;
+  notes?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+}
+
+export type CreateLifeEventBodyEventType =
+  (typeof CreateLifeEventBodyEventType)[keyof typeof CreateLifeEventBodyEventType];
+
+export const CreateLifeEventBodyEventType = {
+  graduation: "graduation",
+  marriage: "marriage",
+  new_baby: "new_baby",
+  moved: "moved",
+  new_job: "new_job",
+  death: "death",
+  custom: "custom",
+} as const;
+
+export interface CreateLifeEventBody {
+  eventType: CreateLifeEventBodyEventType;
+  /**
+   * Date in YYYY-MM-DD format
+   * @pattern ^\d{4}-\d{2}-\d{2}$
+   */
+  eventDate: string;
+  /** @maxLength 500 */
+  notes?: string | null;
+}
+
+export type UpdateLifeEventBodyEventType =
+  (typeof UpdateLifeEventBodyEventType)[keyof typeof UpdateLifeEventBodyEventType];
+
+export const UpdateLifeEventBodyEventType = {
+  graduation: "graduation",
+  marriage: "marriage",
+  new_baby: "new_baby",
+  moved: "moved",
+  new_job: "new_job",
+  death: "death",
+  custom: "custom",
+} as const;
+
+export interface UpdateLifeEventBody {
+  eventType?: UpdateLifeEventBodyEventType;
+  /**
+   * Date in YYYY-MM-DD format
+   * @pattern ^\d{4}-\d{2}-\d{2}$
+   */
+  eventDate?: string;
+  /** @maxLength 500 */
+  notes?: string | null;
+}
+
+/**
+ * Raw memory row, as returned from create/update.
+ */
+export interface Memory {
+  id: string;
+  personId: string;
+  familyUnitId: string;
+  contributorPersonId?: string | null;
+  body: string;
+  /** Inline data: URIs only (client-side resized before upload) -- never raw external URLs. At most 3. */
+  photoUrls: string[];
+  promptText?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Shape returned by the list-memories endpoint, enriched for display.
+ */
+export interface MemoryWithContributor {
+  id: string;
+  personId: string;
+  body: string;
+  photoUrls: string[];
+  promptText?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  contributorPersonId?: string | null;
+  /** Contributor's full name, or "A family member" if they've since left the unit */
+  contributorName: string;
+  /** The contributor's relationship to the viewer, if computable */
+  contributorRelationship?: string | null;
+  /** True only for the memory's own contributor */
+  canEdit: boolean;
+  /** True for the contributor or a same-family admin */
+  canDelete: boolean;
+}
+
+export interface CreateMemoryBody {
+  /** @maxLength 4000 */
+  body: string;
+  /** @maxItems 3 */
+  photoUrls?: string[];
+  promptText?: string | null;
+}
+
+export interface UpdateMemoryBody {
+  /** @maxLength 4000 */
+  body?: string;
+  /** @maxItems 3 */
+  photoUrls?: string[];
+}
+
+export interface SetMemoryCollectionBody {
+  enabled: boolean;
+}
+
+export interface MemoryCollectionToggleResponse {
+  id: string;
+  memoryCollectionEnabled: boolean;
+}
+
+export interface HomeFeedBirthdayEntry {
+  memberId: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl?: string | null;
+  initials: string;
+  birthMonth: number;
+  birthDay: number;
+  /** 0-30 for upcoming; 358-364 for a birthday in the past 7 days */
+  daysUntil: number;
+  /** Null when birth year is a placeholder or hidden (showBirthYear false) */
+  ageTurning?: number | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export type HomeFeedRecentUpdateChangeType =
+  (typeof HomeFeedRecentUpdateChangeType)[keyof typeof HomeFeedRecentUpdateChangeType];
+
+export const HomeFeedRecentUpdateChangeType = {
+  joined: "joined",
+  photo: "photo",
+  phone: "phone",
+  address: "address",
+  profile: "profile",
+} as const;
+
+export interface HomeFeedRecentUpdate {
+  memberId: string;
+  name: string;
+  changeType: HomeFeedRecentUpdateChangeType;
+  description: string;
+  timestamp: string;
+  avatarUrl?: string | null;
+  initials: string;
+}
+
+export type HomeFeedResponseMemberMissingPriorityField =
+  | (typeof HomeFeedResponseMemberMissingPriorityField)[keyof typeof HomeFeedResponseMemberMissingPriorityField]
+  | null;
+
+export const HomeFeedResponseMemberMissingPriorityField = {
+  phone: "phone",
+  photo: "photo",
+  email: "email",
+  birthday: "birthday",
+} as const;
+
+export type HomeFeedResponseMember = {
+  id: string;
+  firstName: string;
+  /** 0-100, +20 for each of phone/photo/email/birthday plus a 20 base */
+  profileCompleteness: number;
+  missingPriorityField: HomeFeedResponseMemberMissingPriorityField;
+};
+
+export type HomeFeedResponseFamily = {
+  unitName: string;
+};
+
+export type HomeFeedResponseStats = {
+  birthdaysThisMonth: number;
+  /** Visible members (excluding viewer) created in the last 30 days */
+  newContactsCount: number;
+};
+
+export interface HomeFeedResponse {
+  member: HomeFeedResponseMember;
+  family: HomeFeedResponseFamily;
+  upcomingBirthdays: HomeFeedBirthdayEntry[];
+  stats: HomeFeedResponseStats;
+  recentUpdates: HomeFeedRecentUpdate[];
+}
+
+export type AiChatMessageRole =
+  (typeof AiChatMessageRole)[keyof typeof AiChatMessageRole];
+
+export const AiChatMessageRole = {
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export interface AiChatMessage {
+  role: AiChatMessageRole;
+  content: string;
+}
+
+export interface AiChatBody {
+  messages: AiChatMessage[];
+  /** Must match the caller's own family unit */
+  unitId: string;
+}
+
+export type AiChatResponseLifeEventAdded = {
+  personName: string;
+  eventType: string;
+} | null;
+
+export type AiChatResponseMemoryAdded = {
+  personName: string;
+} | null;
+
+export type AiChatResponseMemberDeleted = {
+  name: string;
+} | null;
+
+export interface AiChatResponse {
+  reply: string;
+  memberAdded: Person | null;
+  memberUpdated: Person | null;
+  lifeEventAdded: AiChatResponseLifeEventAdded;
+  memoryAdded: AiChatResponseMemoryAdded;
+  memberDeleted: AiChatResponseMemberDeleted;
+}
+
+export interface InviteTokenCreated {
+  id: string;
+  token: string;
+  url: string;
+  createdAt: string;
+}
+
+export interface InviteTokenDetails {
+  id: string;
+  token: string;
+  url: string;
+  expiresAt: string | null;
+  maxUses: number | null;
+  useCount: number;
+  createdAt: string;
+}
+
+export interface InviteTokenActiveResponse {
+  active: InviteTokenDetails | null;
+}
+
+export type JoinTokenInfoFamily = {
+  unitName: string;
+};
+
+export type JoinTokenInfoInviter = {
+  firstName: string;
+  lastName: string;
+} | null;
+
+export interface JoinTokenInfo {
+  family: JoinTokenInfoFamily;
+  inviter: JoinTokenInfoInviter;
+}
+
+/**
+ * Optional disambiguation answers used to narrow candidate matches.
+ */
+export interface ClaimRelationshipAnswers {
+  parentIds?: string[];
+  spouseId?: string;
+}
+
+export interface ClaimsMatchBody {
+  token: string;
+  /** @minLength 2 */
+  name: string;
+  relationshipAnswers?: ClaimRelationshipAnswers;
+}
+
+export type ClaimCandidateParentsItem = {
+  id: string;
+  firstName: string;
+};
+
+export type ClaimCandidateSpouse = {
+  id: string;
+  firstName: string;
+} | null;
+
+export interface ClaimCandidate {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  /** @maxItems 2 */
+  parents: ClaimCandidateParentsItem[];
+  spouse: ClaimCandidateSpouse;
+  birthYear: number | null;
+}
+
+export interface ClaimsMatchResponse {
+  /** True if more than 4 candidates matched (candidates list is capped at 4) */
+  overflow: boolean;
+  candidates: ClaimCandidate[];
+}
+
+export interface ClaimAttachingRelationship {
+  relatedPersonId: string;
+  /** One of the relationship-edge types (e.g. spouse, partner, biological_parent, adoptive_parent, step_parent). Only meaningful for type = create_new. */
+  type: string;
+}
+
+export type CreateClaimBodyType =
+  (typeof CreateClaimBodyType)[keyof typeof CreateClaimBodyType];
+
+export const CreateClaimBodyType = {
+  claim_existing: "claim_existing",
+  create_new: "create_new",
+} as const;
+
+/**
+ * For type = claim_existing, targetPersonId is required. For type = create_new, attachingRelationships may be supplied instead.
+ */
+export interface CreateClaimBody {
+  token: string;
+  type: CreateClaimBodyType;
+  /** Required when type is claim_existing */
+  targetPersonId?: string;
+  claimerEmail: string;
+  /** @minLength 8 */
+  claimerPassword: string;
+  claimerName: string;
+  relationshipAnswers?: ClaimRelationshipAnswers;
+  attachingRelationships?: ClaimAttachingRelationship[];
+}
+
+export type ClaimCreatedResponseStatus =
+  (typeof ClaimCreatedResponseStatus)[keyof typeof ClaimCreatedResponseStatus];
+
+export const ClaimCreatedResponseStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+  superseded: "superseded",
+} as const;
+
+export interface ClaimCreatedResponse {
+  id: string;
+  status: ClaimCreatedResponseStatus;
+  createdAt: string;
+}
+
+export type ClaimStatusResponseStatus =
+  (typeof ClaimStatusResponseStatus)[keyof typeof ClaimStatusResponseStatus];
+
+export const ClaimStatusResponseStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+  superseded: "superseded",
+} as const;
+
+export type ClaimStatusResponseType =
+  (typeof ClaimStatusResponseType)[keyof typeof ClaimStatusResponseType];
+
+export const ClaimStatusResponseType = {
+  claim_existing: "claim_existing",
+  create_new: "create_new",
+} as const;
+
+export interface ClaimStatusResponse {
+  id: string;
+  status: ClaimStatusResponseStatus;
+  type: ClaimStatusResponseType;
+  decidedAt?: string | null;
+  createdAt: string;
+}
+
+export type ClaimInboxEntryType =
+  (typeof ClaimInboxEntryType)[keyof typeof ClaimInboxEntryType];
+
+export const ClaimInboxEntryType = {
+  claim_existing: "claim_existing",
+  create_new: "create_new",
+} as const;
+
+/**
+ * Sanitized claimer_signal JSONB (passwordHash stripped) -- typically contains relationshipAnswers, attachingRelationships, arrival, and (for rejected claims) rejectionReason.
+ */
+export type ClaimInboxEntryClaimerSignal = { [key: string]: unknown };
+
+export type ClaimInboxEntryStatus =
+  (typeof ClaimInboxEntryStatus)[keyof typeof ClaimInboxEntryStatus];
+
+export const ClaimInboxEntryStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+  superseded: "superseded",
+} as const;
+
+export interface ClaimInboxEntry {
+  id: string;
+  type: ClaimInboxEntryType;
+  targetPersonId?: string | null;
+  claimerDisplayName: string;
+  claimerContact?: string | null;
+  /** Sanitized claimer_signal JSONB (passwordHash stripped) -- typically contains relationshipAnswers, attachingRelationships, arrival, and (for rejected claims) rejectionReason. */
+  claimerSignal: ClaimInboxEntryClaimerSignal;
+  status: ClaimInboxEntryStatus;
+  createdAt: string;
+}
+
+export interface ClaimsInboxResponse {
+  claims: ClaimInboxEntry[];
+}
+
+export interface ClaimApproveResponse {
+  ok: boolean;
+  personId: string;
+  /** JWT for the newly-bound person, so they're logged in immediately */
+  token: string | null;
+}
+
+export interface RejectClaimBody {
+  reason?: string | null;
 }
 
 export type SearchFamilyUnitsParams = {
   q: string;
 };
 
-export interface MergePreviewBody {
-  email: string;
-  password: string;
-}
+export type ListClaimRequestsParams = {
+  /**
+   * Defaults to "pending"
+   */
+  status?: ListClaimRequestsStatus;
+};
 
-export interface MergePreviewResponse {
-  placeholder: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    relationshipLabel: string;
-    unitName: string;
-    unitId: string;
-  };
-  existingPerson: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email?: string | null;
-    familyUnitId: string;
-  };
-}
+export type ListClaimRequestsStatus =
+  (typeof ListClaimRequestsStatus)[keyof typeof ListClaimRequestsStatus];
 
-export interface MergeConfirmBody {
-  email: string;
-  password: string;
-}
-
-export type MergeConfirmResponse = AuthResponse;
+export const ListClaimRequestsStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+  superseded: "superseded",
+} as const;

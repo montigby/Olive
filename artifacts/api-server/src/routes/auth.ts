@@ -11,6 +11,7 @@ import {
 import { eq } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { signToken, requireAuth, getPersonWithUnit } from "../middlewares/auth";
+import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
 
 const router = Router();
 
@@ -137,6 +138,17 @@ router.post("/auth/register", async (req, res) => {
         claimedAt: new Date(),
       })
       .returning();
+
+    // Sync to explicit relationship layer (best-effort)
+    await syncPersonToRelationshipLayer({
+      personId: person.id,
+      familyId: tempUnit.id,
+      firstName: person.firstName,
+      lastName: person.lastName,
+      label: person.relationshipLabel,
+      adminId: person.id,
+      parentPersonId: person.parentPersonId,
+    });
 
     await tx
       .update(familyUnitsTable)

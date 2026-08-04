@@ -5,11 +5,11 @@ import { z } from "zod";
 import {
   useClaimProfile,
   useGetInvite,
-  useMergePreview,
-  useMergeConfirm,
+  usePreviewInviteMerge,
+  useConfirmInviteMerge,
   getGetInviteQueryKey,
 } from "@workspace/api-client-react";
-import type { MergePreviewResponse } from "@workspace/api-client-react";
+import type { PreviewInviteMergeResponse } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation, useParams } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -148,11 +148,11 @@ function LinkExistingTab({
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<MergeStep>("form");
-  const [previewData, setPreviewData] = useState<MergePreviewResponse | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewInviteMergeResponse | null>(null);
   const [savedCredentials, setSavedCredentials] = useState<{ email: string; password: string } | null>(null);
 
-  const mergePreviewMutation = useMergePreview();
-  const mergeConfirmMutation = useMergeConfirm();
+  const mergePreviewMutation = usePreviewInviteMerge();
+  const mergeConfirmMutation = useConfirmInviteMerge();
 
   const form = useForm<LinkForm>({
     resolver: zodResolver(linkSchema),
@@ -163,7 +163,7 @@ function LinkExistingTab({
     mergePreviewMutation.mutate(
       { token, data },
       {
-        onSuccess: (response) => {
+        onSuccess: (response: PreviewInviteMergeResponse) => {
           setPreviewData(response);
           setSavedCredentials(data);
           setStep("confirm");
