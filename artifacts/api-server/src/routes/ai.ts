@@ -7,7 +7,7 @@ import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
-import { buildPersonUpdateData, type PersonUpdateInput } from "../lib/personUpdate";
+import { buildPersonUpdateData, isValidPhotoUrl, type PersonUpdateInput } from "../lib/personUpdate";
 import { isParentOf } from "../lib/visibility";
 import { isLastAdminInUnit } from "../lib/permissions";
 import { VALID_EVENT_TYPES } from "./lifeEvents";
@@ -379,56 +379,60 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
             parentPersonId?: string;
           };
 
-          // Duplicate guard — same name + same relationship already in this unit
-          const existing = await db
-            .select()
-            .from(personsTable)
-            .where(
-              and(
-                eq(personsTable.familyUnitId, unitId),
-                ilike(personsTable.firstName, input.firstName.trim()),
-                ilike(personsTable.lastName, input.lastName.trim()),
-                ilike(personsTable.relationshipLabel, input.relationshipLabel.trim()),
-              ),
-            )
-            .limit(1);
-
-          if (existing.length > 0) {
-            memberAdded = formatPerson(existing[0]);
-            toolResult = JSON.stringify({ success: true, member: memberAdded, alreadyExists: true });
+          if (!isValidPhotoUrl(input.photoUrl)) {
+            toolResult = JSON.stringify({ success: false, error: "Invalid input" });
           } else {
-            const detailData = buildPersonUpdateData(input, { allowRelationshipLabel: false });
-            delete (detailData as Record<string, unknown>).updatedAt;
+            // Duplicate guard — same name + same relationship already in this unit
+            const existing = await db
+              .select()
+              .from(personsTable)
+              .where(
+                and(
+                  eq(personsTable.familyUnitId, unitId),
+                  ilike(personsTable.firstName, input.firstName.trim()),
+                  ilike(personsTable.lastName, input.lastName.trim()),
+                  ilike(personsTable.relationshipLabel, input.relationshipLabel.trim()),
+                ),
+              )
+              .limit(1);
 
-            const [inserted] = await db
-              .insert(personsTable)
-              .values({
-                firstName: input.firstName,
-                lastName: input.lastName,
-                relationshipLabel: input.relationshipLabel,
-                parentPersonId: input.parentPersonId ?? null,
-                familyUnitId: unitId,
-                isAdmin: false,
-                claimed: false,
-                ...detailData,
-              })
-              .returning();
+            if (existing.length > 0) {
+              memberAdded = formatPerson(existing[0]);
+              toolResult = JSON.stringify({ success: true, member: memberAdded, alreadyExists: true });
+            } else {
+              const detailData = buildPersonUpdateData(input, { allowRelationshipLabel: false });
+              delete (detailData as Record<string, unknown>).updatedAt;
 
-            memberAdded = formatPerson(inserted);
-            toolResult = JSON.stringify({ success: true, member: memberAdded });
+              const [inserted] = await db
+                .insert(personsTable)
+                .values({
+                  firstName: input.firstName,
+                  lastName: input.lastName,
+                  relationshipLabel: input.relationshipLabel,
+                  parentPersonId: input.parentPersonId ?? null,
+                  familyUnitId: unitId,
+                  isAdmin: false,
+                  claimed: false,
+                  ...detailData,
+                })
+                .returning();
 
-            // Sync to explicit relationship layer (best-effort)
-            const adminMember = members.find((m: ReturnType<typeof formatPerson>) => m.isAdmin);
-            if (adminMember) {
-              await syncPersonToRelationshipLayer({
-                personId: inserted.id,
-                familyId: unitId,
-                firstName: inserted.firstName,
-                lastName: inserted.lastName,
-                label: inserted.relationshipLabel,
-                adminId: adminMember.id,
-                parentPersonId: inserted.parentPersonId,
-              });
+              memberAdded = formatPerson(inserted);
+              toolResult = JSON.stringify({ success: true, member: memberAdded });
+
+              // Sync to explicit relationship layer (best-effort)
+              const adminMember = members.find((m: ReturnType<typeof formatPerson>) => m.isAdmin);
+              if (adminMember) {
+                await syncPersonToRelationshipLayer({
+                  personId: inserted.id,
+                  familyId: unitId,
+                  firstName: inserted.firstName,
+                  lastName: inserted.lastName,
+                  label: inserted.relationshipLabel,
+                  adminId: adminMember.id,
+                  parentPersonId: inserted.parentPersonId,
+                });
+              }
             }
           }
         } else if (toolCall.function.name === "update_family_member") {
@@ -436,6 +440,8 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
 
           if (!memberIds.has(input.personId)) {
             toolResult = JSON.stringify({ success: false, error: "Unknown personId" });
+          } else if (!isValidPhotoUrl(input.photoUrl)) {
+            toolResult = JSON.stringify({ success: false, error: "Invalid input" });
           } else {
             const isSelf = req.auth!.personId === input.personId;
             const isSameFamilyAdmin = req.auth!.isAdmin; // already scoped to this unit above

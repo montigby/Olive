@@ -1,5 +1,16 @@
 import type { personsTable } from "@workspace/db";
 
+// Same restriction as memories.ts's validatePhotoUrls: only inline data URIs
+// are accepted, since that's the only shape the UI's client-side resize ever
+// produces. A raw external URL stored here would render as an <img src> on
+// every viewer's profile page with no CSP to stop it -- a tracking pixel.
+const DATA_IMAGE_URI = /^data:image\/[a-zA-Z0-9.+-]+;base64,/;
+
+export function isValidPhotoUrl(value: string | null | undefined): boolean {
+  if (value === null || value === undefined) return true;
+  return DATA_IMAGE_URI.test(value);
+}
+
 export interface PersonUpdateInput {
   firstName?: string;
   lastName?: string;
