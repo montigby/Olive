@@ -121,7 +121,7 @@ export default function Landing() {
             <span className="font-serif font-bold text-xl tracking-tight">Olive</span>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: "#6B6560" }}>
-            <ScrollLink to="#how-it-works" className="hover:opacity-70 transition-opacity">How it Works</ScrollLink>
+            <ScrollLink to="#how-it-works" className="hover:opacity-70 transition-opacity">How It Works</ScrollLink>
             <ScrollLink to="#features" className="hover:opacity-70 transition-opacity">Features</ScrollLink>
             <ScrollLink to="#faq" className="hover:opacity-70 transition-opacity">FAQ</ScrollLink>
           </nav>
@@ -151,8 +151,8 @@ export default function Landing() {
               The Place Your Family's Memory Lives.
             </h1>
             <p className="text-lg md:text-xl leading-relaxed mb-8" style={{ color: "#5A5650" }}>
-              Birthdays, phone numbers, addresses, relationships — kept current in one private
-              place, with a reminder when it matters.
+              Everyone's information stays current in one private place, so you always know how
+              to reach the people you love.
             </p>
             <Link href="/register">
               <Button className="h-12 rounded-full px-8 text-base text-white border-0" style={{ backgroundColor: GREEN }}>
@@ -162,7 +162,7 @@ export default function Landing() {
             <p className="text-sm mt-4" style={{ color: "#6B6560" }}>Free to get started. Takes less than 2 minutes.</p>
           </FadeIn>
           <FadeIn delay={0.15}>
-            <PhotoPlaceholder variant="a" className="w-full aspect-square md:aspect-[4/5]" />
+            <HeroMockup />
           </FadeIn>
         </div>
       </section>
@@ -244,14 +244,25 @@ export default function Landing() {
                 { icon: BookUser, label: "Contact Directory" },
                 { icon: Cake, label: "Birthdays" },
                 { icon: Share2, label: "Social Accounts" },
-                { icon: Bell, label: "AI Reminders" },
-                { icon: NotebookPen, label: "Family Notes" },
+                { icon: Bell, label: "Reminders" },
+                {
+                  icon: NotebookPen,
+                  label: "Family Notes",
+                  sub: "Anniversaries, new babies, graduations, moves, and other big moments.",
+                },
               ].map((f) => (
-                <div key={f.label} className="flex items-center gap-3">
+                <div key={f.label} className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#EEF1E7" }}>
                     <f.icon className="w-4.5 h-4.5" style={{ color: GREEN }} />
                   </div>
-                  <span className="font-medium">{f.label}</span>
+                  <div>
+                    <span className="font-medium block">{f.label}</span>
+                    {f.sub && (
+                      <span className="text-sm block mt-0.5" style={{ color: "#5A5650" }}>
+                        {f.sub}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -315,39 +326,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── Future Vision ───────────────────────────────────────────── */}
-      <section className="px-6 py-24">
-        <div className="max-w-3xl mx-auto text-center">
-          <FadeIn>
-            <h2 className="font-serif text-3xl md:text-5xl font-medium mb-12">What Olive Keeps Track Of</h2>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-left max-w-xl mx-auto">
-              {[
-                "Birthdays",
-                "Anniversaries",
-                "New babies",
-                "Graduations",
-                "Moves",
-                "Phone numbers",
-                "Addresses",
-                "Big moments",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-lg">
-                  <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs shrink-0"
-                    style={{ backgroundColor: GOLD }}
-                  >
-                    ✓
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </FadeIn>
-        </div>
-      </section>
-
       {/* ─── Testimonials ────────────────────────────────────────────── */}
       <section className="px-6 py-24" style={{ backgroundColor: "#F3F0EA" }}>
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
@@ -358,7 +336,7 @@ export default function Landing() {
           ].map((quote, i) => (
             <FadeIn key={quote} delay={i * 0.1}>
               <div className="bg-white rounded-3xl p-8 h-full shadow-sm">
-                <p className="font-serif text-xl italic leading-relaxed">"{quote}"</p>
+                <p className="font-serif text-xl leading-relaxed">"{quote}"</p>
               </div>
             </FadeIn>
           ))}
@@ -445,12 +423,6 @@ export default function Landing() {
           <div className="flex items-center gap-6 text-sm" style={{ color: "#6B6560" }}>
             <Link href="/privacy"><span className="hover:opacity-70 cursor-pointer">Privacy</span></Link>
             <Link href="/terms"><span className="hover:opacity-70 cursor-pointer">Terms</span></Link>
-            <span className="hover:opacity-70 cursor-pointer">Contact</span>
-          </div>
-          <div className="flex items-center gap-4" style={{ color: "#6B6560" }}>
-            <Instagram className="w-4 h-4" />
-            <Facebook className="w-4 h-4" />
-            <Twitter className="w-4 h-4" />
           </div>
         </div>
         <p className="text-center text-sm mt-8" style={{ color: "#6B6560" }}>
@@ -460,6 +432,14 @@ export default function Landing() {
     </div>
   );
 }
+
+// Re-enable once real contact/social URLs exist
+// <span className="hover:opacity-70 cursor-pointer">Contact</span>
+// <div className="flex items-center gap-4" style={{ color: "#6B6560" }}>
+//   <Instagram className="w-4 h-4" />
+//   <Facebook className="w-4 h-4" />
+//   <Twitter className="w-4 h-4" />
+// </div>
 
 function PhoneMockup() {
   return (
@@ -487,6 +467,16 @@ function PhoneMockup() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Reuses the PhoneMockup pattern to fill the hero's visual slot with a
+// believable in-app screenshot instead of an abstract gradient.
+function HeroMockup() {
+  return (
+    <div className="w-full aspect-square md:aspect-[4/5] rounded-[2rem] shadow-lg bg-white flex items-center justify-center p-8">
+      <PhoneMockup />
     </div>
   );
 }
