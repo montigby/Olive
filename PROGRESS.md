@@ -2,20 +2,27 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-08-04.
+Last updated: 2026-08-07.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
 
 **Next session: ask the user for these before doing anything else — nothing else in the code backlog is blocked on Claude right now.**
+- [ ] **Decision:** which email-forwarding service for `privacy@myolive.app`? DNS is confirmed Vercel-hosted (`ns1`/`ns2.vercel-dns.com`, no registrar login needed) and no MX/TXT records exist yet, so this is genuinely a quick job once a service is picked — blocked only on: reuse an email service the supervisor may already have, or set up a fresh free-tier forwarder (ImprovMX suggested)? See `email_forwarding_privacy.md` memory. Once live, also fix `terms.tsx`/`privacy.tsx`'s copy (both currently say "reach out to whoever invited you" instead of a real address; `privacy.tsx` has a dangling "contact us below" with nothing below it).
 - [ ] **Decision:** build the cousin / great-grandchild / spouse's-parent relative-picker cases? No backend edge logic exists for these at all yet, and there's real relationship-semantics ambiguity (which cousin, whose side) that needs the user's input to scope, not something to guess at (see `suggestions_shortlist.md` item #26).
 - [ ] **Decision:** wire the home page's "Recent updates" feed to the real `life_events` table (currently inferred from field-presence), and/or build real change-tracking so edits stop being mislabeled? Both are unapproved product-scope items, not unfinished code — don't build without a green light.
-- [ ] **Action:** set up `privacy@myolive.app` email forwarding (5-min DNS job) — reminder that's been recurring for weeks, still not done.
 - [ ] **Action:** confirm legal business entity registration status — unknown, not checkable from the codebase.
-- [ ] **Action:** real landing-page photography — hero/problem/CTA sections still use placeholder gradients.
+- [ ] **Action:** real landing-page photography — hero/problem/CTA sections still use placeholder gradients (hero's is now a `HeroMockup` in-app-screenshot style visual as of 2026-08-07, not a gradient; problem/CTA are still plain gradients).
 - [ ] **Decision:** business model — still parked. Freemium/per-household lean exists (`business_model.md`) but not committed. Don't build billing infra until this is decided.
-- [ ] **Caution:** the TLS/cert fix (below) — do NOT just delete the `NODE_TLS_REJECT_UNAUTHORIZED` Vercel env var again. It broke production login once already. Needs real research into what `DATABASE_URL`'s SSL mode requires before touching it a second time.
+
+**2026-08-07 session summary (commits `ad8cdea`/`3007a4f` merge, `db3f437`/`d912195` merge):**
+1. **`persons.photoUrl` tracking-pixel gap closed.** Same base64-data-URI restriction already on `memories.photoUrls` now applied to `persons.photoUrl`'s one write chokepoint (`personUpdate.ts`'s `buildPersonUpdateData`). Built in an isolated worktree by a background agent, diff reviewed before merge. See `security.md`/`security_audit.md` memory.
+2. **Landing page: full competitive comparison + 7 fixes shipped.** Researched against Storyworth/Cozi/Tinybeans/FamilyWall/MyHeritage/Notion/Linear (background agent, fetched live sites). Implemented: dropped reintroduced "AI Reminders" jargon → "Reminders"; fixed a nav/heading casing mismatch; trimmed the hero subheadline to one declarative sentence; de-italicized testimonial quotes (readability for the audience); merged two redundant feature-list sections into one; replaced the hero's gradient placeholder with a `HeroMockup` (reuses the existing `PhoneMockup` pattern, no real photography needed); hid (didn't delete) dead footer Contact/social links behind a single `// Re-enable once real contact/social URLs exist` comment, pending real URLs. See `landing_page_polish.md` memory for full detail.
+3. **Cron job fully verified.** Job-count limit already confirmed 2026-08-04 (Hobby plan, 2/2 slots). This session confirmed the trigger itself actually fires: `CRON_SECRET` was marked Sensitive in Vercel (write-only, unrecoverable — same gotcha as the earlier `ADMIN_SECRET` incident, see `local_dev_environment.md`), so rotated it and redeployed, then manually invoked `/api/cron/memory-prompts` — got a clean `{ ok: true, emailsSent: 0, errors: {} }` (0 sent is correct, nobody was due in their per-recipient cadence today).
+4. **`privacy@myolive.app` investigated, not yet done** — see the blocked decision at the top of this section.
+
+**Caution carried forward:** the TLS/cert fix — do NOT just delete the `NODE_TLS_REJECT_UNAUTHORIZED` Vercel env var. A proper scoped fix already landed 2026-08-05 (commit `20e8952`, strips `sslmode` from the connection string so the pool's own `ssl` option actually applies) and is verified live — this note is just a reminder of why that env var removal broke things the first time, not an open risk anymore.
 
 **2026-08-04 — full day summary (commits `74d55c4` through `d7294dc`), user pushed hard to close the entire code-only backlog in one session:**
 
