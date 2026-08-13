@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, personsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { daysUntilBirthday, getAgeTurning, formatBirthdayShort } from "../lib/birthday";
-import { sendDayBeforeReminder, sendWeeklyDigest } from "../lib/email";
+import { sendDayBeforeReminder, sendOwnBirthdayReminder, sendWeeklyDigest } from "../lib/email";
 import { sendMemoryPromptsForPerson } from "../lib/memoryPromptSender";
 
 const router = Router();
@@ -71,13 +71,21 @@ router.get("/cron/birthday-emails", async (req, res) => {
       for (const birthdayPerson of tomorrow) {
         for (const recipient of recipients) {
           try {
-            await sendDayBeforeReminder({
-              to: recipient.email!,
-              recipientName: recipient.firstName,
-              birthdayPersonName: `${birthdayPerson.firstName} ${birthdayPerson.lastName}`,
-              birthdayPersonId: birthdayPerson.id,
-              age: birthdayPerson.age,
-            });
+            if (recipient.id === birthdayPerson.id) {
+              await sendOwnBirthdayReminder({
+                to: recipient.email!,
+                recipientName: recipient.firstName,
+                age: birthdayPerson.age,
+              });
+            } else {
+              await sendDayBeforeReminder({
+                to: recipient.email!,
+                recipientName: recipient.firstName,
+                birthdayPersonName: `${birthdayPerson.firstName} ${birthdayPerson.lastName}`,
+                birthdayPersonId: birthdayPerson.id,
+                age: birthdayPerson.age,
+              });
+            }
             emailsSent++;
           } catch (err) {
             errors.push(`day-before to ${recipient.email}: ${err}`);

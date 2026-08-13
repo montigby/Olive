@@ -33,6 +33,29 @@ export async function sendDayBeforeReminder({
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
 }
 
+export async function sendOwnBirthdayReminder({
+  to,
+  recipientName,
+  age,
+}: {
+  to: string;
+  recipientName: string;
+  age: number | null;
+}) {
+  const ageText = age ? ` — you're turning ${age}!` : "";
+
+  const client = await getClient();
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: `Happy almost-birthday, ${recipientName}! 🎉`,
+    html: buildOwnBirthdayHtml(recipientName, ageText),
+    text: `Hi ${recipientName},\n\nJust a heads up from the whole family — your birthday is tomorrow${ageText}\n\nWe hope it's a wonderful day. Enjoy it!\n\n— Olive\nhttps://myolive.app`,
+  });
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
 export async function sendWeeklyDigest({
   to,
   recipientName,
@@ -157,6 +180,23 @@ function getMondayDateString(): string {
   const diff = today.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(today.setDate(diff));
   return monday.toISOString().slice(0, 10);
+}
+
+function buildOwnBirthdayHtml(recipientName: string, ageText: string): string {
+  return `<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; color: #1a1a1a; max-width: 480px; margin: 0 auto; padding: 24px;">
+  <p style="font-size: 16px;">Hi ${recipientName},</p>
+  <p style="font-size: 16px;">
+    Just a heads up from the whole family — your birthday is tomorrow${ageText} 🎉
+  </p>
+  <p style="font-size: 16px;">We hope it's a wonderful day. Enjoy it!</p>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+  <p style="font-size: 12px; color: #888;">
+    Olive &mdash; <a href="https://myolive.app" style="color: #888;">myolive.app</a>
+  </p>
+</body>
+</html>`;
 }
 
 function buildDayBeforeHtml(recipientName: string, birthdayPersonName: string, ageText: string): string {
