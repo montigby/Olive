@@ -79,8 +79,7 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
   const currentMonth = now.getMonth() + 1; // 1–12
 
   // ── Profile completeness ──────────────────────────────────────────────────
-  const { completeness: profileCompleteness, missingPriorityField } =
-    computeProfileCompleteness(viewer);
+  const { profileCompleteness, missingPriorityField } = computeProfileCompleteness(viewer);
 
   // ── Upcoming birthdays ────────────────────────────────────────────────────
   // Show birthdays within the next 30 days, plus any that happened in the

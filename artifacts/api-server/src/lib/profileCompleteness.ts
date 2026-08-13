@@ -6,8 +6,8 @@ export type MissingPriorityField = "phone" | "photo" | "email" | "birthday";
 // adds 20 pts. Total = 100.
 export function computeProfileCompleteness(
   person: Pick<Person, "phone" | "photoUrl" | "email" | "birthday">,
-): { completeness: number; missingPriorityField: MissingPriorityField | null } {
-  const completeness =
+): { profileCompleteness: number; missingPriorityField: MissingPriorityField | null } {
+  const profileCompleteness =
     20 +
     (person.phone ? 20 : 0) +
     (person.photoUrl ? 20 : 0) +
@@ -24,5 +24,5 @@ export function computeProfileCompleteness(
           ? "birthday"
           : null;
 
-  return { completeness, missingPriorityField };
+  return { profileCompleteness, missingPriorityField };
 }

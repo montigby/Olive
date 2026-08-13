@@ -98,9 +98,7 @@ router.get("/persons/:personId", requireAuth, async (req, res) => {
   // Data-quality signal for admins looking at someone else's profile, same
   // audience restriction as the members-list version.
   if (viewer.isAdmin && viewer.familyUnitId === target.familyUnitId) {
-    const { completeness, missingPriorityField } = computeProfileCompleteness(target);
-    result.profileCompleteness = completeness;
-    result.missingPriorityField = missingPriorityField;
+    Object.assign(result, computeProfileCompleteness(target));
   }
 
   res.json(result);
