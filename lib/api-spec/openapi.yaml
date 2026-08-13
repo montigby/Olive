@@ -1723,6 +1723,18 @@ components:
         updatedAt:
           type: string
           format: date-time
+        profileCompleteness:
+          type: integer
+          nullable: true
+          description: >-
+            0-100, +20 for each of phone/photo/email/birthday plus a 20 base.
+            Only populated for admins viewing another member's card/profile
+            (data-quality tool, not shown to non-admin viewers of others).
+        missingPriorityField:
+          type: string
+          nullable: true
+          enum: [phone, photo, email, birthday]
+          description: The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.
       required:
         - id
         - firstName

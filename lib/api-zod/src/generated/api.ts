@@ -106,6 +106,18 @@ export const LoginResponse = zod.object({
       memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      profileCompleteness: zod
+        .number()
+        .nullish()
+        .describe(
+          "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+        ),
+      missingPriorityField: zod
+        .enum(["phone", "photo", "email", "birthday"])
+        .nullish()
+        .describe(
+          "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+        ),
     })
     .and(
       zod.object({
@@ -194,6 +206,18 @@ export const GetMeResponse = zod
     memoryCollectionEnabled: zod.boolean(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
+    profileCompleteness: zod
+      .number()
+      .nullish()
+      .describe(
+        "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+      ),
+    missingPriorityField: zod
+      .enum(["phone", "photo", "email", "birthday"])
+      .nullish()
+      .describe(
+        "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+      ),
   })
   .and(
     zod.object({
@@ -290,6 +314,18 @@ export const GetPersonResponse = zod.object({
   memoryCollectionEnabled: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  profileCompleteness: zod
+    .number()
+    .nullish()
+    .describe(
+      "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+    ),
+  missingPriorityField: zod
+    .enum(["phone", "photo", "email", "birthday"])
+    .nullish()
+    .describe(
+      "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+    ),
 });
 
 /**
@@ -395,6 +431,18 @@ export const UpdatePersonResponse = zod.object({
   memoryCollectionEnabled: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  profileCompleteness: zod
+    .number()
+    .nullish()
+    .describe(
+      "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+    ),
+  missingPriorityField: zod
+    .enum(["phone", "photo", "email", "birthday"])
+    .nullish()
+    .describe(
+      "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+    ),
 });
 
 /**
@@ -476,6 +524,18 @@ export const UpdatePersonAdminResponse = zod.object({
   memoryCollectionEnabled: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  profileCompleteness: zod
+    .number()
+    .nullish()
+    .describe(
+      "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+    ),
+  missingPriorityField: zod
+    .enum(["phone", "photo", "email", "birthday"])
+    .nullish()
+    .describe(
+      "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+    ),
 });
 
 /**
@@ -582,6 +642,18 @@ export const GetFamilyUnitResponse = zod
           memoryCollectionEnabled: zod.boolean(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date(),
+          profileCompleteness: zod
+            .number()
+            .nullish()
+            .describe(
+              "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+            ),
+          missingPriorityField: zod
+            .enum(["phone", "photo", "email", "birthday"])
+            .nullish()
+            .describe(
+              "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+            ),
         }),
       ),
     }),
@@ -676,6 +748,18 @@ export const ListMembersResponseItem = zod.object({
   memoryCollectionEnabled: zod.boolean(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  profileCompleteness: zod
+    .number()
+    .nullish()
+    .describe(
+      "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+    ),
+  missingPriorityField: zod
+    .enum(["phone", "photo", "email", "birthday"])
+    .nullish()
+    .describe(
+      "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+    ),
 });
 export const ListMembersResponse = zod.array(ListMembersResponseItem);
 
@@ -825,6 +909,18 @@ export const ClaimProfileResponse = zod.object({
       memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      profileCompleteness: zod
+        .number()
+        .nullish()
+        .describe(
+          "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+        ),
+      missingPriorityField: zod
+        .enum(["phone", "photo", "email", "birthday"])
+        .nullish()
+        .describe(
+          "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+        ),
     })
     .and(
       zod.object({
@@ -951,6 +1047,18 @@ export const ConfirmInviteMergeResponse = zod.object({
       memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      profileCompleteness: zod
+        .number()
+        .nullish()
+        .describe(
+          "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+        ),
+      missingPriorityField: zod
+        .enum(["phone", "photo", "email", "birthday"])
+        .nullish()
+        .describe(
+          "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+        ),
     })
     .and(
       zod.object({
@@ -1130,6 +1238,18 @@ export const GetFamilyTreeResponse = zod.object({
         memoryCollectionEnabled: zod.boolean(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
+        profileCompleteness: zod
+          .number()
+          .nullish()
+          .describe(
+            "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+          ),
+        missingPriorityField: zod
+          .enum(["phone", "photo", "email", "birthday"])
+          .nullish()
+          .describe(
+            "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+          ),
       }),
     ),
     children: zod.array(zod.unknown()),
@@ -1595,6 +1715,18 @@ export const AiChatResponse = zod.object({
       memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      profileCompleteness: zod
+        .number()
+        .nullish()
+        .describe(
+          "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+        ),
+      missingPriorityField: zod
+        .enum(["phone", "photo", "email", "birthday"])
+        .nullish()
+        .describe(
+          "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+        ),
     })
     .nullable(),
   memberUpdated: zod
@@ -1655,6 +1787,18 @@ export const AiChatResponse = zod.object({
       memoryCollectionEnabled: zod.boolean(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      profileCompleteness: zod
+        .number()
+        .nullish()
+        .describe(
+          "0-100, +20 for each of phone\/photo\/email\/birthday plus a 20 base. Only populated for admins viewing another member's card\/profile (data-quality tool, not shown to non-admin viewers of others).",
+        ),
+      missingPriorityField: zod
+        .enum(["phone", "photo", "email", "birthday"])
+        .nullish()
+        .describe(
+          "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+        ),
     })
     .nullable(),
   lifeEventAdded: zod

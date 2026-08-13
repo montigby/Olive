@@ -67,6 +67,20 @@ export const PersonTier2ContactField = {
   email: "email",
 } as const;
 
+/**
+ * The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.
+ */
+export type PersonMissingPriorityField =
+  | (typeof PersonMissingPriorityField)[keyof typeof PersonMissingPriorityField]
+  | null;
+
+export const PersonMissingPriorityField = {
+  phone: "phone",
+  photo: "photo",
+  email: "email",
+  birthday: "birthday",
+} as const;
+
 export interface Person {
   id: string;
   firstName: string;
@@ -116,6 +130,10 @@ export interface Person {
   memoryCollectionEnabled: boolean;
   createdAt: string;
   updatedAt: string;
+  /** 0-100, +20 for each of phone/photo/email/birthday plus a 20 base. Only populated for admins viewing another member's card/profile (data-quality tool, not shown to non-admin viewers of others). */
+  profileCompleteness?: number | null;
+  /** The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness. */
+  missingPriorityField?: PersonMissingPriorityField;
 }
 
 export type FamilyUnitParentLinkStatus =

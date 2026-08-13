@@ -620,6 +620,15 @@ export default function Members() {
                                 <ShieldCheck className="w-3 h-3 mr-1" /> Admin
                               </Badge>
                             )}
+                            {member.profileCompleteness != null && member.profileCompleteness < 100 && (
+                              <Badge
+                                variant="outline"
+                                title="How much of this profile's key info (phone, photo, email, birthday) is filled in"
+                                className="text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-50 font-normal text-xs px-2 py-0 h-5"
+                              >
+                                {member.profileCompleteness}% complete
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {member.viewerRelationshipLabel ?? member.relationshipLabel}

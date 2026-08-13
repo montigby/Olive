@@ -9,6 +9,7 @@ import { computeTier, applyVisibility, describeRelationship } from "../lib/visib
 import { areUnitsLinked } from "../lib/unitAccess";
 import { buildPersonUpdateData, isValidPhotoUrl } from "../lib/personUpdate";
 import { canEditPerson, isLastAdminInUnit } from "../lib/permissions";
+import { computeProfileCompleteness } from "../lib/profileCompleteness";
 
 const router = Router();
 
@@ -85,9 +86,21 @@ router.get("/persons/:personId", requireAuth, async (req, res) => {
   // same-unit -- describeRelationship's graph is built from `allMembers`,
   // which is the target's unit, so it can't place a cross-unit viewer.
   // Cross-unit viewers fall back to the static label on the frontend.
-  const result: typeof filtered & { viewerRelationshipLabel?: string } = filtered;
+  const result: typeof filtered & {
+    viewerRelationshipLabel?: string;
+    profileCompleteness?: number;
+    missingPriorityField?: string | null;
+  } = filtered;
   if (viewer.familyUnitId === target.familyUnitId) {
     result.viewerRelationshipLabel = describeRelationship(viewer.id, target.id, allMembers, relationships);
+  }
+
+  // Data-quality signal for admins looking at someone else's profile, same
+  // audience restriction as the members-list version.
+  if (viewer.isAdmin && viewer.familyUnitId === target.familyUnitId) {
+    const { completeness, missingPriorityField } = computeProfileCompleteness(target);
+    result.profileCompleteness = completeness;
+    result.missingPriorityField = missingPriorityField;
   }
 
   res.json(result);

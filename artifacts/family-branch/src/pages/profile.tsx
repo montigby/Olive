@@ -59,6 +59,13 @@ const MONTHS = [
 ];
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
+const MISSING_FIELD_LABEL: Record<string, string> = {
+  phone: "phone number",
+  photo: "photo",
+  email: "email address",
+  birthday: "birthday",
+};
+
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 const profileSchema = z.object({
@@ -956,6 +963,16 @@ function ProfileView({
             {person.firstName} {person.lastName}
           </h2>
           <p className="text-muted-foreground text-sm mt-1">{person.viewerRelationshipLabel ?? person.relationshipLabel}</p>
+          {!isOwnProfile && person.profileCompleteness != null && person.profileCompleteness < 100 && (
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-700">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+              <span>
+                {person.profileCompleteness}% complete
+                {person.missingPriorityField &&
+                  ` — missing ${MISSING_FIELD_LABEL[person.missingPriorityField] ?? person.missingPriorityField}`}
+              </span>
+            </div>
+          )}
           {birthday && (
             <div className="flex items-center gap-1.5 mt-2">
               <Cake className="w-3.5 h-3.5 text-accent shrink-0" />

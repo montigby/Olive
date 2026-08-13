@@ -3,6 +3,7 @@ import { db, personsTable, familyUnitsTable, relationshipsTable } from "@workspa
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { computeVisibleSet } from "../lib/visibility";
+import { computeProfileCompleteness } from "../lib/profileCompleteness";
 
 const router = Router();
 
@@ -78,21 +79,8 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
   const currentMonth = now.getMonth() + 1; // 1–12
 
   // ── Profile completeness ──────────────────────────────────────────────────
-  // firstName + lastName always present = 20 pts.  Each of the 4 key fields
-  // adds 20 pts.  Total = 100.
-  const profileCompleteness =
-    20 +
-    (viewer.phone ? 20 : 0) +
-    (viewer.photoUrl ? 20 : 0) +
-    (viewer.email ? 20 : 0) +
-    (viewer.birthday ? 20 : 0);
-
-  const missingPriorityField: "phone" | "photo" | "email" | "birthday" | null =
-    !viewer.phone ? "phone" :
-    !viewer.photoUrl ? "photo" :
-    !viewer.email ? "email" :
-    !viewer.birthday ? "birthday" :
-    null;
+  const { completeness: profileCompleteness, missingPriorityField } =
+    computeProfileCompleteness(viewer);
 
   // ── Upcoming birthdays ────────────────────────────────────────────────────
   // Show birthdays within the next 30 days, plus any that happened in the
