@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, personsTable, familyUnitsTable, relationshipsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, personsTable, familyUnitsTable, relationshipsTable, lifeEventsTable } from "@workspace/db";
+import { eq, and, gte } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { computeVisibleSet } from "../lib/visibility";
 import { computeProfileCompleteness } from "../lib/profileCompleteness";
@@ -8,6 +8,17 @@ import { computeProfileCompleteness } from "../lib/profileCompleteness";
 const router = Router();
 
 const BIRTHDAY_PLACEHOLDER_YEAR = 2000;
+
+// Keep in sync with EVENT_TYPE_LABELS in artifacts/family-branch/src/pages/profile.tsx.
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  graduation: "Graduation",
+  marriage: "Marriage",
+  new_baby: "New Baby",
+  moved: "Moved",
+  new_job: "New Job",
+  death: "Passing",
+  custom: "Life Update",
+};
 
 // Returns daysUntil the next occurrence of this birthday (0 = today).
 function daysUntilBirthday(birthday: string): number {
@@ -137,50 +148,54 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
   ).length;
 
   // ── Recent updates ────────────────────────────────────────────────────────
-  // Members (excluding viewer) whose record changed within the last 14 days.
-  // We classify the update type heuristically from which fields they filled.
+  // Two real signals, merged: (1) members who joined within the last 14 days
+  // (from personsTable.createdAt, not a guess), and (2) real life_events rows
+  // logged in the same window. Previously this classified "what changed" by
+  // guessing from which fields happen to be populated *now* (e.g. "added a
+  // photo" whenever photoUrl was truthy, even if it had been set for months) --
+  // that's field-presence, not an actual event. Life events are real,
+  // user-logged entries, so use those instead.
   const fourteenDaysAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const recentUpdates = visibleMembers
-    .filter((m) => m.id !== requesterId && m.updatedAt >= fourteenDaysAgo)
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    .slice(0, 3)
-    .map((m) => {
-      // If updatedAt ≈ createdAt (< 1 hr gap) the person just joined; otherwise
-      // they returned and updated their profile.
-      const secsSinceCreation =
-        (m.updatedAt.getTime() - m.createdAt.getTime()) / 1000;
-      const isNew = secsSinceCreation < 3600;
+  const visibleMemberIds = new Set(visibleMembers.map((m) => m.id));
 
-      let changeType: string;
-      let description: string;
+  const joinedEntries = visibleMembers
+    .filter((m) => m.id !== requesterId && m.createdAt >= fourteenDaysAgo)
+    .map((m) => ({
+      memberId: m.id,
+      name: `${m.firstName} ${m.lastName}`,
+      changeType: "joined",
+      description: `${m.firstName} ${m.lastName} joined the family`,
+      timestamp: m.createdAt,
+      avatarUrl: m.photoUrl ?? null,
+      initials: ((m.firstName[0] ?? "?") + (m.lastName[0] ?? "?")).toUpperCase(),
+    }));
 
-      if (isNew) {
-        changeType = "joined";
-        description = `${m.firstName} ${m.lastName} joined the family`;
-      } else if (m.photoUrl) {
-        changeType = "photo";
-        description = `${m.firstName} added a photo`;
-      } else if (m.phone) {
-        changeType = "phone";
-        description = `${m.firstName} added a phone number`;
-      } else if (m.addressLine1) {
-        changeType = "address";
-        description = `${m.firstName} updated their address`;
-      } else {
-        changeType = "profile";
-        description = `${m.firstName} updated their profile`;
-      }
+  const recentLifeEvents = await db
+    .select()
+    .from(lifeEventsTable)
+    .where(and(eq(lifeEventsTable.familyId, unitId), gte(lifeEventsTable.createdAt, fourteenDaysAgo)));
 
+  const membersById = new Map(allMembers.map((m) => [m.id, m]));
+  const lifeEventEntries = recentLifeEvents
+    .filter((e) => e.personId !== requesterId && visibleMemberIds.has(e.personId))
+    .map((e) => {
+      const person = membersById.get(e.personId)!;
+      const label = EVENT_TYPE_LABEL[e.eventType] ?? e.eventType;
       return {
-        memberId: m.id,
-        name: `${m.firstName} ${m.lastName}`,
-        changeType,
-        description,
-        timestamp: m.updatedAt.toISOString(),
-        avatarUrl: m.photoUrl ?? null,
-        initials: ((m.firstName[0] ?? "?") + (m.lastName[0] ?? "?")).toUpperCase(),
+        memberId: person.id,
+        name: `${person.firstName} ${person.lastName}`,
+        changeType: e.eventType,
+        description: `${person.firstName} — ${label}`,
+        timestamp: e.createdAt,
+        avatarUrl: person.photoUrl ?? null,
+        initials: ((person.firstName[0] ?? "?") + (person.lastName[0] ?? "?")).toUpperCase(),
       };
     });
+
+  const recentUpdates = [...joinedEntries, ...lifeEventEntries]
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    .slice(0, 5)
+    .map((e) => ({ ...e, timestamp: e.timestamp.toISOString() }));
 
   res.json({
     member: {

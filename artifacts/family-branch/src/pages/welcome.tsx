@@ -8,13 +8,16 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Cake,
   ChevronRight,
-  Phone,
-  Camera,
-  Mail,
-  MapPin,
   UserPlus,
   User,
   ArrowRight,
+  GraduationCap,
+  Heart,
+  Baby,
+  Home as HomeIcon,
+  Briefcase,
+  Flower2,
+  Calendar,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -102,10 +105,13 @@ function onWish(entry: BirthdayEntry, toast: (opts: any) => void) {
 
 const UPDATE_ICON: Record<string, React.ElementType> = {
   joined: UserPlus,
-  photo: Camera,
-  phone: Phone,
-  address: MapPin,
-  profile: User,
+  graduation: GraduationCap,
+  marriage: Heart,
+  new_baby: Baby,
+  moved: HomeIcon,
+  new_job: Briefcase,
+  death: Flower2,
+  custom: Calendar,
 };
 
 const MISSING_FIELD_PROMPT: Record<string, string> = {
