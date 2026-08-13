@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 import {
   RefreshCw,
   Lock,
@@ -20,7 +23,54 @@ import {
   Instagram,
   Facebook,
   Twitter,
+  Copy,
+  Mail,
 } from "lucide-react";
+
+const CONTACT_EMAIL = "privacy@myolive.app";
+
+function ContactPopover() {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTACT_EMAIL);
+      toast({ title: "Email address copied!" });
+      setOpen(false);
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't copy", description: "Please copy it manually." });
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="hover:opacity-70">Contact</button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto">
+        <p className="text-sm text-muted-foreground mb-2">Reach us at</p>
+        <div className="flex items-center gap-2">
+          <span className="font-medium select-all">{CONTACT_EMAIL}</span>
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded hover:bg-muted transition-colors"
+            aria-label="Copy email address"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="p-1.5 rounded hover:bg-muted transition-colors"
+            aria-label="Open in email app"
+          >
+            <Mail className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // ─── Brand palette (matches the app's theme tokens in index.css) ──
 const BG = "#FAF8F5";
@@ -423,7 +473,7 @@ export default function Landing() {
           <div className="flex items-center gap-6 text-sm" style={{ color: "#6B6560" }}>
             <Link href="/privacy"><span className="hover:opacity-70 cursor-pointer">Privacy</span></Link>
             <Link href="/terms"><span className="hover:opacity-70 cursor-pointer">Terms</span></Link>
-            <a href="mailto:privacy@myolive.app" className="hover:opacity-70">Contact</a>
+            <ContactPopover />
           </div>
         </div>
         <p className="text-center text-sm mt-8" style={{ color: "#6B6560" }}>
