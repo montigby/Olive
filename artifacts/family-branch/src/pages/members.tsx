@@ -63,11 +63,11 @@ import { Badge } from "@/components/ui/badge";
 const RELATIONSHIP_OPTIONS = [
   {
     group: "Women",
-    options: ["Daughter", "Granddaughter", "Sister", "Sister-in-law", "Aunt", "Niece", "Wife", "Mom", "Grandma", "Nana", "Stepdaughter"],
+    options: ["Daughter", "Granddaughter", "Great-granddaughter", "Sister", "Sister-in-law", "Mother-in-law", "Aunt", "Niece", "Wife", "Mom", "Grandma", "Nana", "Stepdaughter"],
   },
   {
     group: "Men",
-    options: ["Son", "Grandson", "Brother", "Brother-in-law", "Uncle", "Nephew", "Husband", "Dad", "Grandpa", "Papa", "Stepson"],
+    options: ["Son", "Grandson", "Great-grandson", "Brother", "Brother-in-law", "Father-in-law", "Uncle", "Nephew", "Husband", "Dad", "Grandpa", "Papa", "Stepson"],
   },
   {
     group: "Other",
@@ -83,9 +83,19 @@ const ALL_ROLES = RELATIONSHIP_OPTIONS.flatMap((g) => g.options);
 // gets a parentPersonId and can create a real graph edge instead of leaving
 // the person a graph orphan (see suggestions_shortlist.md item #26).
 const GRANDCHILD_ROLES = ["Grandson", "Granddaughter"];
+const GREAT_GRANDCHILD_ROLES = ["Great-grandson", "Great-granddaughter"];
 const NIECE_NEPHEW_ROLES = ["Niece", "Nephew"];
 const SIBLING_IN_LAW_ROLES = ["Brother-in-law", "Sister-in-law"];
-const PARENT_PICKER_ROLES = [...GRANDCHILD_ROLES, ...NIECE_NEPHEW_ROLES, ...SIBLING_IN_LAW_ROLES];
+const COUSIN_ROLES = ["Cousin"];
+const IN_LAW_PARENT_ROLES = ["Mother-in-law", "Father-in-law"];
+const PARENT_PICKER_ROLES = [
+  ...GRANDCHILD_ROLES,
+  ...GREAT_GRANDCHILD_ROLES,
+  ...NIECE_NEPHEW_ROLES,
+  ...SIBLING_IN_LAW_ROLES,
+  ...COUSIN_ROLES,
+  ...IN_LAW_PARENT_ROLES,
+];
 
 // Auto-default the new Gender field from which group a relationship role
 // was picked from (e.g. "Sister" -> Female) -- still freely editable, since
@@ -149,8 +159,13 @@ export default function Members() {
   const selectedRole = form.watch("relationshipLabel");
   const needsParentPicker = PARENT_PICKER_ROLES.includes(selectedRole);
   const isSiblingInLawRole = SIBLING_IN_LAW_ROLES.includes(selectedRole);
-  const parentPickerLabel = isSiblingInLawRole ? "Married to" : "Child of";
-  const parentPickerPlaceholder = isSiblingInLawRole ? "Select spouse's sibling..." : "Select parent...";
+  const isInLawParentRole = IN_LAW_PARENT_ROLES.includes(selectedRole);
+  const parentPickerLabel = isSiblingInLawRole ? "Married to" : isInLawParentRole ? "Parent of" : "Child of";
+  const parentPickerPlaceholder = isSiblingInLawRole
+    ? "Select spouse's sibling..."
+    : isInLawParentRole
+    ? "Select your spouse..."
+    : "Select parent...";
 
   const onSubmit = (data: AddMemberForm) => {
     addMemberMutation.mutate(
@@ -246,17 +261,28 @@ export default function Members() {
   // Members eligible to be picked in the second "parent" dropdown -- who's
   // valid depends on which relationship role is selected above (a grandchild
   // hangs off the admin's own kids, a niece/nephew off a sibling or their
-  // spouse, an in-law sibling's spouse off the sibling they married).
+  // spouse, an in-law sibling's spouse off the sibling they married, a
+  // great-grandchild off an existing grandchild, a cousin off an aunt/uncle,
+  // and an in-law parent off the admin's own spouse).
   const parentCandidates = useMemo(() => {
     if (!members) return [];
     if (GRANDCHILD_ROLES.includes(selectedRole)) {
       return members.filter((m) => ["Son", "Daughter", "Stepson", "Stepdaughter"].includes(m.relationshipLabel));
+    }
+    if (GREAT_GRANDCHILD_ROLES.includes(selectedRole)) {
+      return members.filter((m) => GRANDCHILD_ROLES.includes(m.relationshipLabel));
     }
     if (NIECE_NEPHEW_ROLES.includes(selectedRole)) {
       return members.filter((m) => ["Brother", "Sister", "Brother-in-law", "Sister-in-law"].includes(m.relationshipLabel));
     }
     if (SIBLING_IN_LAW_ROLES.includes(selectedRole)) {
       return members.filter((m) => ["Brother", "Sister"].includes(m.relationshipLabel));
+    }
+    if (COUSIN_ROLES.includes(selectedRole)) {
+      return members.filter((m) => ["Aunt", "Uncle"].includes(m.relationshipLabel));
+    }
+    if (IN_LAW_PARENT_ROLES.includes(selectedRole)) {
+      return members.filter((m) => ["Wife", "Husband", "Spouse", "Partner"].includes(m.relationshipLabel));
     }
     return [];
   }, [members, selectedRole]);

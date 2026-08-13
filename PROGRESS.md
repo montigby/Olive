@@ -2,19 +2,26 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-08-07.
+Last updated: 2026-08-12.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
 
+**2026-08-12 session summary (commit `6944d42`):**
+1. **`privacy@myolive.app` forwarding is now LIVE.** Free ImprovMX account created, forwarding `privacy@myolive.app` → the user's own Gmail (`smithjac007@gmail.com`) for now, with an explicit plan to hand off the destination to the supervisor's email later — swapping the ImprovMX alias's destination address is a 10-second change with zero DNS impact, so this hand-off is cheap whenever it happens. Wildcard catch-all alias ImprovMX creates by default was deleted (would've forwarded every misspelled/spam address at the domain, not just `privacy@`). DNS records added directly in Vercel (`myolive.app` is Vercel-hosted, no registrar needed): 2 MX records + 1 SPF TXT record (ImprovMX-provided), plus a `_dmarc` TXT record (`v=DMARC1; p=none; rua=mailto:privacy@myolive.app`) added proactively after the first test email landed in spam — new domains with no DMARC record are a strong spam signal.
+2. **Reply-as-privacy@ deliberately left unfinished, by user choice.** Replying to a forwarded email currently sends from the user's personal Gmail address instead of `privacy@myolive.app`, since Gmail only lets you send *as* an address you've verified via SMTP. ImprovMX's own SMTP relay requires a $9/mo Premium plan (declined, per spend rule); the free workaround (Gmail's own `smtp.gmail.com` relay + an App Password) hit a wall — the user's Google account doesn't have 2-Step Verification enabled, which App Passwords require. User explicitly decided not to enable 2FA to unblock this, since `privacy@` will rarely if ever need a reply. **Not a bug, don't re-propose fixing it without being asked** — revisit only if the user brings it up again.
+3. **Copy gap still open:** `terms.tsx`/`privacy.tsx` still say "reach out to whoever invited you" instead of a real address, even though forwarding is now live — this wasn't done yet this session, ask the user if they want it swapped to `privacy@myolive.app` now.
+
 **Next session: ask the user for these before doing anything else — nothing else in the code backlog is blocked on Claude right now.**
-- [ ] **Decision:** which email-forwarding service for `privacy@myolive.app`? DNS is confirmed Vercel-hosted (`ns1`/`ns2.vercel-dns.com`, no registrar login needed) and no MX/TXT records exist yet, so this is genuinely a quick job once a service is picked — blocked only on: reuse an email service the supervisor may already have, or set up a fresh free-tier forwarder (ImprovMX suggested)? See `email_forwarding_privacy.md` memory. Once live, also fix `terms.tsx`/`privacy.tsx`'s copy (both currently say "reach out to whoever invited you" instead of a real address; `privacy.tsx` has a dangling "contact us below" with nothing below it).
+- [ ] **Action:** swap `terms.tsx`/`privacy.tsx`'s "contact your admin" copy for a real `privacy@myolive.app` mailto link now that forwarding is confirmed live (see above) — `privacy.tsx` also has a dangling "contact us below" line with nothing below it.
 - [ ] **Decision:** build the cousin / great-grandchild / spouse's-parent relative-picker cases? No backend edge logic exists for these at all yet, and there's real relationship-semantics ambiguity (which cousin, whose side) that needs the user's input to scope, not something to guess at (see `suggestions_shortlist.md` item #26).
 - [ ] **Decision:** wire the home page's "Recent updates" feed to the real `life_events` table (currently inferred from field-presence), and/or build real change-tracking so edits stop being mislabeled? Both are unapproved product-scope items, not unfinished code — don't build without a green light.
 - [ ] **Action:** confirm legal business entity registration status — unknown, not checkable from the codebase.
 - [ ] **Action:** real landing-page photography — hero/problem/CTA sections still use placeholder gradients (hero's is now a `HeroMockup` in-app-screenshot style visual as of 2026-08-07, not a gradient; problem/CTA are still plain gradients).
 - [ ] **Decision:** business model — still parked. Freemium/per-household lean exists (`business_model.md`) but not committed. Don't build billing infra until this is decided.
+
+**2026-08-07 session summary (commits `ad8cdea`/`3007a4f` merge, `db3f437`/`d912195` merge):**
 
 **2026-08-07 session summary (commits `ad8cdea`/`3007a4f` merge, `db3f437`/`d912195` merge):**
 1. **`persons.photoUrl` tracking-pixel gap closed.** Same base64-data-URI restriction already on `memories.photoUrls` now applied to `persons.photoUrl`'s one write chokepoint (`personUpdate.ts`'s `buildPersonUpdateData`). Built in an isolated worktree by a background agent, diff reviewed before merge. See `security.md`/`security_audit.md` memory.
@@ -203,7 +210,7 @@ Nothing currently open here — the "memories of those who've passed" feature th
 - [ ] Photo per life event — not started, scoped as last-priority within life events
 - [ ] Real photography for the landing page — the hero/problem/CTA image slots are still abstract gradient placeholders (`PhotoPlaceholder` in `landing.tsx`), flagged before any real public push
 - [ ] "Learn More" destination under the second-brain section on the landing page was removed 2026-07-15 (had nowhere real to point); revisit if a dedicated "how it works" page or demo ever gets built
-- [ ] Set up `privacy@myolive.app` email forwarding (5-minute DNS job) and swap the Privacy page's "contact your admin" copy for a real mailto link — deferred by user, **remind again before onboarding real families beyond testing**
+- [ ] Swap `terms.tsx`/`privacy.tsx`'s "contact your admin" copy for a real `privacy@myolive.app` mailto link — forwarding is now live (2026-08-12), this is the only remaining step
 - [ ] Stripe integration — on hold until [Business Model](#business-model) is decided
 - [ ] Dependency vulnerability scanning in CI — no CI pipeline exists at all currently (see `security.md` §7)
 - [ ] Memory book PDF export — deliberately deferred out of the memories-of-the-deceased v1 (see above); revisit alongside the business model decision once that feature is live and it's clear whether it's actually getting used
@@ -230,6 +237,7 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 
 ## Recently Shipped (Condensed Changelog)
 For full detail, `git log` is authoritative. Highlights, most recent first:
+- **Self-birthday email fix + `privacy@myolive.app` forwarding live** (2026-08-12, `6944d42`) — see START HERE above for full detail. The day-before birthday reminder cron sent the birthday person themselves the generic "X has a birthday, reach out!" copy meant for other family members; now they get a distinct personalized email instead. Also: `privacy@myolive.app` forwarding stood up via free ImprovMX + Vercel DNS (MX/SPF/DMARC records), forwarding to the user's own Gmail for now with an easy hand-off path to the supervisor's email later.
 - **Self-serve account deletion + admin family-unit cleanup tool** (2026-07-25, `7b3c5a2`, `3d510aa`, `a6084ec`) — see START HERE above for full detail, including a real last-admin-guard bug caught via live testing
 - **Claim-reject 500 fix + email delivery verification** (2026-07-24, `11a4e93`) — found live while verifying Resend delivery via an isolated test family; see START HERE above for full detail
 - **Relationship-label fallback fix** (2026-07-22, `d818419`) — found via live smoke-testing; see START HERE above for full detail

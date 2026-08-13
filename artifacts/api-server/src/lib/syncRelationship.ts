@@ -15,6 +15,27 @@ import { db } from "@workspace/db";
 import { personsTable, peopleTable } from "@workspace/db";
 import { addRelationship } from "@workspace/db/relationships";
 
+const GRANDPARENT_LABEL_FRAGMENTS = [
+  "grandmother",
+  "grandfather",
+  "grandma",
+  "grandpa",
+  "nana",
+  "papa",
+  "granny",
+  "gramps",
+];
+
+/** Look up a person's currently-stored relationshipLabel, e.g. to disambiguate a reused label. */
+async function getStoredLabel(personId: string): Promise<string | null> {
+  const rows = await db
+    .select({ relationshipLabel: personsTable.relationshipLabel })
+    .from(personsTable)
+    .where(eq(personsTable.id, personId))
+    .limit(1);
+  return rows[0]?.relationshipLabel?.toLowerCase() ?? null;
+}
+
 /** Ensure a person exists in the people table, pulling their name from persons. */
 async function ensureInPeopleTable(personId: string, familyId: string) {
   // Fast-path: already there
@@ -102,9 +123,65 @@ export async function syncPersonToRelationshipLayer(params: {
       // Admin's grandchild — parentPersonId is the child (their parent)
       await ensureInPeopleTable(parentPersonId, familyId);
       await addRelationship(db, familyId, personId, parentPersonId, "biological_parent");
+
+    } else if (["great-grandson", "great-granddaughter", "great-grandchild"].includes(l) && parentPersonId) {
+      // Admin's great-grandchild — parentPersonId is a grandchild (their parent)
+      await ensureInPeopleTable(parentPersonId, familyId);
+      await addRelationship(db, familyId, personId, parentPersonId, "biological_parent");
+
+    } else if (l === "cousin" && parentPersonId) {
+      // Cousin — parentPersonId is an aunt/uncle (their parent)
+      await ensureInPeopleTable(parentPersonId, familyId);
+      await addRelationship(db, familyId, personId, parentPersonId, "biological_parent");
+
+    } else if (["mother-in-law", "father-in-law"].includes(l) && parentPersonId) {
+      // Spouse's parent — reversed direction from every other picker case:
+      // parentPersonId (the spouse) is the CHILD here, the new person is the PARENT.
+      await ensureInPeopleTable(parentPersonId, familyId);
+      await addRelationship(db, familyId, parentPersonId, personId, "biological_parent");
+
+    } else if (["grandmother", "grandfather"].includes(l) && parentPersonId) {
+      // AI chat only (no UI picker yet): "my mom's parents" — parentPersonId
+      // (the parent) is the CHILD here, the new person is the PARENT.
+      await ensureInPeopleTable(parentPersonId, familyId);
+      await addRelationship(db, familyId, parentPersonId, personId, "biological_parent");
+
+    } else if (["great-grandmother", "great-grandfather"].includes(l) && parentPersonId) {
+      // AI chat only: "my grandma's mom" — parentPersonId (the grandparent)
+      // is the CHILD here, the new person is the PARENT.
+      await ensureInPeopleTable(parentPersonId, familyId);
+      await addRelationship(db, familyId, parentPersonId, personId, "biological_parent");
+
+    } else if (["nephew-in-law", "niece-in-law"].includes(l) && parentPersonId) {
+      // AI chat only: spouse of an existing nephew/niece — parentPersonId is that nephew/niece.
+      await ensureInPeopleTable(parentPersonId, familyId);
+      await addRelationship(db, familyId, personId, parentPersonId, "spouse");
+
+    } else if (l === "cousin-in-law" && parentPersonId) {
+      // AI chat only: spouse of an existing cousin — parentPersonId is that cousin.
+      await ensureInPeopleTable(parentPersonId, familyId);
+      await addRelationship(db, familyId, personId, parentPersonId, "spouse");
+
+    } else if (["uncle", "aunt"].includes(l) && parentPersonId) {
+      // "Uncle"/"aunt" is genuinely ambiguous by label alone — the AI prompt reuses
+      // it for two different roles: (a) a grandparent's child (parentPersonId =
+      // the grandparent, new person is their CHILD), and (b) the spouse of an
+      // already-added uncle/aunt (parentPersonId = that uncle/aunt, new person
+      // is their SPOUSE). Disambiguate by checking what parentPersonId's own
+      // stored label actually is.
+      await ensureInPeopleTable(parentPersonId, familyId);
+      const referencedLabel = await getStoredLabel(parentPersonId);
+      const referencesGrandparent =
+        !!referencedLabel && GRANDPARENT_LABEL_FRAGMENTS.some((f) => referencedLabel.includes(f));
+      if (referencesGrandparent) {
+        await addRelationship(db, familyId, personId, parentPersonId, "biological_parent");
+      } else {
+        await addRelationship(db, familyId, personId, parentPersonId, "spouse");
+      }
     }
-    // brothers, sisters, grandparents, mother/father-in-law → no edge possible without
-    // shared-parent info. These continue to rely on label-based layout heuristics.
+    // brothers, sisters, and grandparents/great-grandparents added without a
+    // parentPersonId → no edge possible without shared-parent info. These
+    // continue to rely on label-based layout heuristics.
 
   } catch (err: any) {
     // Never let sync failure break the primary insert path
