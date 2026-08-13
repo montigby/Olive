@@ -130,7 +130,10 @@ export default function Terms() {
             <section className="space-y-2">
               <h2 className="font-serif text-xl font-semibold text-foreground">Questions</h2>
               <p>
-                Reach out to whoever invited you to your family's Olive directory — they can put you in touch
+                Email us at{" "}
+                <a href="mailto:privacy@myolive.app" className="text-primary underline">
+                  privacy@myolive.app
+                </a>{" "}
                 if you have a question about these terms.
               </p>
             </section>

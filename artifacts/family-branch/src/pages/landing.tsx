@@ -423,6 +423,7 @@ export default function Landing() {
           <div className="flex items-center gap-6 text-sm" style={{ color: "#6B6560" }}>
             <Link href="/privacy"><span className="hover:opacity-70 cursor-pointer">Privacy</span></Link>
             <Link href="/terms"><span className="hover:opacity-70 cursor-pointer">Terms</span></Link>
+            <a href="mailto:privacy@myolive.app" className="hover:opacity-70">Contact</a>
           </div>
         </div>
         <p className="text-center text-sm mt-8" style={{ color: "#6B6560" }}>
@@ -433,8 +434,7 @@ export default function Landing() {
   );
 }
 
-// Re-enable once real contact/social URLs exist
-// <span className="hover:opacity-70 cursor-pointer">Contact</span>
+// Re-enable once real social URLs exist
 // <div className="flex items-center gap-4" style={{ color: "#6B6560" }}>
 //   <Instagram className="w-4 h-4" />
 //   <Facebook className="w-4 h-4" />
