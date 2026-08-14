@@ -9,7 +9,6 @@ import { formatPerson } from "./auth";
 import { computeVisibleSet, computeTier, applyVisibility, describeRelationship } from "../lib/visibility";
 import { areUnitsLinked } from "../lib/unitAccess";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
-import { computeProfileCompleteness } from "../lib/profileCompleteness";
 
 const router = Router();
 
@@ -76,14 +75,12 @@ router.get("/family-units/:unitId/members", requireAuth, async (req, res) => {
     .from(relationshipsTable)
     .where(eq(relationshipsTable.familyId, unitId));
 
-  // Same-unit admin: full data, plus a data-quality signal (completeness)
-  // for every card so the admin can see at a glance who's missing key info.
+  // Same-unit admin: full data.
   if (viewer.isAdmin) {
     res.json(
       members.map((m) => ({
         ...formatPerson(m),
         viewerRelationshipLabel: describeRelationship(viewer.id, m.id, members, relationships),
-        ...computeProfileCompleteness(m),
       })),
     );
     return;
