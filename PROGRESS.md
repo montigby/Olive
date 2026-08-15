@@ -18,7 +18,7 @@ Last updated: 2026-08-14.
 **Three open threads for next session (see `next_session_todo.md` memory for full detail):**
 - [ ] AI chat test-drive — deferred because a background agent's throwaway login collided with the real session in the shared browser (see `local_dev_environment.md`'s new gotcha). Needs the user to re-log into Smith Family first.
 - [ ] Research task, explicitly not started yet: should Olive support multiple accounts logged in at once on one device? Check what comparable products do AND whether it'd be worth building independent of that.
-- [ ] A second background "break it" live-testing agent was mid-run and got asked to wrap up cleanly (finish current step, clean up its test data, report) rather than finish its full test plan, since the user needed to pause. Check whether its final report has been seen/handled yet.
+- [ ] A second background "break it" live-testing agent was asked to wrap up early, then **stalled and failed** before confirming cleanup — its throwaway test family **"OliveTest Audit" is likely still sitting in production, uncleaned**. Check for and delete it next session (see `next_session_todo.md` memory for the exact steps) before assuming this is resolved.
 
 **2026-08-13 session summary (commits `df6e936`, `a6a0e4c`):**
 1. **Footer "Contact" mailto replaced with a copy/open popover** (`df6e936`) — a bare `mailto:` link was instantly handing visitors off to their OS mail client with no warning (and doing nothing useful for anyone without a default mail app). Now shows the address as selectable text with copy + mailto affordances. Live-verified on production, including the copy-to-clipboard toast.
