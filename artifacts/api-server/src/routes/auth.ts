@@ -105,6 +105,20 @@ router.post("/auth/register", async (req, res) => {
 
   const { email, password, firstName, lastName, unitName, relationshipLabel } = parsed.data;
 
+  // Public, unauthenticated endpoint -- RegisterBody's Zod schema only
+  // checks shape (zod.string()), not length, so cap the free-text fields
+  // here to stop a bad actor from writing an arbitrarily large row.
+  if (
+    firstName.length > 100 ||
+    lastName.length > 100 ||
+    unitName.length > 200 ||
+    relationshipLabel.length > 100 ||
+    email.length > 320
+  ) {
+    res.status(400).json({ error: "Validation error", message: "One or more fields exceed the maximum allowed length." });
+    return;
+  }
+
   const existing = await db
     .select()
     .from(accountsTable)

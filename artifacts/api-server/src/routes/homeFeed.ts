@@ -112,6 +112,15 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
         ? yearTurning - realBirthYear
         : null;
 
+      // Tier 2 viewers only get ONE contact field (the target's own
+      // tier2ContactField choice) per applyVisibility -- this widget was
+      // handing back both phone and email for every visible member
+      // regardless of tier, bypassing that choice the same way the old
+      // showBirthYear bug bypassed the birth-year toggle.
+      const tier = visibleSet.get(m.id) ?? 4;
+      const isTier2 = tier === 2;
+      const tier2Field = m.tier2ContactField === "email" ? "email" : "phone";
+
       return {
         memberId: m.id,
         firstName: m.firstName,
@@ -122,8 +131,8 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
         birthDay,
         daysUntil,
         ageTurning,
-        phone: m.phone ?? null,
-        email: m.email ?? null,
+        phone: isTier2 ? (tier2Field === "phone" ? m.phone ?? null : null) : (m.phone ?? null),
+        email: isTier2 ? (tier2Field === "email" ? m.email ?? null : null) : (m.email ?? null),
       };
     })
     .filter((m) => m.daysUntil <= 30 || m.daysUntil >= 358)

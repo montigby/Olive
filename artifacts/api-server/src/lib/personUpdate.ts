@@ -11,6 +11,48 @@ export function isValidPhotoUrl(value: string | null | undefined): boolean {
   return DATA_IMAGE_URI.test(value);
 }
 
+// Server-side caps on free-text profile fields. The Zod schemas generated
+// from openapi.yaml only enforce shape (zod.string()), not length -- there
+// is no max() anywhere in lib/api-zod for these fields -- and the AI chat
+// tool handlers in ai.ts don't go through Zod at all (raw JSON.parse of the
+// LLM's tool-call arguments). Without a floor here, any authenticated member
+// could PATCH their own profile (or the AI tool could be coaxed into writing)
+// an arbitrarily large string into any of these columns: unbounded DB growth
+// and a broken layout anywhere the field renders (directory cards, tree
+// nodes, profile page). Kept generous -- these are meant to catch abuse /
+// mistakes, not to constrain legitimate data.
+const MAX_FIELD_LENGTHS: Partial<Record<keyof PersonUpdateInput, number>> = {
+  firstName: 100,
+  lastName: 100,
+  phone: 40,
+  email: 320,
+  addressLine1: 200,
+  addressCity: 100,
+  addressState: 100,
+  addressZip: 20,
+  addressCountry: 100,
+  instagram: 200,
+  facebook: 200,
+  tiktok: 200,
+  linkedin: 200,
+  snapchat: 200,
+  venmo: 200,
+  bereal: 200,
+  otherSocial: 500,
+  relationshipLabel: 100,
+};
+
+/** True if every free-text field present on `data` is within its max length.
+ * Callers should reject the request (400) rather than silently truncate. */
+export function isWithinFieldLengthLimits(data: PersonUpdateInput): boolean {
+  for (const key of Object.keys(MAX_FIELD_LENGTHS) as (keyof PersonUpdateInput)[]) {
+    const value = data[key];
+    const max = MAX_FIELD_LENGTHS[key]!;
+    if (typeof value === "string" && value.length > max) return false;
+  }
+  return true;
+}
+
 export interface PersonUpdateInput {
   firstName?: string;
   lastName?: string;

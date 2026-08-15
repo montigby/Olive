@@ -9,6 +9,7 @@ import { formatPerson } from "./auth";
 import { computeVisibleSet, computeTier, applyVisibility, describeRelationship } from "../lib/visibility";
 import { areUnitsLinked } from "../lib/unitAccess";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
+import { isWithinFieldLengthLimits } from "../lib/personUpdate";
 
 const router = Router();
 
@@ -116,6 +117,26 @@ router.post("/family-units/:unitId/members", requireAuth, requireAdmin, async (r
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
     return;
+  }
+  if (!isWithinFieldLengthLimits(parsed.data)) {
+    res.status(400).json({ error: "Validation error", message: "One or more fields exceed the maximum allowed length." });
+    return;
+  }
+
+  // parentPersonId must anchor to someone already in this family unit --
+  // otherwise syncPersonToRelationshipLayer/addRelationship below would
+  // create a relationship-layer edge referencing a person in a different
+  // family (same class of gap as add_family_member in ai.ts).
+  if (parsed.data.parentPersonId) {
+    const [parentInUnit] = await db
+      .select({ id: personsTable.id })
+      .from(personsTable)
+      .where(and(eq(personsTable.id, parsed.data.parentPersonId), eq(personsTable.familyUnitId, unitId)))
+      .limit(1);
+    if (!parentInUnit) {
+      res.status(400).json({ error: "Validation error", message: "Unknown parentPersonId" });
+      return;
+    }
   }
 
   // Duplicate guard

@@ -7,7 +7,7 @@ import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
-import { buildPersonUpdateData, isValidPhotoUrl, type PersonUpdateInput } from "../lib/personUpdate";
+import { buildPersonUpdateData, isValidPhotoUrl, isWithinFieldLengthLimits, type PersonUpdateInput } from "../lib/personUpdate";
 import { isParentOf } from "../lib/visibility";
 import { isLastAdminInUnit } from "../lib/permissions";
 import { VALID_EVENT_TYPES } from "./lifeEvents";
@@ -379,8 +379,23 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
             parentPersonId?: string;
           };
 
-          if (!isValidPhotoUrl(input.photoUrl)) {
+          if (!req.auth!.isAdmin) {
+            // Matches the REST equivalent (POST /family-units/:unitId/members
+            // in members.ts, requireAdmin) and the layered-permission model:
+            // admin can edit/add anyone, parent can edit own kids, self can
+            // edit own profile -- nobody but admin can *add* a new person.
+            toolResult = JSON.stringify({ success: false, error: "Only a family admin can add a new member." });
+          } else if (!isValidPhotoUrl(input.photoUrl)) {
             toolResult = JSON.stringify({ success: false, error: "Invalid input" });
+          } else if (!isWithinFieldLengthLimits(input)) {
+            toolResult = JSON.stringify({ success: false, error: "One or more fields exceed the maximum allowed length." });
+          } else if (input.parentPersonId && !memberIds.has(input.parentPersonId)) {
+            // parentPersonId must anchor to someone already in this family
+            // unit -- an LLM-hallucinated or stale id pointing outside the
+            // unit would otherwise create a relationship-layer edge that
+            // references a person in a different family (see
+            // syncPersonToRelationshipLayer / addRelationship below).
+            toolResult = JSON.stringify({ success: false, error: "Unknown parentPersonId" });
           } else {
             // Duplicate guard — same name + same relationship already in this unit
             const existing = await db
@@ -442,6 +457,8 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
             toolResult = JSON.stringify({ success: false, error: "Unknown personId" });
           } else if (!isValidPhotoUrl(input.photoUrl)) {
             toolResult = JSON.stringify({ success: false, error: "Invalid input" });
+          } else if (!isWithinFieldLengthLimits(input)) {
+            toolResult = JSON.stringify({ success: false, error: "One or more fields exceed the maximum allowed length." });
           } else {
             const isSelf = req.auth!.personId === input.personId;
             const isSameFamilyAdmin = req.auth!.isAdmin; // already scoped to this unit above

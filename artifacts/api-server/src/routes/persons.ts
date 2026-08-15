@@ -7,7 +7,7 @@ import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { computeTier, applyVisibility, describeRelationship } from "../lib/visibility";
 import { areUnitsLinked } from "../lib/unitAccess";
-import { buildPersonUpdateData, isValidPhotoUrl } from "../lib/personUpdate";
+import { buildPersonUpdateData, isValidPhotoUrl, isWithinFieldLengthLimits } from "../lib/personUpdate";
 import { canEditPerson, isLastAdminInUnit } from "../lib/permissions";
 import { computeProfileCompleteness } from "../lib/profileCompleteness";
 
@@ -134,6 +134,10 @@ router.patch("/persons/:personId", requireAuth, async (req, res) => {
   const data = parsed.data;
   if (!isValidPhotoUrl(data.photoUrl)) {
     res.status(400).json({ error: "Validation error", message: "photoUrl must be a data: image URL" });
+    return;
+  }
+  if (!isWithinFieldLengthLimits(data as any)) {
+    res.status(400).json({ error: "Validation error", message: "One or more fields exceed the maximum allowed length." });
     return;
   }
 

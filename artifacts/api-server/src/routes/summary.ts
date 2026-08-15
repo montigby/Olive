@@ -309,7 +309,7 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
     .from(relationshipsTable)
     .where(eq(relationshipsTable.familyId, viewer.familyUnitId));
 
-  const allMembers: Array<{ person: typeof personsTable.$inferSelect; unitName: string; sameUnit: boolean }> = [];
+  const allMembers: Array<{ person: typeof personsTable.$inferSelect; unitName: string; sameUnit: boolean; tier: number }> = [];
 
   for (const uid of unitIds) {
     const [u] = await db
@@ -328,14 +328,14 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
       const tier = computeTier(viewer, m, viewerUnitMembers, viewerUnitRelationships);
       // Birthday is only visible at tiers 0-2; drop tier 3 and 4.
       if (tier > 2) continue;
-      allMembers.push({ person: m, unitName: u.unitName, sameUnit: uid === viewer.familyUnitId });
+      allMembers.push({ person: m, unitName: u.unitName, sameUnit: uid === viewer.familyUnitId, tier });
     }
   }
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const results = allMembers
-    .map(({ person, unitName, sameUnit }) => {
+    .map(({ person, unitName, sameUnit, tier }) => {
       const bday = new Date(person.birthday!);
       const thisYear = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
       let daysUntil = Math.round((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -353,6 +353,13 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
       const viewerRelationshipLabel = sameUnit
         ? describeRelationship(viewer.id, person.id, viewerUnitMembers, viewerUnitRelationships)
         : undefined;
+      // Tier 2 viewers only get ONE contact field (the target's own
+      // tier2ContactField choice) per applyVisibility -- this list was
+      // handing back both phone and email for every included member
+      // regardless of tier, bypassing that choice the same way the old
+      // showBirthYear bug bypassed the birth-year toggle.
+      const isTier2 = tier === 2;
+      const tier2Field = person.tier2ContactField === "email" ? "email" : "phone";
       return {
         personId: person.id,
         firstName: person.firstName,
@@ -366,8 +373,8 @@ router.get("/family-units/:unitId/birthdays", requireAuth, async (req, res) => {
         showBirthYear: person.showBirthYear,
         unitName,
         daysUntil,
-        phone: person.phone ?? null,
-        email: person.email ?? null,
+        phone: isTier2 ? (tier2Field === "phone" ? person.phone ?? null : null) : (person.phone ?? null),
+        email: isTier2 ? (tier2Field === "email" ? person.email ?? null : null) : (person.email ?? null),
       };
     })
     .sort((a, b) => a.daysUntil - b.daysUntil)

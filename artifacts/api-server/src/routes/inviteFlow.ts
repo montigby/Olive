@@ -336,7 +336,10 @@ router.post("/claims/match", async (req, res) => {
     };
   };
 
-  if (!body.token || !body.name || body.name.trim().length < 2) {
+  // Unauthenticated endpoint (identified only by the invite token) -- cap
+  // the free-text name so a bad actor can't stress the trigram-similarity
+  // query or bloat request logs with an arbitrarily large body.
+  if (!body.token || !body.name || body.name.trim().length < 2 || body.name.length > 200) {
     res.status(400).json({ error: "Bad request", message: "Token and name are required." });
     return;
   }
@@ -478,6 +481,14 @@ router.post("/claims", async (req, res) => {
   }
   if (body.claimerPassword.length < 8) {
     res.status(400).json({ error: "Bad request", message: "Password must be at least 8 characters." });
+    return;
+  }
+  // Unauthenticated endpoint -- cap free-text fields so a bad actor can't
+  // write an arbitrarily large claimer_display_name / claimer_contact row
+  // (claimerName also gets split into firstName/lastName and persisted onto
+  // a new persons row on approval, see the create_new branch below).
+  if (body.claimerName.length > 200 || body.claimerEmail.length > 320) {
+    res.status(400).json({ error: "Bad request", message: "One or more fields exceed the maximum allowed length." });
     return;
   }
 

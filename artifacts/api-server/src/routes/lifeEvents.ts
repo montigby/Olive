@@ -43,6 +43,7 @@ function validateUpdate(body: unknown): { eventType?: string; eventDate?: string
   }
   if (b.notes !== undefined) {
     if (b.notes !== null && typeof b.notes !== "string") return null;
+    if (typeof b.notes === "string" && b.notes.length > 500) return null;
     result.notes = b.notes as string | null;
   }
   return result;
