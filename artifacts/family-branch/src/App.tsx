@@ -11,6 +11,8 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import InviteClaim from "@/pages/invite-claim";
 import Join from "@/pages/join";
 import Privacy from "@/pages/privacy";
@@ -67,6 +69,8 @@ function AppRouter() {
       <Route path="/"                component={Landing}     />
       <Route path="/login"           component={Login}       />
       <Route path="/register"        component={Register}    />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password"  component={ResetPassword}  />
       <Route path="/invite/:token"   component={InviteClaim} />
       <Route path="/join/:token"     component={Join}        />
       <Route path="/privacy"         component={Privacy}     />

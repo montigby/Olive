@@ -174,6 +174,16 @@ export interface ChangePasswordBody {
   newPassword: string;
 }
 
+export interface ForgotPasswordBody {
+  email: string;
+}
+
+export interface ResetPasswordBody {
+  token: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
 export type UpdatePersonBodyGender =
   | (typeof UpdatePersonBodyGender)[keyof typeof UpdatePersonBodyGender]
   | null;

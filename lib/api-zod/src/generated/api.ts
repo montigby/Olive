@@ -251,6 +251,32 @@ export const ChangePasswordResponse = zod.object({
 });
 
 /**
+ * Always returns 200 with the same generic message whether or not the email is registered, to avoid leaking account existence. If the account exists, a single-use reset link is emailed to it.
+ * @summary Request a password-reset email
+ */
+export const ForgotPasswordBody = zod.object({
+  email: zod.string().email(),
+});
+
+export const ForgotPasswordResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Complete a password reset using an emailed token
+ */
+export const resetPasswordBodyNewPasswordMin = 8;
+
+export const ResetPasswordBody = zod.object({
+  token: zod.string(),
+  newPassword: zod.string().min(resetPasswordBodyNewPasswordMin),
+});
+
+export const ResetPasswordResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary Get a person profile
  */
 export const GetPersonParams = zod.object({

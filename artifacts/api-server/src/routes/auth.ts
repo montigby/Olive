@@ -7,11 +7,13 @@ import {
   personsTable,
   familyUnitsTable,
   accountsTable,
+  passwordResetTokensTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
-import { RegisterBody, LoginBody } from "@workspace/api-zod";
+import { and, eq, isNull } from "drizzle-orm";
+import { RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody } from "@workspace/api-zod";
 import { signToken, requireAuth, getPersonWithUnit } from "../middlewares/auth";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
+import { sendPasswordResetEmail } from "../lib/email";
 
 const router = Router();
 
@@ -28,6 +30,20 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => `${ipKeyGenerator(req.ip ?? "unknown")}:${req.body?.email ?? ""}`,
   message: { error: "Too many login attempts", message: "Please try again in a few minutes." },
+});
+
+// Same shape as loginLimiter: keyed on IP+email so a flood targeting one
+// address can't drown out other users, and IPv6 addresses can't dodge the
+// cap by rotating within an attacker's own /64. Low limit -- a real user
+// only needs this a handful of times, and it doubles as an anti-enumeration
+// throttle since the response is identical either way.
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip ?? "unknown")}:${req.body?.email ?? ""}`,
+  message: { error: "Too many requests", message: "Please try again in a few minutes." },
 });
 
 function formatPerson(p: typeof personsTable.$inferSelect) {
@@ -316,6 +332,121 @@ router.post("/auth/change-password", requireAuth, async (req, res) => {
     .update(accountsTable)
     .set({ passwordHash: newHash })
     .where(eq(accountsTable.personId, req.auth!.personId));
+
+  res.json({ ok: true });
+});
+
+// POST /api/auth/forgot-password
+// Always resolves to the same generic 200, whether or not the email is
+// registered -- this is the one place in the app that gets email-enumeration
+// prevention right (login's error paths don't, as a general note). If the
+// account exists, mint a single-use token good for 1 hour and email it.
+router.post("/auth/forgot-password", forgotPasswordLimiter, async (req, res) => {
+  const parsed = ForgotPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation error", message: parsed.error.message });
+    return;
+  }
+
+  const GENERIC_RESPONSE = {
+    message: "If that email is registered, a reset link has been sent.",
+  };
+
+  const { email } = parsed.data;
+  if (email.length > 320) {
+    res.status(400).json({ error: "Validation error", message: "Email exceeds the maximum allowed length." });
+    return;
+  }
+
+  const accounts = await db
+    .select()
+    .from(accountsTable)
+    .where(eq(accountsTable.email, email.toLowerCase()))
+    .limit(1);
+
+  if (!accounts.length) {
+    res.json(GENERIC_RESPONSE);
+    return;
+  }
+
+  const account = accounts[0];
+  const token = nanoid(32);
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await db.insert(passwordResetTokensTable).values({
+    accountId: account.id,
+    token,
+    expiresAt,
+  });
+
+  try {
+    await sendPasswordResetEmail({ to: account.email, token });
+  } catch (err) {
+    // Best-effort: a transient email-provider failure shouldn't leak account
+    // existence to the caller via a different response shape or status code.
+    console.error("Failed to send password reset email:", err);
+  }
+
+  res.json(GENERIC_RESPONSE);
+});
+
+// POST /api/auth/reset-password
+router.post("/auth/reset-password", async (req, res) => {
+  const parsed = ResetPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation error", message: parsed.error.message });
+    return;
+  }
+
+  const { token, newPassword } = parsed.data;
+
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: "Validation error", message: "New password must be at least 8 characters." });
+    return;
+  }
+
+  const rows = await db
+    .select()
+    .from(passwordResetTokensTable)
+    .where(eq(passwordResetTokensTable.token, token))
+    .limit(1);
+
+  const resetToken = rows[0];
+  if (!resetToken) {
+    res.status(400).json({ error: "Invalid token", message: "This reset link is invalid." });
+    return;
+  }
+  if (resetToken.usedAt) {
+    res.status(400).json({ error: "Invalid token", message: "This reset link has already been used." });
+    return;
+  }
+  if (resetToken.expiresAt.getTime() < Date.now()) {
+    res.status(400).json({ error: "Invalid token", message: "This reset link has expired." });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 12);
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(accountsTable)
+      .set({ passwordHash: newHash })
+      .where(eq(accountsTable.id, resetToken.accountId));
+
+    // Mark this token used, and invalidate any other still-live reset tokens
+    // for the same account (defense in depth -- if multiple reset emails
+    // went out, only the one actually redeemed should remain meaningful).
+    await tx
+      .update(passwordResetTokensTable)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(passwordResetTokensTable.accountId, resetToken.accountId),
+          isNull(passwordResetTokensTable.usedAt),
+        ),
+      );
+  });
 
   res.json({ ok: true });
 });

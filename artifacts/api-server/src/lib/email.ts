@@ -185,6 +185,27 @@ export async function sendClaimPendingNotification({
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
 }
 
+export async function sendPasswordResetEmail({
+  to,
+  token,
+}: {
+  to: string;
+  token: string;
+}) {
+  const link = `https://myolive.app/reset-password?token=${encodeURIComponent(token)}`;
+
+  const client = await getClient();
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: "Reset your Olive password",
+    html: buildPasswordResetHtml(link),
+    text: `We received a request to reset your Olive password.\n\nReset it here (link expires in 1 hour): ${link}\n\nIf you didn't request this, you can safely ignore this email -- your password won't change.\n\n— Olive\nhttps://myolive.app`,
+  });
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
 export async function sendMemoryPrompt({
   to,
   recipientName,
@@ -209,6 +230,18 @@ export async function sendMemoryPrompt({
   });
 
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
+function buildPasswordResetHtml(link: string): string {
+  const body = `
+    <p style="margin:0 0 12px 0;">We received a request to reset your Olive password.</p>
+    <p style="margin:0 0 4px 0;">Click below to choose a new one. This link expires in 1 hour.</p>
+    ${button("Reset your password", link)}
+    <p style="margin: 20px 0 0 0; font-size:13px; color:${MUTED}; line-height:1.5;">
+      If you didn't request this, you can safely ignore this email — your password won't change.
+    </p>
+  `;
+  return renderEmailShell({ preheader: "Reset your Olive password", bodyHtml: body });
 }
 
 function buildMemoryPromptHtml(recipientName: string, promptText: string, link: string): string {
