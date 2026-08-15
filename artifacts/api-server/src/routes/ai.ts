@@ -262,6 +262,7 @@ Siblings:
 
 Uncles/aunts:
 - Uncle/aunt rule: when the user says "[someone]'s kids/children" and that person is a grandparent (labeled grandfather, grandmother, grandpa, grandma, nana, papa, etc.), label those children "uncle" (male/unknown) or "aunt" (female) — NOT "brother" or "sister". Always set parentPersonId to that grandparent's id.
+- Direct sibling-of-parent phrasing: "my mom's brother", "my dad's sister", "my mother's sibling", etc. also mean uncle/aunt — label them "uncle" or "aunt" the same as above. For parentPersonId: if the corresponding grandparent (that parent's mother/father) is ALREADY in the members list, set parentPersonId to that grandparent's id. If no such grandparent is in the tree yet, add the uncle/aunt with NO parentPersonId at all — do NOT set it to the parent's (mom's/dad's) own id or any other member's id just to have something to put there, and do NOT invent/add a grandparent yourself just to anchor them. An uncle/aunt with no parentPersonId still displays correctly; a wrong parentPersonId does not.
 - If adding a spouse for someone already in the tree as "uncle" or "aunt" (e.g. "Jim's wife Diane"), label that spouse "aunt" or "uncle" and set parentPersonId to that uncle's/aunt's id.
 
 Nephews/nieces:
@@ -295,6 +296,7 @@ parentPersonId — always set this when:
 - Adding a spouse for any existing member — use that member's [id].
 - Adding children attributed to a named person (e.g. "Nathan's kids") — use that person's [id].
 - Never fabricate a parentPersonId. Only use IDs that appear in the current members list above.
+- Never set it to an id just because it's the only one you have handy if it isn't actually that person's parent (for uncle/aunt this means a grandparent's id specifically — never the id of the mom/dad/admin themselves). Leaving parentPersonId unset is always safer than setting it to the wrong person — an unset one still displays fine, a wrong one creates an incorrect relationship.
 
 Adding members:
 - Before calling add_family_member, check the current members list above. If someone with the same first name, last name, and relationship already exists, do NOT call the tool — use update_family_member instead if they mentioned new info, or just tell the user they're already in the tree.

@@ -178,16 +178,30 @@ export async function syncPersonToRelationshipLayer(params: {
       // the grandparent, new person is their CHILD), and (b) the spouse of an
       // already-added uncle/aunt (parentPersonId = that uncle/aunt, new person
       // is their SPOUSE). Disambiguate by checking what parentPersonId's own
-      // stored label actually is.
+      // stored label actually is — and do NOT fall back to assuming "spouse"
+      // when it's neither of those two. A 2026-08-15 live repro found the AI,
+      // when asked to add "my mom's brother, Jim", correctly labeled Jim
+      // "uncle" but pointed parentPersonId at the admin's mom (the only
+      // person it had an id for) instead of a grandparent. The old always-
+      // else-spouse fallback then silently wired Jim as mom's SPOUSE,
+      // corrupting the graph (mom "married" to her own brother) and cascading
+      // into "Extended family" for everyone downstream of that edge. Skipping
+      // edge creation when the reference is ambiguous is safe: describeRelationship
+      // still falls back to the target's own stored relationshipLabel for a
+      // disconnected node, which is correct here ("Uncle") even with no edge.
       await ensureInPeopleTable(parentPersonId, familyId);
       const referencedLabel = await getStoredLabel(parentPersonId);
       const referencesGrandparent =
         !!referencedLabel && GRANDPARENT_LABEL_FRAGMENTS.some((f) => referencedLabel.includes(f));
+      const referencesUncleOrAunt = referencedLabel === "uncle" || referencedLabel === "aunt";
       if (referencesGrandparent) {
         await addRelationship(db, familyId, personId, parentPersonId, "biological_parent");
-      } else {
+      } else if (referencesUncleOrAunt) {
         await addRelationship(db, familyId, personId, parentPersonId, "spouse");
       }
+      // else: parentPersonId references someone who is neither a grandparent
+      // nor an existing uncle/aunt (e.g. a parent, or some unrelated member) —
+      // too ambiguous to safely wire an edge from. Leave them unconnected.
     }
     // brothers, sisters, half-siblings, step-siblings, and grandparents/
     // great-grandparents added without a parentPersonId → no edge possible

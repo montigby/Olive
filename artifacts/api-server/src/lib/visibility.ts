@@ -436,6 +436,31 @@ const INLAW_PATH_LABELS: Record<string, { neutral: string; male: string; female:
   "c,s": { neutral: "Sibling-in-law", male: "Brother-in-law", female: "Sister-in-law" },
   "s,c": { neutral: "Sibling-in-law", male: "Brother-in-law", female: "Sister-in-law" },
   "pd,c": { neutral: "Child-in-law", male: "Son-in-law", female: "Daughter-in-law" },
+  // Aunt/uncle by marriage — a grandparent's child's spouse (admin -> parent
+  // -> grandparent -> uncle/aunt -> their spouse). The app already treats
+  // blood and by-marriage aunts/uncles as the same label everywhere else
+  // (syncRelationship's uncle/aunt branch reuses "uncle"/"aunt" for both), so
+  // match that convention here rather than inventing an "aunt-in-law" term.
+  "pu,pu,pd,c": { neutral: "Aunt/Uncle", male: "Uncle", female: "Aunt" },
+  // Spouse's aunt/uncle (admin -> spouse -> their parent -> their grandparent
+  // -> their aunt/uncle). Same colloquial convention as above.
+  "c,pu,pu,pd": { neutral: "Aunt/Uncle", male: "Uncle", female: "Aunt" },
+  // Cousin's spouse — matches the "cousin-in-law" label the AI/UI already use
+  // when adding a cousin's spouse (ungendered, like "cousin" itself).
+  "pu,pu,pd,pd,c": { neutral: "Cousin-in-law", male: "Cousin-in-law", female: "Cousin-in-law" },
+  // Spouse's cousin — no distinct English in-law term for this exists, and
+  // it isn't the same relationship as "cousin-in-law" (that's specifically a
+  // cousin's spouse), so describe it as a plain cousin.
+  "c,pu,pu,pd,pd": { neutral: "Cousin", male: "Cousin", female: "Cousin" },
+  // Niece/nephew's spouse — matches the "nephew-in-law"/"niece-in-law" labels
+  // the AI already uses for this exact case.
+  "s,pd,c": { neutral: "Niece/Nephew-in-law", male: "Nephew-in-law", female: "Niece-in-law" },
+  // Spouse's niece/nephew (admin -> spouse -> their sibling -> their child).
+  // No distinct in-law term in common use, so describe as plain niece/nephew.
+  "c,s,pd": { neutral: "Niece/Nephew", male: "Nephew", female: "Niece" },
+  // Spouse's grandparent (admin -> spouse -> their parent -> their
+  // grandparent), by direct analogy to the "Parent-in-law" entry above.
+  "c,pu,pu": { neutral: "Grandparent-in-law", male: "Grandfather-in-law", female: "Grandmother-in-law" },
 };
 
 const ORDINALS = ["Zeroth", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
