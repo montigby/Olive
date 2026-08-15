@@ -90,6 +90,9 @@ DATABASE_URL=<supabase-connection-string> pnpm test
 ```
 Tests cannot run locally without a DATABASE_URL pointed at a Postgres instance that has the `0007_relationships.sql` migration applied.
 
+### Live browser testing against production — use an isolated profile
+The app's auth token lives in a single `localStorage` key, shared across every tab in a browser regardless of which tool or session opened it. A background agent (or any concurrent browser automation) that registers or logs into its own test account will silently sign out whichever real session was active in that same browser — this has actually happened (2026-08-14/15). `login()` in `artifacts/family-branch/src/lib/auth.tsx` now warns before switching accounts when it can detect a real account-to-account switch, but that only helps when both logins go through the app's own login flow in the same tab — it does not prevent a *new* tab/session silently taking over the shared token. When driving `claude-in-chrome` (or any browser automation) for testing that registers throwaway accounts, use an isolated browser profile or incognito/private window, never the same profile as a real logged-in session.
+
 ---
 
 ## File Structure Rules
