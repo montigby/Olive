@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, personsTable, familyUnitsTable, relationshipsTable, lifeEventsTable } from "@workspace/db";
+import { db, personsTable, familyUnitsTable, relationshipsTable, lifeEventsTable, memoriesTable } from "@workspace/db";
 import { eq, and, gte } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { computeVisibleSet } from "../lib/visibility";
@@ -201,7 +201,33 @@ router.get("/family-units/:unitId/home-feed", requireAuth, async (req, res) => {
       };
     });
 
-  const recentUpdates = [...joinedEntries, ...lifeEventEntries]
+  // Third signal: recently-added memories of the deceased. Visibility gates
+  // on the memory's *subject* (personId) — same tier check as life events —
+  // not on who contributed it; memories are visible family-unit-wide once
+  // published, matching how they're shown on the subject's own profile page.
+  const recentMemories = await db
+    .select()
+    .from(memoriesTable)
+    .where(and(eq(memoriesTable.familyUnitId, unitId), gte(memoriesTable.createdAt, fourteenDaysAgo)));
+
+  const memoryEntries = recentMemories
+    .filter((mem) => mem.contributorPersonId !== requesterId && visibleMemberIds.has(mem.personId))
+    .map((mem) => {
+      const subject = membersById.get(mem.personId)!;
+      const contributor = mem.contributorPersonId ? membersById.get(mem.contributorPersonId) : undefined;
+      const contributorFirstName = contributor?.firstName ?? "Someone";
+      return {
+        memberId: subject.id,
+        name: `${subject.firstName} ${subject.lastName}`,
+        changeType: "memory",
+        description: `${contributorFirstName} shared a memory of ${subject.firstName}`,
+        timestamp: mem.createdAt,
+        avatarUrl: subject.photoUrl ?? null,
+        initials: ((subject.firstName[0] ?? "?") + (subject.lastName[0] ?? "?")).toUpperCase(),
+      };
+    });
+
+  const recentUpdates = [...joinedEntries, ...lifeEventEntries, ...memoryEntries]
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     .slice(0, 5)
     .map((e) => ({ ...e, timestamp: e.timestamp.toISOString() }));

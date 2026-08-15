@@ -18,6 +18,7 @@ import {
   Briefcase,
   Flower2,
   Calendar,
+  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -112,6 +113,7 @@ const UPDATE_ICON: Record<string, React.ElementType> = {
   new_job: Briefcase,
   death: Flower2,
   custom: Calendar,
+  memory: BookOpen,
 };
 
 const MISSING_FIELD_PROMPT: Record<string, string> = {
