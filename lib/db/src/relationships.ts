@@ -8,7 +8,7 @@
  * Adapted from the Supabase-client spec to use Drizzle ORM.
  */
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { peopleTable } from "./schema/people";
 import { relationshipsTable } from "./schema/relationships";
@@ -115,13 +115,21 @@ async function retireSpouseEdges(
 ) {
   const today = new Date().toISOString().slice(0, 10);
 
+  // Spouse edges are always stored as a symmetric pair (A->B and B->A). Only
+  // matching fromPerson here would retire one direction and leave the other
+  // stale as "spouse" -- e.g. retiring Jim's edges when he gets a new spouse
+  // would catch Jim->Carol but miss Carol->Jim, leaving Carol's own queries
+  // still showing Jim as her current husband. Match either column.
   const oldEdges = await db
     .select()
     .from(relationshipsTable)
     .where(
       and(
         eq(relationshipsTable.familyId, familyId),
-        inArray(relationshipsTable.fromPerson, [personA, personB]),
+        or(
+          inArray(relationshipsTable.fromPerson, [personA, personB]),
+          inArray(relationshipsTable.toPerson, [personA, personB]),
+        ),
         eq(relationshipsTable.type, "spouse"),
       ),
     );
