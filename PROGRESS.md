@@ -2,11 +2,32 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-08-14.
+Last updated: 2026-08-15.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
+
+**2026-08-15 session summary (commits `79dade2` through `b4de524`) — large single-day session, paused mid-flight on usage limits, 2 background agents still unreviewed:**
+
+Started from a duplicate/orphaned "Smith Family" the user spotted via a self-run SQL query (root cause: a historical, now-closed admin-grant loophole that let a person with `is_admin: true` but no real account fool the "never zero admins" guard — cleanup SQL handed to the user directly, no agent has DB access to do this itself). That investigation expanded into a full account-recovery and non-traditional-family-support push:
+
+1. **Password reset** (`79dade2`) — no account-recovery path existed anywhere before this; magic-token flow mirroring the invite-token pattern. Migration `0016_password_reset_tokens.sql` still needs a manual Supabase SQL editor run.
+2. **Login-overwrite guard** (`2d0de4a`) — `login()` now confirms before silently switching accounts in the same browser, following a researched recommendation against building full multi-account support (no comparable product solves this at the app layer either).
+3. **Grandchild-visibility bug** (`b69305c`) — a grandchild added with no resolvable parent was getting wired as the admin's direct child (wrong label, wrong privacy tier), found by a background "break it" testing agent's second attempt (its first attempt stalled and failed without confirming cleanup).
+4. **Step/half relationships + a direct divorce action** (`28ec810`) — stepparent/stepchild/step-sibling/half-sibling labels were accepted everywhere but created no real relationship-graph edges (same bug class already fixed for niece/nephew/grandchild/in-laws, just never extended here); also added a `mark_divorced` AI chat tool since `ex_spouse` only auto-created as a side effect of adding a replacement spouse.
+5. **Memories surfaced in the Home feed** (`cb727cf`) — the memories-of-the-deceased feature had zero discovery surface outside a specific deceased person's own profile page; now shows as a third signal in "Recent updates".
+6. **Aunt/uncle graph corruption** (`38dec63`) + **a related spouse-edge-retirement bug** (`0683509`) — live-diagnosed root cause of relatives showing generic "Extended family" instead of their real label: an ambiguous `parentPersonId` reference was getting silently treated as "spouse", in one case wiring someone as married to their own sister. The retirement bug (found while investigating this) meant divorcing/remarrying only cleared one direction of the symmetric spouse-edge pair.
+7. **Landing page Memories section** (`b4de524`) — the feature was a stated main differentiator with zero landing-page mention; added a dedicated section after 3 rounds of direct user copy revision (cut em-dashes/AI cadence, cut structural padding).
+8. **AI chat test-drive finally ran clean** on its 4th attempt (own throwaway test family, not the real one — the first 3 attempts were blocked by browser session state). Confirmed step/divorce/half-sibling handling works well conversationally. Found two more real things: the Extended-family bug above (now fixed), and a "side facts get silently dropped" gap (an age or interest mentioned alongside a name+birthday just vanishes, no acknowledgment) — motivated item 9 below.
+
+**Two background agents were still running, unreviewed and unmerged, when the session paused:**
+- [ ] Age/notes storage fix (agentId `a44331833abe13821`) — compute a real birth year when an age is mentioned alongside a birthday instead of using the 2000 placeholder; add a real `notes` field so freeform facts like "loves soccer" have somewhere to go instead of disappearing.
+- [ ] Non-blocking email verification (agentId `a2a6a02506e335cb0`) — confirmed as the right *permanent* design for this product (not just a testing convenience) given its frictionless-onboarding priority for a non-technical, older audience. Must never gate account usage on verification status.
+
+Check for their completion notifications before assuming either is done; if starting fresh, `git worktree list` will show if either worktree still exists with real work in it. See `next_session_todo.md` (memory) for full detail on both plus the still-open orphaned-test-family SQL cleanup (given directly to the user, not yet confirmed run).
+
+---
 
 **2026-08-14 session summary (commits `0881806` through `6d8650a`) — three open threads, see bottom of this section:**
 
