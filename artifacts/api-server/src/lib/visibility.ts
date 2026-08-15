@@ -240,10 +240,15 @@ function buildFamilyGraph(
         addParentChild(m.parentPersonId, m.id);
       }
     } else if (GRANDCHILD_LABELS.has(l)) {
+      // Unlike the old behavior, do NOT fall back to wiring them as a direct
+      // child of admin when parentPersonId is missing/unresolvable — that
+      // collapsed two generations into one, making a grandchild appear as
+      // the admin's own child (wrong relationship label, and wrong -- too
+      // permissive -- visibility tier for non-admin viewers). Leave them
+      // unconnected instead, matching NEPHEW_NIECE above; describeRelationship
+      // already falls back to the stored relationshipLabel in that case.
       if (m.parentPersonId && graph.has(m.parentPersonId)) {
         addParentChild(m.parentPersonId, m.id);
-      } else {
-        addParentChild(admin.id, m.id);
       }
     }
 
