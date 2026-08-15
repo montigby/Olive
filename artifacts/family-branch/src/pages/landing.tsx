@@ -25,6 +25,7 @@ import {
   Twitter,
   Copy,
   Mail,
+  HeartHandshake,
 } from "lucide-react";
 
 const CONTACT_EMAIL = "privacy@myolive.app";
@@ -317,6 +318,60 @@ export default function Landing() {
               ))}
             </div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* ─── Memories ────────────────────────────────────────────────── */}
+      <section id="memories" className="px-6 py-24">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <h2 className="font-serif text-3xl md:text-5xl font-medium text-center mb-6">
+              Everyone Remembers Something Different
+            </h2>
+            <p className="text-lg leading-relaxed text-center max-w-2xl mx-auto mb-16" style={{ color: "#5A5650" }}>
+              No one person remembers everything about someone. Olive gives their profile a place
+              to gather stories and photos from the whole family, whenever people are ready to
+              share them.
+            </p>
+          </FadeIn>
+          <div className="grid md:grid-cols-2 gap-16 items-start">
+            <FadeIn>
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: "#EEF1E7" }}
+                >
+                  <HeartHandshake className="w-5 h-5" style={{ color: GREEN }} />
+                </div>
+                <div>
+                  <h3 className="font-serif text-xl font-semibold mb-1">Everyone's memories, one place.</h3>
+                  <p style={{ color: "#5A5650" }}>
+                    Stories and photos from grandchildren, siblings, old friends. Gathered on one
+                    profile instead of scattered across texts and group chats.
+                  </p>
+                </div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.15}>
+              <p className="text-sm font-semibold tracking-wide uppercase mb-4" style={{ color: GREEN }}>
+                Sometimes all it takes is the right question
+              </p>
+              <div className="flex flex-col gap-3">
+                {[
+                  "What was their laugh like?",
+                  "What did they always seem to have in their pockets or bag?",
+                  "What's a story they loved to tell over and over?",
+                ].map((q, i) => (
+                  <FadeIn key={q} delay={i * 0.08}>
+                    <div className="flex items-center gap-3 rounded-2xl px-5 py-3.5 text-[15px] leading-snug shadow-sm bg-white">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: GOLD }} />
+                      {q}
+                    </div>
+                  </FadeIn>
+                ))}
+              </div>
+            </FadeIn>
+          </div>
         </div>
       </section>
 
