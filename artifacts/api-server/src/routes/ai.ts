@@ -7,6 +7,7 @@ import { eq, and, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { formatPerson } from "./auth";
 import { syncPersonToRelationshipLayer } from "../lib/syncRelationship";
+import { markDivorced } from "@workspace/db/relationships";
 import { buildPersonUpdateData, isValidPhotoUrl, isWithinFieldLengthLimits, type PersonUpdateInput } from "../lib/personUpdate";
 import { isParentOf } from "../lib/visibility";
 import { isLastAdminInUnit } from "../lib/permissions";
@@ -190,6 +191,25 @@ const DELETE_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
   },
 };
 
+const MARK_DIVORCED_TOOL: OpenAI.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "mark_divorced",
+    description:
+      "Mark two people as divorced (converts their current spouse relationship to an ex-spouse relationship). Use this when the user says two people got divorced, or that someone is no longer with their spouse and there's no new spouse being added right now. Do NOT use this when a new spouse IS being added -- add_family_member with a spouse label already retires the old spouse edge automatically in that case.",
+    parameters: {
+      type: "object",
+      properties: {
+        personId: {
+          type: "string",
+          description: "The [id] of one of the two people getting divorced, exactly as it appears in the current members list. Never fabricate this.",
+        },
+      },
+      required: ["personId"],
+    },
+  },
+};
+
 function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
   const memberList =
     members.length === 0
@@ -210,17 +230,18 @@ function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
 Current family members:
 ${memberList}
 
-You have five tools:
+You have six tools:
 1. add_family_member — for someone NOT in the list above.
 2. update_family_member — for someone ALREADY in the list above (fix a typo, add a birthday, update contact info, etc.). Match by name; if two members share a first name, ask which one before acting.
 3. add_life_event — log a graduation, marriage, new baby, move, new job, or other milestone for someone in the list.
 4. add_memory — save a story/memory about someone tagged [deceased, memory collection: on] in the list. If they're tagged [deceased, memory collection: off], don't call this — tell the user to turn memory collection on from that person's profile first.
 5. delete_family_member — permanently remove someone. IRREVERSIBLE — see confirmation rule below.
+6. mark_divorced — mark someone and their current spouse as divorced when there's no new spouse being added. See guidance below.
 
 General guidelines:
 - Be warm and concise — like a helpful friend, not a form. Keep responses to 1-3 sentences.
 - Accept information in any format: full sentences, fragments, lists of multiple people/facts in one message, corrections to something said earlier, whatever the user types. Extract everything usable from a single message and act on all of it — call multiple tools back to back in one turn rather than asking the user to repeat things one at a time.
-- Don't ask for extra confirmation before calling add_family_member, update_family_member, or add_life_event once you have enough information. Just do it, then give a short warm confirmation (e.g. "Done! Sarah is now in your family tree 🌿" or "Got it — added Jake's birthday.").
+- Don't ask for extra confirmation before calling add_family_member, update_family_member, add_life_event, or mark_divorced once you have enough information. Just do it, then give a short warm confirmation (e.g. "Done! Sarah is now in your family tree 🌿" or "Got it — added Jake's birthday.").
 - EXCEPTION — deleting someone is different and requires confirmation first: when the user asks to remove/delete someone, do NOT call delete_family_member yet. Instead ask "Are you sure you want to remove [name]? This can't be undone." Only call the tool if their next message confirms yes. Never claim you removed someone unless the tool call actually returned success.
 - Removing/clearing a single field (e.g. "remove grandma's birthday", "delete his email") is NOT the same as deleting a person — use update_family_member and pass null explicitly for that field. This does not need the delete confirmation step.
 - After any tool call, only tell the user it succeeded if the tool result said success — if it failed, say so honestly rather than guessing why.
@@ -287,7 +308,11 @@ Updating members and life events:
 - Dates: always output YYYY-MM-DD. For birthdays with no known year, use "2000" as the placeholder year. For life events with an unknown month/day, default the missing part(s) to "01".
 
 Deleting members:
-- delete_family_member permanently removes the person and their account. Always confirm first per the rule above before calling it.`;
+- delete_family_member permanently removes the person and their account. Always confirm first per the rule above before calling it.
+
+Divorce:
+- If the user says two people got divorced, split up, or that someone is no longer with their spouse and there's no new spouse being added right now, call mark_divorced with the [id] of either one of the pair. No confirmation needed first -- this only changes an edge type (spouse -> ex-spouse), not any person's data, and is easily correctable later.
+- If a NEW spouse is being added in the same message (e.g. "Mom and Dad got divorced and she remarried John"), just call add_family_member for the new spouse with the appropriate label -- that automatically retires the old spouse edge. Don't also call mark_divorced in that case.`;
 }
 
 // POST /api/ai/chat
@@ -342,6 +367,7 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
   let lifeEventAdded: { personName: string; eventType: string } | null = null;
   let memoryAdded: { personName: string } | null = null;
   let memberDeleted: { name: string } | null = null;
+  let membersDivorced: { personName: string; spouseName: string } | null = null;
   let finalText = "";
   let loopMessages = [...currentMessages];
   let loopCount = 0;
@@ -352,7 +378,7 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: loopMessages,
-      tools: [ADD_MEMBER_TOOL, UPDATE_MEMBER_TOOL, ADD_LIFE_EVENT_TOOL, ADD_MEMORY_TOOL, DELETE_MEMBER_TOOL],
+      tools: [ADD_MEMBER_TOOL, UPDATE_MEMBER_TOOL, ADD_LIFE_EVENT_TOOL, ADD_MEMORY_TOOL, DELETE_MEMBER_TOOL, MARK_DIVORCED_TOOL],
       tool_choice: "auto",
     });
 
@@ -555,6 +581,34 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
               toolResult = JSON.stringify({ success: true });
             }
           }
+        } else if (toolCall.function.name === "mark_divorced") {
+          const input = JSON.parse(toolCall.function.arguments) as { personId: string };
+          const target = members.find((m: ReturnType<typeof formatPerson>) => m.id === input.personId);
+
+          if (!target) {
+            toolResult = JSON.stringify({ success: false, error: "Unknown personId" });
+          } else {
+            // Same self-or-admin gate as delete_family_member -- divorce is a
+            // significant relationship-graph change, restricted to an admin
+            // or the person themselves.
+            const isSelf = req.auth!.personId === input.personId;
+            const isSameFamilyAdmin = req.auth!.isAdmin;
+            if (!isSelf && !isSameFamilyAdmin) {
+              toolResult = JSON.stringify({ success: false, error: "Not authorized to change this person's relationship status" });
+            } else {
+              const result = await markDivorced(db, unitId, input.personId);
+              if (!result.success) {
+                toolResult = JSON.stringify({ success: false, error: result.error });
+              } else {
+                const spouse = members.find((m: ReturnType<typeof formatPerson>) => m.id === result.spouseId);
+                membersDivorced = {
+                  personName: `${target.firstName} ${target.lastName}`,
+                  spouseName: spouse ? `${spouse.firstName} ${spouse.lastName}` : "their former spouse",
+                };
+                toolResult = JSON.stringify({ success: true });
+              }
+            }
+          }
         } else {
           toolResult = JSON.stringify({ success: false, error: "Unknown tool" });
         }
@@ -570,7 +624,7 @@ router.post("/ai/chat", requireAuth, aiChatLimiter, async (req, res) => {
     }
   }
 
-  res.json({ reply: finalText, memberAdded, memberUpdated, lifeEventAdded, memoryAdded, memberDeleted });
+  res.json({ reply: finalText, memberAdded, memberUpdated, lifeEventAdded, memoryAdded, memberDeleted, membersDivorced });
 });
 
 export default router;

@@ -31,9 +31,15 @@ const PARENT_EDGE_TYPES = new Set([
 
 // Label sets
 const COUPLE_LABELS = new Set(["husband", "wife", "spouse", "partner"]);
-const PARENT_OF_ADMIN = new Set(["mom", "mother", "dad", "father"]);
-const CHILD_OF_ADMIN = new Set(["son", "daughter"]);
-const SIBLING_OF_ADMIN = new Set(["brother", "sister", "sibling"]);
+const PARENT_OF_ADMIN = new Set([
+  "mom", "mother", "dad", "father",
+  "stepmom", "stepmother", "stepdad", "stepfather",
+]);
+const CHILD_OF_ADMIN = new Set(["son", "daughter", "stepson", "stepdaughter"]);
+const SIBLING_OF_ADMIN = new Set([
+  "brother", "sister", "sibling",
+  "half-brother", "half-sister", "stepbrother", "stepsister",
+]);
 const INLAW_PARENT = new Set(["mother-in-law", "father-in-law"]);
 const INLAW_SIBLING = new Set(["brother-in-law", "sister-in-law"]);
 const NEPHEW_NIECE = new Set(["nephew", "niece"]);
@@ -47,7 +53,10 @@ const GRANDPARENT_LABELS = new Set([
 const TIER1_LABELS = new Set([
   "husband", "wife", "spouse", "partner",
   "mom", "mother", "dad", "father",
-  "son", "daughter", "brother", "sister", "sibling",
+  "stepmom", "stepmother", "stepdad", "stepfather",
+  "son", "daughter", "stepson", "stepdaughter",
+  "brother", "sister", "sibling",
+  "half-brother", "half-sister", "stepbrother", "stepsister",
 ]);
 const TIER2_LABELS = new Set([
   "brother-in-law", "sister-in-law",

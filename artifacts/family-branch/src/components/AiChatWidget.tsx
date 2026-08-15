@@ -16,7 +16,8 @@ type ActionConfirmation =
   | { type: "added"; name: string }
   | { type: "updated"; name: string }
   | { type: "event"; name: string; eventType: string }
-  | { type: "deleted"; name: string };
+  | { type: "deleted"; name: string }
+  | { type: "divorced"; name: string; spouseName: string };
 
 const WELCOME_MESSAGE: Message = {
   role: "assistant",
@@ -92,6 +93,7 @@ export function AiChatWidget() {
         memberUpdated?: { id: string; firstName: string; lastName: string } | null;
         lifeEventAdded?: { personName: string; eventType: string } | null;
         memberDeleted?: { name: string } | null;
+        membersDivorced?: { personName: string; spouseName: string } | null;
       };
 
       const assistantMessage: Message = {
@@ -100,7 +102,7 @@ export function AiChatWidget() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      if (data.memberAdded || data.memberUpdated || data.lifeEventAdded || data.memberDeleted) {
+      if (data.memberAdded || data.memberUpdated || data.lifeEventAdded || data.memberDeleted || data.membersDivorced) {
         queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/members`] });
         queryClient.invalidateQueries({ queryKey: [`/api/family-units/${user?.familyUnit.id}/home-feed`] });
       }
@@ -113,6 +115,12 @@ export function AiChatWidget() {
         queryClient.invalidateQueries({ queryKey: getGetPersonQueryKey(data.memberUpdated.id) });
       } else if (data.memberDeleted) {
         setLastAction({ type: "deleted", name: data.memberDeleted.name });
+      } else if (data.membersDivorced) {
+        setLastAction({
+          type: "divorced",
+          name: data.membersDivorced.personName,
+          spouseName: data.membersDivorced.spouseName,
+        });
       } else if (data.lifeEventAdded) {
         setLastAction({
           type: "event",
@@ -254,6 +262,9 @@ export function AiChatWidget() {
                 )}
                 {lastAction.type === "deleted" && (
                   <span><strong>{lastAction.name}</strong> removed from your family tree</span>
+                )}
+                {lastAction.type === "divorced" && (
+                  <span><strong>{lastAction.name}</strong> and <strong>{lastAction.spouseName}</strong> marked as divorced</span>
                 )}
               </div>
             )}

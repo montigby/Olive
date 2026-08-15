@@ -105,9 +105,19 @@ export async function syncPersonToRelationshipLayer(params: {
       // New person is admin's parent → admin is child, new person is parent
       await addRelationship(db, familyId, adminId, personId, "biological_parent");
 
+    } else if (["stepmother", "stepfather", "stepmom", "stepdad"].includes(l)) {
+      // New person is admin's step-parent → same direction as mom/dad, but
+      // a step_parent edge type instead of biological_parent.
+      await addRelationship(db, familyId, adminId, personId, "step_parent");
+
     } else if (["son", "daughter", "child"].includes(l)) {
       // New person is admin's child → new person is child, admin is parent
       await addRelationship(db, familyId, personId, adminId, "biological_parent");
+
+    } else if (["stepson", "stepdaughter"].includes(l)) {
+      // New person is admin's step-child → same direction as son/daughter,
+      // but a step_parent edge type instead of biological_parent.
+      await addRelationship(db, familyId, personId, adminId, "step_parent");
 
     } else if (["brother-in-law", "sister-in-law"].includes(l) && parentPersonId) {
       // Sibling's spouse — parentPersonId is the sibling
@@ -179,9 +189,11 @@ export async function syncPersonToRelationshipLayer(params: {
         await addRelationship(db, familyId, personId, parentPersonId, "spouse");
       }
     }
-    // brothers, sisters, and grandparents/great-grandparents added without a
-    // parentPersonId → no edge possible without shared-parent info. These
-    // continue to rely on label-based layout heuristics.
+    // brothers, sisters, half-siblings, step-siblings, and grandparents/
+    // great-grandparents added without a parentPersonId → no edge possible
+    // without shared-parent info. These continue to rely on label-based
+    // layout heuristics (see PARENT_OF_ADMIN/CHILD_OF_ADMIN/SIBLING_OF_ADMIN
+    // in visibility.ts).
 
   } catch (err: any) {
     // Never let sync failure break the primary insert path

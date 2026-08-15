@@ -100,6 +100,55 @@ export async function addPerson(
 // ---------------------------------------------------------------------------
 
 /**
+ * Retire any existing 'spouse' edges involving either personA or personB by
+ * converting them to 'ex_spouse' (endDate = today). Delete rather than
+ * UPDATE to avoid unique-constraint conflicts when an ex_spouse edge already
+ * exists for the same pair. Shared by addRelationship (implicit retirement
+ * when a new spouse is added) and markDivorced (explicit retirement with no
+ * new spouse involved).
+ */
+async function retireSpouseEdges(
+  db: DB,
+  familyId: string,
+  personA: string,
+  personB: string,
+) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const oldEdges = await db
+    .select()
+    .from(relationshipsTable)
+    .where(
+      and(
+        eq(relationshipsTable.familyId, familyId),
+        inArray(relationshipsTable.fromPerson, [personA, personB]),
+        eq(relationshipsTable.type, "spouse"),
+      ),
+    );
+
+  for (const edge of oldEdges) {
+    await db
+      .delete(relationshipsTable)
+      .where(eq(relationshipsTable.id, edge.id));
+
+    // Insert ex_spouse version (skip if duplicate already exists)
+    await db
+      .insert(relationshipsTable)
+      .values({
+        familyId: edge.familyId,
+        fromPerson: edge.fromPerson,
+        toPerson: edge.toPerson,
+        type: "ex_spouse",
+        startDate: edge.startDate ?? undefined,
+        endDate: today,
+      })
+      .onConflictDoNothing();
+  }
+
+  return oldEdges.length;
+}
+
+/**
  * Add a single relationship. Handles direction, symmetry, cycle prevention,
  * and current-spouse uniqueness.
  */
@@ -130,40 +179,9 @@ export async function addRelationship(
   }
 
   // Current spouse uniqueness: retire any existing 'spouse' edges for either
-  // person before inserting the new one. Delete rather than UPDATE to avoid
-  // unique-constraint conflicts when an ex_spouse edge already exists.
+  // person before inserting the new one.
   if (type === "spouse") {
-    const today = new Date().toISOString().slice(0, 10);
-
-    const oldEdges = await db
-      .select()
-      .from(relationshipsTable)
-      .where(
-        and(
-          eq(relationshipsTable.familyId, familyId),
-          inArray(relationshipsTable.fromPerson, [personA, personB]),
-          eq(relationshipsTable.type, "spouse"),
-        ),
-      );
-
-    for (const edge of oldEdges) {
-      await db
-        .delete(relationshipsTable)
-        .where(eq(relationshipsTable.id, edge.id));
-
-      // Insert ex_spouse version (skip if duplicate already exists)
-      await db
-        .insert(relationshipsTable)
-        .values({
-          familyId: edge.familyId,
-          fromPerson: edge.fromPerson,
-          toPerson: edge.toPerson,
-          type: "ex_spouse",
-          startDate: edge.startDate ?? undefined,
-          endDate: today,
-        })
-        .onConflictDoNothing();
-    }
+    await retireSpouseEdges(db, familyId, personA, personB);
   }
 
   await db.insert(relationshipsTable).values({
@@ -333,4 +351,25 @@ export async function getCurrentSpouse(
     .limit(1);
 
   return rows[0]?.toPerson ?? null;
+}
+
+/**
+ * Mark a person and their current spouse as divorced, without a new spouse
+ * being involved. Looks up the current 'spouse' edge for personId and
+ * converts it (and its symmetric pair) to 'ex_spouse' via the same
+ * retirement logic addRelationship uses when a new spouse displaces an old
+ * one. Returns { success: false } if personId has no current spouse on file.
+ */
+export async function markDivorced(
+  db: DB,
+  familyId: string,
+  personId: string,
+): Promise<{ success: true; spouseId: string } | { success: false; error: string }> {
+  const spouseId = await getCurrentSpouse(db, personId);
+  if (!spouseId) {
+    return { success: false, error: "This person doesn't have a current spouse on file." };
+  }
+
+  await retireSpouseEdges(db, familyId, personId, spouseId);
+  return { success: true, spouseId };
 }

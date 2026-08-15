@@ -63,11 +63,11 @@ import { Badge } from "@/components/ui/badge";
 const RELATIONSHIP_OPTIONS = [
   {
     group: "Women",
-    options: ["Daughter", "Granddaughter", "Great-granddaughter", "Sister", "Sister-in-law", "Mother-in-law", "Aunt", "Niece", "Wife", "Mom", "Grandma", "Nana", "Stepdaughter"],
+    options: ["Daughter", "Granddaughter", "Great-granddaughter", "Sister", "Half-sister", "Stepsister", "Sister-in-law", "Mother-in-law", "Aunt", "Niece", "Wife", "Mom", "Grandma", "Nana", "Stepdaughter"],
   },
   {
     group: "Men",
-    options: ["Son", "Grandson", "Great-grandson", "Brother", "Brother-in-law", "Father-in-law", "Uncle", "Nephew", "Husband", "Dad", "Grandpa", "Papa", "Stepson"],
+    options: ["Son", "Grandson", "Great-grandson", "Brother", "Half-brother", "Stepbrother", "Brother-in-law", "Father-in-law", "Uncle", "Nephew", "Husband", "Dad", "Grandpa", "Papa", "Stepson"],
   },
   {
     group: "Other",
