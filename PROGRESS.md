@@ -2,11 +2,23 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-08-13.
+Last updated: 2026-08-14.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
+
+**2026-08-14 session summary (commits `0881806` through `6d8650a`) — three open threads, see bottom of this section:**
+
+1. **Weeks 2-3 backlog fully closed.** Profile completeness indicators (`0881806`, field-name bug fix `1ba3d96`) — then the Directory-card badge specifically was removed per direct user feedback (`473e3db`, "please get rid of it"), keeping only the individual-profile-page version. Home-page life events feed wired to the real `life_events` table instead of a field-presence guess (`fa863a6`). Per-field social visibility (item #8) turned out to already be fully built — live-confirmed in the real profile edit form, no code change needed, just a stale backlog note corrected.
+2. **Legacy memories feature re-checked against its full original spec**, at the user's explicit request ("have we tackled everything the supervisor asked for?"). Core mechanics all solid and live. **Two real gaps confirmed still open**: reply-to-email was the spec'd primary contribution channel (chosen for the 60+ demographic's app-literacy risk) but the build deviated to deep-link-only; and no one-click no-login unsubscribe exists (only a "turn it off from the profile page" text pointer). Neither is scheduled yet — see memory `legacy_memories_feature.md`.
+3. **Security/stability audit pass** (`6d8650a`) — background-agent audit re-confirmed the 2026-07-21 `requireAdmin`-without-unit-check bug class is still fully closed everywhere, and found 5 new real issues, all fixed: a tier-2 viewer contact-info leak (was getting both phone AND email regardless of the target's own `tier2ContactField` choice — same bug class as the old birth-year leak), no server-side length cap anywhere on free-text fields (added across every write path including two unauthenticated endpoints), a life-event notes cap bypassable via PATCH, cross-family `parentPersonId` injection risk, and AI chat's `add_family_member` missing the admin check the REST route has. **Behavior change**: non-admins can no longer add family members via AI chat (previously any authenticated member could). Full detail in `security_audit.md` memory.
+4. **Transactional emails redesigned** (`beab4db`) — all 5 Resend email types (birthday day-before/own-birthday/weekly-digest, claim-pending, memory-prompt) were plain unstyled HTML; rebuilt with real brand colors/serif heading/button CTAs/card layout, researched against how comparable products format reminder emails. Kept the existing plain non-marketing copy voice. Also fixed a real gap: the day-before reminder never linked to the birthday person's profile despite having the ID. Verified via local headless-browser screenshots, not yet a real Gmail send.
+
+**Three open threads for next session (see `next_session_todo.md` memory for full detail):**
+- [ ] AI chat test-drive — deferred because a background agent's throwaway login collided with the real session in the shared browser (see `local_dev_environment.md`'s new gotcha). Needs the user to re-log into Smith Family first.
+- [ ] Research task, explicitly not started yet: should Olive support multiple accounts logged in at once on one device? Check what comparable products do AND whether it'd be worth building independent of that.
+- [ ] A second background "break it" live-testing agent was mid-run and got asked to wrap up cleanly (finish current step, clean up its test data, report) rather than finish its full test plan, since the user needed to pause. Check whether its final report has been seen/handled yet.
 
 **2026-08-13 session summary (commits `df6e936`, `a6a0e4c`):**
 1. **Footer "Contact" mailto replaced with a copy/open popover** (`df6e936`) — a bare `mailto:` link was instantly handing visitors off to their OS mail client with no warning (and doing nothing useful for anyone without a default mail app). Now shows the address as selectable text with copy + mailto affordances. Live-verified on production, including the copy-to-clipboard toast.
@@ -208,20 +220,21 @@ Nothing currently open here — the "memories of those who've passed" feature th
 
 ## 🔵 Backlog (Roughly Priority Order)
 
-- [ ] Home page real life-events feed — current "Recent updates" feed isn't sourced from the actual `life_events` table, just inferred activity; not yet discussed whether to wire in real data
+- [ ] Reply-to-email ingestion for the memories feature — was the spec'd *primary* contribution channel (60+ demographic, app-literacy risk) but the 2026-07-20 build deviated to deep-link-only; confirmed still open 2026-08-14, see `legacy_memories_feature.md`
+- [ ] One-click, no-login unsubscribe for memory prompt emails — spec'd (magic-token, like invite-claim), only a "turn it off from the profile page" text pointer shipped; confirmed still open 2026-08-14
+- [ ] Multiple accounts logged in at once on one device — research task, explicitly not started (queued 2026-08-14), see `next_session_todo.md`
 - [ ] Invite/claiming flow — the "not listed → create new profile" self-service path inside `/join` is intentionally unreachable in the UI (backend/component code left intact); worth finishing later if ever prioritized
 - [ ] Geographic map of family members — not started, no lat/long fields exist yet
 - [ ] Ancestry.com import — not started
 - [ ] Photo per life event — not started, scoped as last-priority within life events
 - [ ] Real photography for the landing page — the hero/problem/CTA image slots are still abstract gradient placeholders (`PhotoPlaceholder` in `landing.tsx`), flagged before any real public push
 - [ ] "Learn More" destination under the second-brain section on the landing page was removed 2026-07-15 (had nowhere real to point); revisit if a dedicated "how it works" page or demo ever gets built
-- [ ] Swap `terms.tsx`/`privacy.tsx`'s "contact your admin" copy for a real `privacy@myolive.app` mailto link — forwarding is now live (2026-08-12), this is the only remaining step
 - [ ] Stripe integration — on hold until [Business Model](#business-model) is decided
 - [ ] Dependency vulnerability scanning in CI — no CI pipeline exists at all currently (see `security.md` §7)
 - [ ] Memory book PDF export — deliberately deferred out of the memories-of-the-deceased v1 (see above); revisit alongside the business model decision once that feature is live and it's clear whether it's actually getting used
 
 ### Already Shipped, Listed Here for Completeness (don't re-propose these)
-Directory search, Google Calendar/iCal button (Birthdays page only), Venmo & social links, public landing page (direct self-serve "Create Directory" CTA, waitlist framing removed 2026-07-20, olive/gold palette applied site-wide), life events CRUD, birthday email notifications, multi-admin + layered permissions, privacy statement page, per-handle social visibility toggles, profile completeness indicator *(shipped but deliberately self-view-only, confirmed 2026-07-13 — not expanding scope)*, viewer-relative relationship labels, gendered relationship labels, admin-grant confirmation + Admins settings card, printable/PDF family directory export, mobile UI audit (full punch list, see below), self-serve account deletion + admin-only orphaned-family-unit cleanup tool (2026-07-25, see START HERE above).
+Directory search, Google Calendar/iCal button (Birthdays page only), Venmo & social links, public landing page (direct self-serve "Create Directory" CTA, waitlist framing removed 2026-07-20, olive/gold palette applied site-wide), life events CRUD, birthday email notifications (redesigned with real brand styling 2026-08-14), multi-admin + layered permissions, privacy statement page + real `privacy@myolive.app` contact link (terms/privacy Questions sections + footer, confirmed live 2026-08-14), per-handle social visibility toggles (fully granular, confirmed 2026-08-14), profile completeness indicator (self-view Home progress bar + admin-viewing-others on the profile page, Directory-card badge deliberately removed 2026-08-14 per user feedback), home-page life events feed wired to real `life_events` data (2026-08-14), viewer-relative relationship labels, gendered relationship labels, admin-grant confirmation + Admins settings card, printable/PDF family directory export, mobile UI audit (full punch list, see below), self-serve account deletion + admin-only orphaned-family-unit cleanup tool (2026-07-25, see START HERE above).
 
 **Deliberately not built as user-facing features (2026-07-25 decision, don't re-propose):** a standalone "delete my whole family" button/flow for admins. Self-delete is the only user-facing deletion entry point; family-unit-level cleanup only happens as an automatic side effect when the last remaining person deletes themselves, or via the internal admin-secret-gated tool for edge cases self-delete can't reach. User's explicit call — see `suggestions_shortlist.md` (memory) item on account deletion for the full reasoning.
 
@@ -242,6 +255,9 @@ Still undecided as of 2026-06-26: grandparent-pays subscription vs. split-by-fam
 
 ## Recently Shipped (Condensed Changelog)
 For full detail, `git log` is authoritative. Highlights, most recent first:
+- **Security/stability audit pass** (2026-08-14, `6d8650a`) — tier-2 contact-info leak, unbounded free-text fields, cross-family `parentPersonId` injection, AI-chat add-member admin check (behavior change). See START HERE above for full detail.
+- **Transactional email redesign** (2026-08-14, `beab4db`) — real brand styling + button CTAs across all 5 Resend email types, plus a real functional fix (day-before reminder now links to the birthday person's profile). See START HERE above.
+- **Weeks 2-3 backlog closed**: profile completeness (2026-08-13/14, `0881806`/`1ba3d96`/`473e3db`), home-page life events feed (2026-08-14, `fa863a6`), per-field social visibility confirmed already-built. See START HERE above.
 - **Relative picker (cousin/great-grandchild/in-law-parent) + AI-chat orphan gaps closed + footer Contact popover** (2026-08-13, `df6e936`, `a6a0e4c`) — see START HERE above for full detail. Closes `suggestions_shortlist.md` item #26 for good.
 - **Self-birthday email fix + `privacy@myolive.app` forwarding live** (2026-08-12, `6944d42`) — see START HERE above for full detail. The day-before birthday reminder cron sent the birthday person themselves the generic "X has a birthday, reach out!" copy meant for other family members; now they get a distinct personalized email instead. Also: `privacy@myolive.app` forwarding stood up via free ImprovMX + Vercel DNS (MX/SPF/DMARC records), forwarding to the user's own Gmail for now with an easy hand-off path to the supervisor's email later.
 - **Self-serve account deletion + admin family-unit cleanup tool** (2026-07-25, `7b3c5a2`, `3d510aa`, `a6084ec`) — see START HERE above for full detail, including a real last-admin-guard bug caught via live testing
