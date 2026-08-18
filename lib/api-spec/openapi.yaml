@@ -263,6 +263,76 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/verify-email:
+    post:
+      operationId: verifyEmail
+      tags: [auth]
+      summary: Confirm an account's email address using an emailed token
+      description: >-
+        Non-blocking -- an unverified account can already do everything a
+        verified one can. This just records that the address is real.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyEmailBody"
+      responses:
+        "200":
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Token missing, invalid, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/resend-verification:
+    post:
+      operationId: resendVerification
+      tags: [auth]
+      summary: Resend the verification email to the current account
+      description: >-
+        Requires auth. Idempotent -- returns a friendly message and does
+        nothing if the account is already verified. Otherwise invalidates any
+        previous unused verification tokens for the account and sends a
+        fresh one.
+      responses:
+        "200":
+          description: Verification email sent, or account already verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: The verification email failed to send
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─── Persons ────────────────────────────────────────────────────
   /persons/{personId}:
     get:
@@ -1663,6 +1733,13 @@ components:
           minLength: 8
       required: [token, newPassword]
 
+    VerifyEmailBody:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]
+
     # ─── Person ────────────────────────────────────────────────────
     Person:
       type: object
@@ -1821,6 +1898,15 @@ components:
           nullable: true
           enum: [phone, photo, email, birthday]
           description: The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.
+        emailVerified:
+          type: boolean
+          description: >-
+            Whether this account's email address has been confirmed via the
+            non-blocking verification flow. Only populated on the
+            authenticated caller's own record (returned by
+            /auth/register, /auth/login, and /auth/me) -- omitted when
+            viewing another member's profile. Never used to gate access;
+            purely informational for showing an optional reminder banner.
       required:
         - id
         - firstName

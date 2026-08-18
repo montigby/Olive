@@ -206,6 +206,27 @@ export async function sendPasswordResetEmail({
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
 }
 
+export async function sendVerificationEmail({
+  to,
+  token,
+}: {
+  to: string;
+  token: string;
+}) {
+  const link = `https://myolive.app/verify-email?token=${encodeURIComponent(token)}`;
+
+  const client = await getClient();
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: "Confirm your email for Olive",
+    html: buildVerificationHtml(link),
+    text: `Welcome to Olive! Please confirm this is your email address.\n\nConfirm here (link expires in 7 days): ${link}\n\nYou don't need to do this to keep using Olive -- your account already works. This just helps make sure important emails (like password resets) reach you.\n\n— Olive\nhttps://myolive.app`,
+  });
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
 export async function sendMemoryPrompt({
   to,
   recipientName,
@@ -230,6 +251,18 @@ export async function sendMemoryPrompt({
   });
 
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
+function buildVerificationHtml(link: string): string {
+  const body = `
+    <p style="margin:0 0 12px 0;">Welcome to Olive!</p>
+    <p style="margin:0 0 4px 0;">Please confirm this is your email address. This link expires in 7 days.</p>
+    ${button("Confirm your email", link)}
+    <p style="margin: 20px 0 0 0; font-size:13px; color:${MUTED}; line-height:1.5;">
+      You don't need to do this to keep using Olive -- your account already works. This just helps make sure important emails (like password resets) reach you.
+    </p>
+  `;
+  return renderEmailShell({ preheader: "Confirm your email for Olive", bodyHtml: body });
 }
 
 function buildPasswordResetHtml(link: string): string {

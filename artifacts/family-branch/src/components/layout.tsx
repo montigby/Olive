@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { useLogout } from "@workspace/api-client-react";
 import { AiChatWidget } from "@/components/AiChatWidget";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
@@ -63,7 +64,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+    <>
+      <EmailVerificationBanner />
+      <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header — logo only, no hamburger */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-card print:hidden">
         <div className="flex items-center gap-2">
@@ -142,6 +145,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <AiChatWidget />
-    </div>
+      </div>
+    </>
   );
 }

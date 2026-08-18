@@ -136,6 +136,8 @@ export interface Person {
   profileCompleteness?: number | null;
   /** The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness. */
   missingPriorityField?: PersonMissingPriorityField;
+  /** Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by /auth/register, /auth/login, and /auth/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner. */
+  emailVerified?: boolean;
 }
 
 export type FamilyUnitParentLinkStatus =
@@ -184,6 +186,10 @@ export interface ResetPasswordBody {
   token: string;
   /** @minLength 8 */
   newPassword: string;
+}
+
+export interface VerifyEmailBody {
+  token: string;
 }
 
 export type UpdatePersonBodyGender =

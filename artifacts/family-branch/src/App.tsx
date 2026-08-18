@@ -13,6 +13,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
+import VerifyEmail from "@/pages/verify-email";
 import InviteClaim from "@/pages/invite-claim";
 import Join from "@/pages/join";
 import Privacy from "@/pages/privacy";
@@ -71,6 +72,7 @@ function AppRouter() {
       <Route path="/register"        component={Register}    />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password"  component={ResetPassword}  />
+      <Route path="/verify-email"    component={VerifyEmail}    />
       <Route path="/invite/:token"   component={InviteClaim} />
       <Route path="/join/:token"     component={Join}        />
       <Route path="/privacy"         component={Privacy}     />

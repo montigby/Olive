@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { db } from "@workspace/db";
-import { personsTable, familyUnitsTable } from "@workspace/db";
+import { personsTable, familyUnitsTable, accountsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 if (!process.env.SESSION_SECRET) {
@@ -57,12 +57,18 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function getPersonWithUnit(personId: string) {
+  // Left-joined to accountsTable (not every person has an account -- unclaimed
+  // invited members don't) so callers can also read emailVerifiedAt for the
+  // authenticated caller's own record. Both current callers (login, /auth/me)
+  // only ever look up an account-holder, but the left join keeps this safe
+  // to reuse for a non-account-holder in the future too.
   const rows = await db
     .select()
     .from(personsTable)
     .innerJoin(familyUnitsTable, eq(personsTable.familyUnitId, familyUnitsTable.id))
+    .leftJoin(accountsTable, eq(accountsTable.personId, personsTable.id))
     .where(eq(personsTable.id, personId));
   if (!rows.length) return null;
-  const { persons, family_units } = rows[0];
-  return { ...persons, familyUnit: family_units };
+  const { persons, family_units, accounts } = rows[0];
+  return { ...persons, familyUnit: family_units, emailVerifiedAt: accounts?.emailVerifiedAt ?? null };
 }

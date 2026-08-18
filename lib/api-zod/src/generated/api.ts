@@ -124,6 +124,12 @@ export const LoginResponse = zod.object({
         .describe(
           "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
         ),
+      emailVerified: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
+        ),
     })
     .and(
       zod.object({
@@ -230,6 +236,12 @@ export const GetMeResponse = zod
       .describe(
         "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
       ),
+    emailVerified: zod
+      .boolean()
+      .optional()
+      .describe(
+        "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
+      ),
   })
   .and(
     zod.object({
@@ -286,6 +298,26 @@ export const ResetPasswordBody = zod.object({
 
 export const ResetPasswordResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * Non-blocking -- an unverified account can already do everything a verified one can. This just records that the address is real.
+ * @summary Confirm an account's email address using an emailed token
+ */
+export const VerifyEmailBody = zod.object({
+  token: zod.string(),
+});
+
+export const VerifyEmailResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * Requires auth. Idempotent -- returns a friendly message and does nothing if the account is already verified. Otherwise invalidates any previous unused verification tokens for the account and sends a fresh one.
+ * @summary Resend the verification email to the current account
+ */
+export const ResendVerificationResponse = zod.object({
+  message: zod.string(),
 });
 
 /**
@@ -369,6 +401,12 @@ export const GetPersonResponse = zod.object({
     .nullish()
     .describe(
       "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+    ),
+  emailVerified: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
     ),
 });
 
@@ -494,6 +532,12 @@ export const UpdatePersonResponse = zod.object({
     .describe(
       "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
     ),
+  emailVerified: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
+    ),
 });
 
 /**
@@ -592,6 +636,12 @@ export const UpdatePersonAdminResponse = zod.object({
     .nullish()
     .describe(
       "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+    ),
+  emailVerified: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
     ),
 });
 
@@ -717,6 +767,12 @@ export const GetFamilyUnitResponse = zod
             .describe(
               "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
             ),
+          emailVerified: zod
+            .boolean()
+            .optional()
+            .describe(
+              "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
+            ),
         }),
       ),
     }),
@@ -828,6 +884,12 @@ export const ListMembersResponseItem = zod.object({
     .nullish()
     .describe(
       "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+    ),
+  emailVerified: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
     ),
 });
 export const ListMembersResponse = zod.array(ListMembersResponseItem);
@@ -997,6 +1059,12 @@ export const ClaimProfileResponse = zod.object({
         .describe(
           "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
         ),
+      emailVerified: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
+        ),
     })
     .and(
       zod.object({
@@ -1140,6 +1208,12 @@ export const ConfirmInviteMergeResponse = zod.object({
         .nullish()
         .describe(
           "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+        ),
+      emailVerified: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
         ),
     })
     .and(
@@ -1337,6 +1411,12 @@ export const GetFamilyTreeResponse = zod.object({
           .nullish()
           .describe(
             "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+          ),
+        emailVerified: zod
+          .boolean()
+          .optional()
+          .describe(
+            "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
           ),
       }),
     ),
@@ -1821,6 +1901,12 @@ export const AiChatResponse = zod.object({
         .describe(
           "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
         ),
+      emailVerified: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
+        ),
     })
     .nullable(),
   memberUpdated: zod
@@ -1898,6 +1984,12 @@ export const AiChatResponse = zod.object({
         .nullish()
         .describe(
           "The highest-priority missing field driving profileCompleteness below 100. Same audience restriction as profileCompleteness.",
+        ),
+      emailVerified: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this account's email address has been confirmed via the non-blocking verification flow. Only populated on the authenticated caller's own record (returned by \/auth\/register, \/auth\/login, and \/auth\/me) -- omitted when viewing another member's profile. Never used to gate access; purely informational for showing an optional reminder banner.",
         ),
     })
     .nullable(),

@@ -78,6 +78,7 @@ import type {
   UpdateMemoryBody,
   UpdatePersonAdminBody,
   UpdatePersonBody,
+  VerifyEmailBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -823,6 +824,175 @@ export const useResetPassword = <
   TContext
 > => {
   return useMutation(getResetPasswordMutationOptions(options));
+};
+
+/**
+ * Non-blocking -- an unverified account can already do everything a verified one can. This just records that the address is real.
+ * @summary Confirm an account's email address using an emailed token
+ */
+export const getVerifyEmailUrl = () => {
+  return `/api/auth/verify-email`;
+};
+
+export const verifyEmail = async (
+  verifyEmailBody: VerifyEmailBody,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getVerifyEmailUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verifyEmailBody),
+  });
+};
+
+export const getVerifyEmailMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyEmail>>,
+    TError,
+    { data: BodyType<VerifyEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyEmail>>,
+  TError,
+  { data: BodyType<VerifyEmailBody> },
+  TContext
+> => {
+  const mutationKey = ["verifyEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyEmail>>,
+    { data: BodyType<VerifyEmailBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyEmail>>
+>;
+export type VerifyEmailMutationBody = BodyType<VerifyEmailBody>;
+export type VerifyEmailMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Confirm an account's email address using an emailed token
+ */
+export const useVerifyEmail = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyEmail>>,
+    TError,
+    { data: BodyType<VerifyEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyEmail>>,
+  TError,
+  { data: BodyType<VerifyEmailBody> },
+  TContext
+> => {
+  return useMutation(getVerifyEmailMutationOptions(options));
+};
+
+/**
+ * Requires auth. Idempotent -- returns a friendly message and does nothing if the account is already verified. Otherwise invalidates any previous unused verification tokens for the account and sends a fresh one.
+ * @summary Resend the verification email to the current account
+ */
+export const getResendVerificationUrl = () => {
+  return `/api/auth/resend-verification`;
+};
+
+export const resendVerification = async (
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getResendVerificationUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getResendVerificationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendVerification>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resendVerification>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["resendVerification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resendVerification>>,
+    void
+  > = () => {
+    return resendVerification(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResendVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resendVerification>>
+>;
+
+export type ResendVerificationMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Resend the verification email to the current account
+ */
+export const useResendVerification = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendVerification>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resendVerification>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getResendVerificationMutationOptions(options));
 };
 
 /**

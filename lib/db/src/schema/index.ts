@@ -7,6 +7,7 @@ export * from "./people";
 export * from "./relationships";
 export * from "./inviteTokens";
 export * from "./passwordResetTokens";
+export * from "./emailVerificationTokens";
 export * from "./claimRequests";
 export * from "./lifeEvents";
 export * from "./waitlistSignups";
