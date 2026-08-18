@@ -2,17 +2,19 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-08-17.
+Last updated: 2026-08-18.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
 
-**2026-08-17 update: both agents that appeared to "fail" on 2026-08-15 actually had complete, correct work — merged (commits `2ce5007`, `8e4eca6`).** Lesson worth remembering: a "stalled/failed" agent notification doesn't mean no work was done — both had typecheck-clean, fully-built features sitting in their worktrees, likely stalling during a final verification step (probably resource contention from two agents' `pnpm typecheck` running concurrently). Checking `git worktree list` and actually reviewing the diff before assuming failure recovered two full features that would otherwise have been rebuilt from scratch.
+**Everything from the 2026-08-14→17 push is shipped, merged, and verified live** — see `git log` for the full commit list (account recovery, non-traditional-family support, several real bugs found via live testing, a landing-page Memories section). Not repeating the full detail here; it's a clean checkpoint, not a paused task.
 
-Since both agents were built in parallel against the same earlier base, they collided on `artifacts/api-server/src/routes/auth.ts` and on `openapi.yaml`'s generated client output (each regenerated from its own copy of the spec, missing the other's additions). Reconciled by hand: replayed email-verification's `auth.ts` changes as targeted edits against the already-merged age/notes version (verified byte-identical apart from the expected `notes` line), manually merged both features' `openapi.yaml` schema additions, then ran `orval` codegen once from the correctly-merged spec (confirmed purely additive, zero deletions, before committing). Email verification's migration got renamed `0017` → `0018` since age/notes had already claimed `0017`.
+**Two low-urgency open items only** (both detailed in `next_session_todo.md` memory):
+1. Two orphaned test families found during this push — the user believes both were cleaned up via the SQL given to them, but didn't explicitly re-verify with a fresh query. Not urgent; worth a quick double-check before onboarding any real families.
+2. User explicitly wants a **broader, deferred** sweep later to find and clean up every test account/family in the database, not just these two — their own words: "not going to worry about it for now, but I will want to go back and clean all test accounts like that sometime later."
 
-**Both migrations applied and verified live 2026-08-17** — [x] `lib/db/migrations/0017_person_notes.sql`, [x] `lib/db/migrations/0018_email_verification_tokens.sql`. User ran both via the Supabase SQL editor (chose "Run without RLS" for the new table, correct — this project has no RLS anywhere by design, access control lives entirely in the Express/JWT layer), then confirmed all three artifacts exist via `information_schema` queries. **Both age/notes storage and non-blocking email verification are now fully live end-to-end**, not just merged in code. Nothing outstanding from either.
+Two reusable process lessons from this stretch worth keeping in mind on future sessions: a background agent reporting "failed: stalled" doesn't mean no work was done (check the worktree before assuming); and parallel agents that touch the same file or regenerate the same derived output (e.g. `openapi.yaml`'s client code) need the *source* merged by hand first, then regenerated once — not a blind file-copy of either agent's output.
 
 **2026-08-15 session summary (commits `79dade2` through `b4de524`) — large single-day session, paused mid-flight on usage limits, 2 background agents still unreviewed:**
 
