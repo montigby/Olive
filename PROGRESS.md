@@ -12,11 +12,7 @@ Last updated: 2026-08-17.
 
 Since both agents were built in parallel against the same earlier base, they collided on `artifacts/api-server/src/routes/auth.ts` and on `openapi.yaml`'s generated client output (each regenerated from its own copy of the spec, missing the other's additions). Reconciled by hand: replayed email-verification's `auth.ts` changes as targeted edits against the already-merged age/notes version (verified byte-identical apart from the expected `notes` line), manually merged both features' `openapi.yaml` schema additions, then ran `orval` codegen once from the correctly-merged spec (confirmed purely additive, zero deletions, before committing). Email verification's migration got renamed `0017` → `0018` since age/notes had already claimed `0017`.
 
-**Two new migrations need a manual Supabase SQL editor run, neither applied yet:**
-- [ ] `lib/db/migrations/0017_person_notes.sql`
-- [ ] `lib/db/migrations/0018_email_verification_tokens.sql`
-
-Until both are applied, `notes` field writes fail at the DB level and `/auth/verify-email`/`/auth/resend-verification` fail (missing table) — everything else about both features is live.
+**Both migrations applied and verified live 2026-08-17** — [x] `lib/db/migrations/0017_person_notes.sql`, [x] `lib/db/migrations/0018_email_verification_tokens.sql`. User ran both via the Supabase SQL editor (chose "Run without RLS" for the new table, correct — this project has no RLS anywhere by design, access control lives entirely in the Express/JWT layer), then confirmed all three artifacts exist via `information_schema` queries. **Both age/notes storage and non-blocking email verification are now fully live end-to-end**, not just merged in code. Nothing outstanding from either.
 
 **2026-08-15 session summary (commits `79dade2` through `b4de524`) — large single-day session, paused mid-flight on usage limits, 2 background agents still unreviewed:**
 
