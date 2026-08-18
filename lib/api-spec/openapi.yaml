@@ -1727,6 +1727,14 @@ components:
         otherSocial:
           type: string
           nullable: true
+        notes:
+          type: string
+          nullable: true
+          description: >-
+            Freeform facts that don't fit any structured field (an interest,
+            a hobby, a personality note, etc.). Human-editable from the
+            profile page; also written by the AI chat assistant when a
+            mentioned detail has nowhere structured to go.
         relationshipLabel:
           type: string
         viewerRelationshipLabel:
@@ -1907,6 +1915,9 @@ components:
         otherSocial:
           type: string
           nullable: true
+        notes:
+          type: string
+          nullable: true
         relationshipLabel:
           type: string
         gender:
@@ -2051,6 +2062,9 @@ components:
         parentPersonId:
           type: string
           format: uuid
+          nullable: true
+        notes:
+          type: string
           nullable: true
       required: [firstName, lastName, relationshipLabel]
 

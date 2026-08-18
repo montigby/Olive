@@ -94,6 +94,7 @@ const profileSchema = z.object({
   venmo: z.string().nullable().optional(),
   bereal: z.string().nullable().optional(),
   otherSocial: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   tier2ContactField: z.enum(["phone", "email"]).default("phone"),
   confirmedMembersOnly: z.boolean().default(false),
   hideAddress: z.boolean().default(false),
@@ -1107,6 +1108,18 @@ function ProfileView({
         </Card>
       )}
 
+      {/* Notes */}
+      {person.notes && (
+        <Card className="border border-border shadow-sm">
+          <CardContent className="px-6 py-5">
+            <h3 className="font-serif text-base font-semibold text-foreground border-b border-border pb-2 mb-3">
+              Notes
+            </h3>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{person.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Life Events */}
       <LifeEventsCard personId={targetId} canEdit={canEdit} />
 
@@ -1119,7 +1132,7 @@ function ProfileView({
       />
 
       {/* Empty state */}
-      {!hasContact && !hasSocial && (
+      {!hasContact && !hasSocial && !person.notes && (
         <div className="text-center py-10 text-muted-foreground text-sm">
           No contact details added yet.
           {canEdit && (
@@ -1218,6 +1231,7 @@ function ProfileEditForm({
       venmo: person?.venmo ?? "",
       bereal: person?.bereal ?? "",
       otherSocial: person?.otherSocial ?? "",
+      notes: person?.notes ?? "",
       tier2ContactField: (person?.tier2ContactField as "phone" | "email") ?? "phone",
       confirmedMembersOnly: person?.confirmedMembersOnly ?? false,
       hideAddress: person?.hideAddress ?? false,
@@ -1265,6 +1279,7 @@ function ProfileEditForm({
       venmo: data.venmo || null,
       bereal: data.bereal || null,
       otherSocial: data.otherSocial || null,
+      notes: data.notes || null,
       tier2ContactField: data.tier2ContactField,
       confirmedMembersOnly: data.confirmedMembersOnly,
       hideAddress: data.hideAddress,
@@ -1648,6 +1663,33 @@ function ProfileEditForm({
                 />
               ))}
             </div>
+          </section>
+
+          {/* Notes */}
+          <section className="space-y-4">
+            <h3 className="font-serif text-lg font-semibold border-b pb-2">Notes</h3>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Anything else worth remembering — interests, hobbies, allergies, whatever doesn't fit above.
+            </p>
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Textarea
+                      placeholder="e.g. Loves soccer, allergic to peanuts..."
+                      {...field}
+                      value={field.value ?? ""}
+                      maxLength={1000}
+                      rows={3}
+                      className="bg-background"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </section>
 
           {/* Privacy — only shown on own profile */}

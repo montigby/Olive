@@ -40,6 +40,9 @@ const MAX_FIELD_LENGTHS: Partial<Record<keyof PersonUpdateInput, number>> = {
   bereal: 200,
   otherSocial: 500,
   relationshipLabel: 100,
+  // Generous -- meant to hold multiple freeform facts accumulated over time
+  // (an interest, a hobby, a personality note), not a single short field.
+  notes: 1000,
 };
 
 /** True if every free-text field present on `data` is within its max length.
@@ -74,6 +77,7 @@ export interface PersonUpdateInput {
   venmo?: string | null;
   bereal?: string | null;
   otherSocial?: string | null;
+  notes?: string | null;
   relationshipLabel?: string;
   gender?: string | null;
   parentPersonId?: string | null;
@@ -121,6 +125,7 @@ export function buildPersonUpdateData(
   if (data.venmo !== undefined) updateData.venmo = data.venmo;
   if (data.bereal !== undefined) updateData.bereal = data.bereal;
   if (data.otherSocial !== undefined) updateData.otherSocial = data.otherSocial;
+  if (data.notes !== undefined) updateData.notes = data.notes;
   if (data.relationshipLabel !== undefined && opts.allowRelationshipLabel) {
     updateData.relationshipLabel = data.relationshipLabel;
   }

@@ -71,6 +71,12 @@ export const LoginResponse = zod.object({
       venmo: zod.string().nullish(),
       bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
+      notes: zod
+        .string()
+        .nullish()
+        .describe(
+          "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+        ),
       relationshipLabel: zod.string(),
       viewerRelationshipLabel: zod
         .string()
@@ -171,6 +177,12 @@ export const GetMeResponse = zod
     venmo: zod.string().nullish(),
     bereal: zod.string().nullish(),
     otherSocial: zod.string().nullish(),
+    notes: zod
+      .string()
+      .nullish()
+      .describe(
+        "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+      ),
     relationshipLabel: zod.string(),
     viewerRelationshipLabel: zod
       .string()
@@ -305,6 +317,12 @@ export const GetPersonResponse = zod.object({
   venmo: zod.string().nullish(),
   bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
+  notes: zod
+    .string()
+    .nullish()
+    .describe(
+      "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+    ),
   relationshipLabel: zod.string(),
   viewerRelationshipLabel: zod
     .string()
@@ -382,6 +400,7 @@ export const UpdatePersonBody = zod.object({
   venmo: zod.string().nullish(),
   bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
+  notes: zod.string().nullish(),
   relationshipLabel: zod.string().optional(),
   gender: zod.enum(["male", "female"]).nullish(),
   parentPersonId: zod.string().uuid().nullish(),
@@ -422,6 +441,12 @@ export const UpdatePersonResponse = zod.object({
   venmo: zod.string().nullish(),
   bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
+  notes: zod
+    .string()
+    .nullish()
+    .describe(
+      "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+    ),
   relationshipLabel: zod.string(),
   viewerRelationshipLabel: zod
     .string()
@@ -515,6 +540,12 @@ export const UpdatePersonAdminResponse = zod.object({
   venmo: zod.string().nullish(),
   bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
+  notes: zod
+    .string()
+    .nullish()
+    .describe(
+      "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+    ),
   relationshipLabel: zod.string(),
   viewerRelationshipLabel: zod
     .string()
@@ -633,6 +664,12 @@ export const GetFamilyUnitResponse = zod
           venmo: zod.string().nullish(),
           bereal: zod.string().nullish(),
           otherSocial: zod.string().nullish(),
+          notes: zod
+            .string()
+            .nullish()
+            .describe(
+              "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+            ),
           relationshipLabel: zod.string(),
           viewerRelationshipLabel: zod
             .string()
@@ -739,6 +776,12 @@ export const ListMembersResponseItem = zod.object({
   venmo: zod.string().nullish(),
   bereal: zod.string().nullish(),
   otherSocial: zod.string().nullish(),
+  notes: zod
+    .string()
+    .nullish()
+    .describe(
+      "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+    ),
   relationshipLabel: zod.string(),
   viewerRelationshipLabel: zod
     .string()
@@ -802,6 +845,7 @@ export const AddMemberBody = zod.object({
   relationshipLabel: zod.string(),
   gender: zod.enum(["male", "female"]).nullish(),
   parentPersonId: zod.string().uuid().nullish(),
+  notes: zod.string().nullish(),
 });
 
 /**
@@ -900,6 +944,12 @@ export const ClaimProfileResponse = zod.object({
       venmo: zod.string().nullish(),
       bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
+      notes: zod
+        .string()
+        .nullish()
+        .describe(
+          "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+        ),
       relationshipLabel: zod.string(),
       viewerRelationshipLabel: zod
         .string()
@@ -1038,6 +1088,12 @@ export const ConfirmInviteMergeResponse = zod.object({
       venmo: zod.string().nullish(),
       bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
+      notes: zod
+        .string()
+        .nullish()
+        .describe(
+          "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+        ),
       relationshipLabel: zod.string(),
       viewerRelationshipLabel: zod
         .string()
@@ -1229,6 +1285,12 @@ export const GetFamilyTreeResponse = zod.object({
         venmo: zod.string().nullish(),
         bereal: zod.string().nullish(),
         otherSocial: zod.string().nullish(),
+        notes: zod
+          .string()
+          .nullish()
+          .describe(
+            "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+          ),
         relationshipLabel: zod.string(),
         viewerRelationshipLabel: zod
           .string()
@@ -1706,6 +1768,12 @@ export const AiChatResponse = zod.object({
       venmo: zod.string().nullish(),
       bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
+      notes: zod
+        .string()
+        .nullish()
+        .describe(
+          "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+        ),
       relationshipLabel: zod.string(),
       viewerRelationshipLabel: zod
         .string()
@@ -1778,6 +1846,12 @@ export const AiChatResponse = zod.object({
       venmo: zod.string().nullish(),
       bereal: zod.string().nullish(),
       otherSocial: zod.string().nullish(),
+      notes: zod
+        .string()
+        .nullish()
+        .describe(
+          "Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go.",
+        ),
       relationshipLabel: zod.string(),
       viewerRelationshipLabel: zod
         .string()

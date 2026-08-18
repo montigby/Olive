@@ -786,6 +786,7 @@ export function applyVisibility(person: any, tier: Tier): any {
       venmo: person.venmo,
       bereal: person.bereal,
       otherSocial: person.otherSocial,
+      notes: person.notes ?? null,
       tier2ContactField: person.tier2ContactField,
       confirmedMembersOnly: person.confirmedMembersOnly,
       hideAddress: person.hideAddress,

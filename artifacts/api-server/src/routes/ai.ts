@@ -42,7 +42,7 @@ const DETAIL_FIELD_PROPERTIES: Record<string, Record<string, unknown>> = {
   birthday: {
     type: ["string", "null"],
     description:
-      'Birthday as YYYY-MM-DD. If the year is unknown, use "2000" as a placeholder year (e.g. "March 5th" -> "2000-03-05"). If the exact day is unknown, do not set this field at all. To remove an existing birthday, pass null.',
+      'Birthday as YYYY-MM-DD. If the year is unknown AND no age was mentioned, use "2000" as a placeholder year (e.g. "March 5th" -> "2000-03-05"). If the year is unknown BUT an age was mentioned in the same message (or a clearly related one), compute the real birth year from that age instead of using the placeholder -- see the "Age -> birth year" guidance below. If the exact day is unknown, do not set this field at all. To remove an existing birthday, pass null.',
   },
   showBirthYear: {
     type: "boolean",
@@ -63,6 +63,11 @@ const DETAIL_FIELD_PROPERTIES: Record<string, Record<string, unknown>> = {
   venmo: { type: ["string", "null"], description: "Venmo username, without the @ symbol. Pass null to remove it." },
   bereal: { type: ["string", "null"], description: "BeReal username, without the @ symbol. Pass null to remove it." },
   otherSocial: { type: ["string", "null"], description: "Any other social link mentioned. Pass null to remove it." },
+  notes: {
+    type: ["string", "null"],
+    description:
+      'Freeform facts that don\'t fit any other field here -- an interest, a hobby, a personality note, anything descriptive (e.g. "Loves soccer", "Allergic to peanuts", "Plays the violin"). When adding a new person, set this to whatever such facts were mentioned. When updating an existing person who may already have notes, APPEND a short new fact rather than replacing the whole field -- e.g. if notes currently reads "Loves soccer" and the user mentions she also just started piano, set notes to "Loves soccer. Started piano." Pass null only if the user explicitly asks to clear their notes.',
+  },
 };
 
 const ADD_MEMBER_TOOL: OpenAI.ChatCompletionTool = {
@@ -221,7 +226,8 @@ function buildSystemPrompt(members: ReturnType<typeof formatPerson>[]): string {
             if (!m.phone && !m.email) gaps.push("no contact info on file");
             const gapStr = gaps.length ? ` {${gaps.join(", ")}}` : "";
             const deceasedTag = m.deceased ? ` [deceased, memory collection: ${m.memoryCollectionEnabled ? "on" : "off"}]` : "";
-            return `- ${m.firstName} ${m.lastName} (${m.relationshipLabel ?? "unknown"}) [id: ${m.id}]${m.isAdmin ? " [family admin]" : ""}${gapStr}${deceasedTag}`;
+            const notesTag = m.notes ? ` [notes: ${m.notes}]` : "";
+            return `- ${m.firstName} ${m.lastName} (${m.relationshipLabel ?? "unknown"}) [id: ${m.id}]${m.isAdmin ? " [family admin]" : ""}${gapStr}${deceasedTag}${notesTag}`;
           })
           .join("\n");
 
@@ -247,6 +253,7 @@ General guidelines:
 - After any tool call, only tell the user it succeeded if the tool result said success — if it failed, say so honestly rather than guessing why.
 - If a message is genuinely ambiguous (which person is meant, or a relationship that doesn't fit the rules below), ask ONE short clarifying question rather than guessing.
 - The {no birthday on file} / {no contact info on file} tags next to a name show what's still missing for that person — if it's natural in conversation, you can mention a gap, but don't interrogate the user about it unprompted.
+- Honesty backstop: after you're done acting on a message, check whether everything the user said actually got captured somewhere (a field, a note, a life event). If any part of it genuinely couldn't be captured — it doesn't fit any tool or field, e.g. a request to do something none of your six tools support — say so explicitly in your reply rather than silently moving on. The user should never have to guess whether something they mentioned was actually saved.
 
 Relationship labeling (only relevant for add_family_member) — apply in order, most specific first:
 
@@ -307,7 +314,9 @@ Updating members and life events:
 - To remove/clear a single field (birthday, phone, email, an address field, a social handle), use update_family_member and pass null for that field specifically — do not use delete_family_member for this.
 - Use add_life_event for milestones (graduations, marriages, new babies, moves, new jobs, passings) — these are separate from profile fields and don't go through update_family_member.
 - Use add_memory when the user shares a story/anecdote about someone tagged [deceased, memory collection: on]. Save their words as given — don't paraphrase or add anything they didn't say.
-- Dates: always output YYYY-MM-DD. For birthdays with no known year, use "2000" as the placeholder year. For life events with an unknown month/day, default the missing part(s) to "01".
+- Dates: always output YYYY-MM-DD. For birthdays with no known year AND no age mentioned, use "2000" as the placeholder year. For life events with an unknown month/day, default the missing part(s) to "01".
+- Age -> birth year: if the user gives a birthday's month/day AND mentions the person's current age (same message, or an obviously related one), don't waste that age on the placeholder year — compute the real birth year yourself and use it. The logic: figure out whether this year's birthday (using today's date and the given month/day) has already happened or not yet happened this year. If it HAS already happened this year (or is today), birth year = current year − age. If it has NOT happened yet this year, birth year = current year − age − 1. Example: today is in August, user says "she's 7, her birthday is June 12" — June 12 already passed this year, so birth year = current year − 7. Example: user says "he's 10, birthday's December 3rd" and today is in August — December 3rd hasn't happened yet this year, so birth year = current year − 10 − 1. If only an age is mentioned with no month/day at all, there's no birthday to construct — don't fabricate one; instead capture the age as a fact in notes (e.g. "Age 7 as of [year]") since ages go stale and a bare age isn't a valid birthday.
+- Notes: when the user mentions a fact about someone that isn't a birthday/contact/social/life-event/memory — an interest, a hobby, an allergy, a personality note, anything descriptive like "loves soccer" — capture it in the notes field via add_family_member or update_family_member rather than dropping it. See the notes field description for how to append vs. replace.
 
 Deleting members:
 - delete_family_member permanently removes the person and their account. Always confirm first per the rule above before calling it.

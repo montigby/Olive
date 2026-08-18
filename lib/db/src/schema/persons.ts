@@ -38,6 +38,12 @@ export const personsTable = pgTable(
     venmo: varchar("venmo", { length: 100 }),
     bereal: varchar("bereal", { length: 100 }),
     otherSocial: text("other_social"),
+    // Freeform facts that don't fit any structured field (an interest, a
+    // hobby, a personality note, etc.) -- e.g. from the AI chat assistant
+    // when a user mentions something like "she loves soccer" alongside a
+    // structured detail it can't otherwise capture. Human-editable too, via
+    // the profile page. Not shown to the AI's relationship-labeling logic.
+    notes: text("notes"),
     relationshipLabel: varchar("relationship_label", { length: 100 }).notNull(),
     // "male" | "female" | null (unset/prefer not to say). Drives gendered
     // relationship terms (Brother/Sister, Grandma/Grandpa, etc.) -- neutral

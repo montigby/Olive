@@ -103,6 +103,8 @@ export interface Person {
   venmo?: string | null;
   bereal?: string | null;
   otherSocial?: string | null;
+  /** Freeform facts that don't fit any structured field (an interest, a hobby, a personality note, etc.). Human-editable from the profile page; also written by the AI chat assistant when a mentioned detail has nowhere structured to go. */
+  notes?: string | null;
   relationshipLabel: string;
   /** The target's relationship to the currently-authenticated viewer (e.g. "Sibling", "Parent", "Me"), computed on read from the family graph. Distinct from relationshipLabel, which is a static string set once from the admin's perspective at creation time. Omitted when it can't be computed (e.g. cross-linked-unit viewers) -- callers should fall back to relationshipLabel. */
   viewerRelationshipLabel?: string;
@@ -222,6 +224,7 @@ export interface UpdatePersonBody {
   venmo?: string | null;
   bereal?: string | null;
   otherSocial?: string | null;
+  notes?: string | null;
   relationshipLabel?: string;
   gender?: UpdatePersonBodyGender;
   parentPersonId?: string | null;
@@ -279,6 +282,7 @@ export interface AddMemberBody {
   relationshipLabel: string;
   gender?: AddMemberBodyGender;
   parentPersonId?: string | null;
+  notes?: string | null;
 }
 
 export type RelationshipEdgeType =
