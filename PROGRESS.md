@@ -2,11 +2,21 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-08-15.
+Last updated: 2026-08-17.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
+
+**2026-08-17 update: both agents that appeared to "fail" on 2026-08-15 actually had complete, correct work — merged (commits `2ce5007`, `8e4eca6`).** Lesson worth remembering: a "stalled/failed" agent notification doesn't mean no work was done — both had typecheck-clean, fully-built features sitting in their worktrees, likely stalling during a final verification step (probably resource contention from two agents' `pnpm typecheck` running concurrently). Checking `git worktree list` and actually reviewing the diff before assuming failure recovered two full features that would otherwise have been rebuilt from scratch.
+
+Since both agents were built in parallel against the same earlier base, they collided on `artifacts/api-server/src/routes/auth.ts` and on `openapi.yaml`'s generated client output (each regenerated from its own copy of the spec, missing the other's additions). Reconciled by hand: replayed email-verification's `auth.ts` changes as targeted edits against the already-merged age/notes version (verified byte-identical apart from the expected `notes` line), manually merged both features' `openapi.yaml` schema additions, then ran `orval` codegen once from the correctly-merged spec (confirmed purely additive, zero deletions, before committing). Email verification's migration got renamed `0017` → `0018` since age/notes had already claimed `0017`.
+
+**Two new migrations need a manual Supabase SQL editor run, neither applied yet:**
+- [ ] `lib/db/migrations/0017_person_notes.sql`
+- [ ] `lib/db/migrations/0018_email_verification_tokens.sql`
+
+Until both are applied, `notes` field writes fail at the DB level and `/auth/verify-email`/`/auth/resend-verification` fail (missing table) — everything else about both features is live.
 
 **2026-08-15 session summary (commits `79dade2` through `b4de524`) — large single-day session, paused mid-flight on usage limits, 2 background agents still unreviewed:**
 
@@ -21,11 +31,7 @@ Started from a duplicate/orphaned "Smith Family" the user spotted via a self-run
 7. **Landing page Memories section** (`b4de524`) — the feature was a stated main differentiator with zero landing-page mention; added a dedicated section after 3 rounds of direct user copy revision (cut em-dashes/AI cadence, cut structural padding).
 8. **AI chat test-drive finally ran clean** on its 4th attempt (own throwaway test family, not the real one — the first 3 attempts were blocked by browser session state). Confirmed step/divorce/half-sibling handling works well conversationally. Found two more real things: the Extended-family bug above (now fixed), and a "side facts get silently dropped" gap (an age or interest mentioned alongside a name+birthday just vanishes, no acknowledgment) — motivated item 9 below.
 
-**Two background agents were still running, unreviewed and unmerged, when the session paused:**
-- [ ] Age/notes storage fix (agentId `a44331833abe13821`) — compute a real birth year when an age is mentioned alongside a birthday instead of using the 2000 placeholder; add a real `notes` field so freeform facts like "loves soccer" have somewhere to go instead of disappearing.
-- [ ] Non-blocking email verification (agentId `a2a6a02506e335cb0`) — confirmed as the right *permanent* design for this product (not just a testing convenience) given its frictionless-onboarding priority for a non-technical, older audience. Must never gate account usage on verification status.
-
-Check for their completion notifications before assuming either is done; if starting fresh, `git worktree list` will show if either worktree still exists with real work in it. See `next_session_todo.md` (memory) for full detail on both plus the still-open orphaned-test-family SQL cleanup (given directly to the user, not yet confirmed run).
+**Both agents mentioned above are now DONE as of 2026-08-17** (see the update at the very top of this section) — age/notes storage (`2ce5007`) and non-blocking email verification (`8e4eca6`), both merged with a manually-reconciled `auth.ts`/`openapi.yaml` collision. Only remaining action: apply the two new migrations listed at the top. See `next_session_todo.md` (memory) for full detail plus the still-open orphaned-test-family SQL cleanup (given directly to the user, not yet confirmed run).
 
 ---
 
