@@ -25,6 +25,45 @@ export function verifyToken(token: string): AuthPayload {
   return jwt.verify(token, JWT_SECRET) as AuthPayload;
 }
 
+// A separate, narrow-purpose token family for the memory-prompt unsubscribe
+// link (see routes/memories.ts) -- deliberately not an AuthPayload/session
+// token: it identifies a (deceased person, recipient) pair, not a logged-in
+// user, and is meant to work indefinitely from an email link with no login,
+// so it carries no expiresIn. The `purpose` field stops it from being
+// accepted anywhere a real AuthPayload is expected, even though both are
+// signed with the same SESSION_SECRET.
+interface MemoryPromptUnsubscribePayload {
+  purpose: "memory-prompt-unsubscribe";
+  personId: string;
+  recipientPersonId: string;
+}
+
+export function signMemoryPromptUnsubscribeToken(
+  personId: string,
+  recipientPersonId: string,
+): string {
+  const payload: MemoryPromptUnsubscribePayload = {
+    purpose: "memory-prompt-unsubscribe",
+    personId,
+    recipientPersonId,
+  };
+  return jwt.sign(payload, JWT_SECRET);
+}
+
+export function verifyMemoryPromptUnsubscribeToken(
+  token: string,
+): { personId: string; recipientPersonId: string } {
+  const payload = jwt.verify(token, JWT_SECRET) as Partial<MemoryPromptUnsubscribePayload>;
+  if (
+    payload.purpose !== "memory-prompt-unsubscribe" ||
+    typeof payload.personId !== "string" ||
+    typeof payload.recipientPersonId !== "string"
+  ) {
+    throw new Error("Not a memory-prompt-unsubscribe token");
+  }
+  return { personId: payload.personId, recipientPersonId: payload.recipientPersonId };
+}
+
 declare global {
   namespace Express {
     interface Request {

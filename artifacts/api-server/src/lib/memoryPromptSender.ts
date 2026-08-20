@@ -68,6 +68,7 @@ export async function sendMemoryPromptsForPerson(personId: string): Promise<{ se
         await sendMemoryPrompt({
           to: recipient.email,
           recipientName: recipient.firstName,
+          recipientPersonId: recipient.id,
           personName: `${person.firstName} ${person.lastName}`,
           personId: person.id,
           promptText,

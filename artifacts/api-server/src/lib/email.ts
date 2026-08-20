@@ -1,3 +1,5 @@
+import { signMemoryPromptUnsubscribeToken } from "../middlewares/auth";
+
 const FROM = "Olive <notifications@myolive.app>";
 
 async function getClient() {
@@ -230,24 +232,33 @@ export async function sendVerificationEmail({
 export async function sendMemoryPrompt({
   to,
   recipientName,
+  recipientPersonId,
   personName,
   personId,
   promptText,
 }: {
   to: string;
   recipientName: string;
+  recipientPersonId: string;
   personName: string;
   personId: string;
   promptText: string;
 }) {
   const client = await getClient();
   const link = `https://myolive.app/members/${personId}`;
+  // No-login unsubscribe link, scoped narrowly to "stop prompts about this
+  // one person for this one recipient" -- same effect as the authenticated
+  // POST /persons/:personId/memory-prompts/optout endpoint, just reachable
+  // without a session (the spec's original ask, see legacy_memories_feature
+  // in the auto-memory system).
+  const unsubscribeToken = signMemoryPromptUnsubscribeToken(personId, recipientPersonId);
+  const unsubscribeLink = `https://myolive.app/memory-prompts/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
   const { error } = await client.emails.send({
     from: FROM,
     to,
     subject: `A memory of ${personName}`,
-    html: buildMemoryPromptHtml(recipientName, promptText, link),
-    text: `Hi ${recipientName},\n\n${promptText}\n\nShare it here: ${link}\n\n(Don't want prompts about this person anymore? You can turn them off from their profile page.)\n\n— Olive\nhttps://myolive.app`,
+    html: buildMemoryPromptHtml(recipientName, promptText, link, unsubscribeLink),
+    text: `Hi ${recipientName},\n\n${promptText}\n\nShare it here: ${link}\n\nDon't want prompts about this person anymore? One click, no login needed: ${unsubscribeLink}\n\n— Olive\nhttps://myolive.app`,
   });
 
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
@@ -277,7 +288,7 @@ function buildPasswordResetHtml(link: string): string {
   return renderEmailShell({ preheader: "Reset your Olive password", bodyHtml: body });
 }
 
-function buildMemoryPromptHtml(recipientName: string, promptText: string, link: string): string {
+function buildMemoryPromptHtml(recipientName: string, promptText: string, link: string, unsubscribeLink: string): string {
   const body = `
     <p style="margin:0 0 16px 0;">Hi ${recipientName},</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${TINT}; border-radius:12px; margin: 0 0 4px 0;">
@@ -289,7 +300,7 @@ function buildMemoryPromptHtml(recipientName: string, promptText: string, link: 
     </table>
     ${button("Share it on Olive", link)}
     <p style="margin: 20px 0 0 0; font-size:13px; color:${MUTED}; line-height:1.5;">
-      Don't want prompts about this person anymore? You can turn them off from their profile page.
+      Don't want prompts about this person anymore? <a href="${unsubscribeLink}" style="color:${MUTED}; text-decoration:underline;">Unsubscribe with one click</a> -- no login needed.
     </p>
   `;
   return renderEmailShell({ preheader: promptText, bodyHtml: body });

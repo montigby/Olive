@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, personsTable, memoriesTable, memoryPromptOptoutsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, verifyMemoryPromptUnsubscribeToken } from "../middlewares/auth";
 import { describeRelationship } from "../lib/visibility";
 import { sendMemoryPromptsForPerson } from "../lib/memoryPromptSender";
 
@@ -280,6 +280,47 @@ router.post("/persons/:personId/memory-prompts/optout", requireAuth, async (req,
     .onConflictDoNothing();
 
   res.json({ ok: true });
+});
+
+// POST /api/memory-prompts/unsubscribe
+// Public, magic-token identified (the token rides in every memory-prompt
+// email's unsubscribe link -- see signMemoryPromptUnsubscribeToken /
+// sendMemoryPrompt) -- no login required. This was the spec's original ask
+// for the memories feature (a one-click, no-login unsubscribe, matching the
+// invite-claim link pattern) that never got built when the feature first
+// shipped; the only prior mechanism required logging in and visiting the
+// deceased person's profile page. Same effect as the authenticated optout
+// route above, just reachable without a session.
+router.post("/memory-prompts/unsubscribe", async (req, res) => {
+  const { token } = req.body as { token?: unknown };
+  if (typeof token !== "string" || !token) {
+    res.status(400).json({ error: "Bad request", message: "Missing token." });
+    return;
+  }
+
+  let payload: { personId: string; recipientPersonId: string };
+  try {
+    payload = verifyMemoryPromptUnsubscribeToken(token);
+  } catch {
+    res.status(400).json({ error: "Invalid token", message: "This unsubscribe link is invalid or malformed." });
+    return;
+  }
+
+  const [person] = await db
+    .select({ firstName: personsTable.firstName, lastName: personsTable.lastName })
+    .from(personsTable)
+    .where(eq(personsTable.id, payload.personId))
+    .limit(1);
+
+  await db
+    .insert(memoryPromptOptoutsTable)
+    .values({ personId: payload.personId, recipientPersonId: payload.recipientPersonId })
+    .onConflictDoNothing();
+
+  res.json({
+    ok: true,
+    personName: person ? `${person.firstName} ${person.lastName}`.trim() : null,
+  });
 });
 
 export default router;
