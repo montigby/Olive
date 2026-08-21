@@ -8,7 +8,9 @@ import { sendMemoryPromptsForPerson } from "../lib/memoryPromptSender";
 const router = Router();
 
 const MAX_PHOTOS = 3;
-const MAX_BODY_LENGTH = 4000;
+// Exported for routes/webhooks.ts, which caps a reply-to-email-sourced
+// memory's body the same way as one submitted through the app.
+export const MAX_BODY_LENGTH = 4000;
 
 // Only accept photos as inline data URIs, matching the only path the UI
 // actually produces them through (client-side resize to a data: URL).

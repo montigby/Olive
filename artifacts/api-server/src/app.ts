@@ -57,7 +57,17 @@ app.use(
     },
   }),
 );
-app.use(express.json());
+// The `verify` hook stashes the exact raw bytes on req.rawBody before
+// JSON-parsing -- needed by routes/webhooks.ts to verify Resend's webhook
+// signature, which is computed over the untouched request body and would
+// break if recomputed from a parsed-then-restringified req.body.
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as express.Request).rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

@@ -15,6 +15,7 @@ import cronRouter from "./cron";
 import lifeEventsRouter from "./lifeEvents";
 import waitlistRouter from "./waitlist";
 import memoriesRouter from "./memories";
+import webhooksRouter from "./webhooks";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(cronRouter);
 router.use(lifeEventsRouter);
 router.use(waitlistRouter);
 router.use(memoriesRouter);
+router.use(webhooksRouter);
 
 export default router;

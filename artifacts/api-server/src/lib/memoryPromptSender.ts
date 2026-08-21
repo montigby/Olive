@@ -65,6 +65,13 @@ export async function sendMemoryPromptsForPerson(personId: string): Promise<{ se
         const relationshipLabel = describeRelationship(recipientId, person.id, members, relationships);
         const promptText = renderPrompt(choice.text, relationshipLabel, person.firstName);
 
+        // Pre-generated (rather than left to the DB's defaultRandom()) so the
+        // same id can seed the email's reply-to address *before* the log row
+        // exists -- the row is only inserted after a successful send (see
+        // below), so a failed send never creates a reply-to address that
+        // silently accepts replies into a phantom log entry.
+        const logId = crypto.randomUUID();
+
         await sendMemoryPrompt({
           to: recipient.email,
           recipientName: recipient.firstName,
@@ -72,9 +79,11 @@ export async function sendMemoryPromptsForPerson(personId: string): Promise<{ se
           personName: `${person.firstName} ${person.lastName}`,
           personId: person.id,
           promptText,
+          replyToken: logId,
         });
 
         await db.insert(memoryPromptLogTable).values({
+          id: logId,
           personId: person.id,
           recipientPersonId: recipientId,
           promptKey: choice.key,

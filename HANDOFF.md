@@ -128,6 +128,7 @@ locally (see §7 for what that means for local dev):
 | `ADMIN_SECRET` | Gates `/api/admin/*` maintenance endpoints. Fails closed as of 2026-07-15 — no hardcoded fallback exists anymore, don't reintroduce one. |
 | `CRON_SECRET` | Authenticates Vercel's cron-triggered requests (`Authorization: Bearer`), also accepted as `x-cron-secret` for manual testing. |
 | `APP_BASE_URL` | Used to build invite/claim/reset links in emails. |
+| `RESEND_WEBHOOK_SECRET` | Verifies Resend's inbound-email webhook signature (`routes/webhooks.ts`, memory-prompt reply-to-email ingestion). Route fails closed (503) without it — safe to deploy before it's set. |
 | `NODE_TLS_REJECT_UNAUTHORIZED` | **Do not remove without reading `security.md` first.** Deleting this once caused a real production login outage — the proper scoped fix (stripping `sslmode` from the connection string so the pool's own `ssl` option takes effect) already shipped 2026-08-05, but this env var is still present. See §5 if you want to finish the job properly (real CA cert validation). |
 
 **Cron jobs** (`vercel.json`): `birthday-emails` daily at 12:00 UTC, `memory-prompts`
