@@ -170,6 +170,12 @@ This is infrastructure-level access, separate from anything in this repo.
    Ancestry.com import, real landing-page photography, dependency-audit CI) is listed
    in `PROGRESS.md`'s Backlog section, roughly in priority order. None of it is
    blocking — it's genuine "nice to have next."
+   - **Reply-to-email specifically:** code is fully built and deployed but the external
+     setup (Resend domain DNS, webhook + secret, confirming a DB migration ran) was
+     never finished — Vercel dashboard access was lost mid-setup and never came back
+     during this project's timeline. Deliberately cut, not an oversight — see
+     `PROGRESS.md`'s 2026-08-24 entry for exact resume steps. The feature works fully
+     without it (in-app deep link + AI chat); this was always the additive channel.
 
 ## 6. Things that look like bugs but aren't (save yourself the investigation)
 

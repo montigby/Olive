@@ -1,6 +1,6 @@
 # Security Guide for Olive (Family Branch)
 
-Last updated: 2026-07-21 — full route-level access control audit (6 broken-access-control bugs found & fixed) + first pnpm audit run (see below). Original audit: 2026-07-13, punch list closed 2026-07-15, memories re-audit earlier same day. Re-run this audit periodically (see "Keeping This Current" at the bottom) since security isn't a one-time checklist.
+Last updated: 2026-08-24 — re-ran `pnpm audit`, one real production-dep fix applied (`nanoid`, see §7). Prior full audit: 2026-07-21, full route-level access control audit (6 broken-access-control bugs found & fixed) + first pnpm audit run (see below). Original audit: 2026-07-13, punch list closed 2026-07-15, memories re-audit earlier same day. Re-run this audit periodically (see "Keeping This Current" at the bottom) since security isn't a one-time checklist.
 
 **2026-07-22, minor:** added `photoUrl` to `GET /family-units/:unitId/birthdays`'s response (`summary.ts`) so the Dashboard/Birthdays UI could show real photos instead of only initials. Checked before shipping: this endpoint already returns `phone`/`email` unconditionally once tier-filtering (`tier <= 2`) admits an entry — no per-field `hidePhoto` toggle exists anywhere in the app (Directory already shows photos to anyone with visibility into a profile), so this follows the exact same exposure pattern already accepted elsewhere. Not a new gap.
 
@@ -97,6 +97,8 @@ Resend and OpenAI keys are loaded safely (see §1). Olive doesn't currently rece
 **Where Olive stands:** `pnpm-workspace.yaml` already has `minimumReleaseAge: 1440` (a 24-hour minimum age before a new package version can be installed) — a real, deliberate supply-chain protection against fresh malicious releases. **Gap:** there's no automated `pnpm audit` step anywhere — no CI workflow exists in the repo at all, so known vulnerabilities in already-pinned versions are never automatically flagged.
 
 **What to do:** periodically run `pnpm audit` manually (or ask me to, next time we talk) until/unless a CI pipeline gets set up to do it automatically.
+
+**2026-08-24 re-run:** 33 advisories total, same shape as 2026-07-21's finding — the overwhelming majority sit entirely in dev/build-only chains (`orval`, `vite`, `vitest`, `esbuild`, `mockup-sandbox`, `typedoc`) never deployed. Filtering those out, only two production-relevant module names remained: `nanoid` (direct `api-server` dependency, high-severity DoS on negative size — bumped 5.1.11 → 5.1.16, patched, commit `cad45e8`; wasn't actually exploitable here since every call site in the codebase passes a hardcoded positive size, but the fix was free) and `lodash` (transitive, only reached via `recharts`'s own internals in the frontend chart library — the vulnerable functions, `_.template`/`_.unset`/`_.omit`, aren't things a charting library plausibly calls on attacker-controlled data, and there's no direct `recharts` version bump available yet; left as-is, same reasoning already applied to this exact package in the 2026-07-21 audit below).
 
 ---
 

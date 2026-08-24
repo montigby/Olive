@@ -2,11 +2,17 @@
 
 This is the living task list for Olive. Keep it current: check items off as they ship, add new items as they come up, and don't let this drift from reality — if in doubt, verify against `git status`/`git log` rather than trusting a stale line here. See `README.md` for what the project is, `CLAUDE.md` for engineering rules, `security.md` for the security posture.
 
-Last updated: 2026-08-20.
+Last updated: 2026-08-24.
 
 ---
 
 ## 🔴 START HERE — pick up from this point next session
+
+**2026-08-24: project wrapped up for handoff. Reply-to-email ingestion deliberately CUT from scope, not paused.** Vercel dashboard access was still lost as of this session (see the 2026-08-20 entry below for what was in progress). With no realistic path to finish the remaining external setup (Resend domain DNS, webhook + secret, confirming migration `0019` ran) before this contributor's last day, the user made the call to stop chasing it rather than leave it in an ambiguous "paused" state. **The code is safe to leave exactly as it is indefinitely** — the webhook route fails closed (503 `{"error":"Not configured"}`) with no env var set, so nothing breaks by inaction. Resuming later needs, in order: (1) confirm Vercel access, (2) check Resend's domain list fresh for `reply.myolive.app` (may or may not have saved from the 2026-08-20 attempt), (3) add its MX record in Vercel DNS once Resend shows what's needed, (4) create the Resend webhook (`email.received` → `https://myolive.app/api/webhooks/resend-inbound`) and copy its signing secret into Vercel as `RESEND_WEBHOOK_SECRET`, (5) check `information_schema.columns` in Supabase for `memories.source_email_id` before assuming migration `0019` ran — run `lib/db/migrations/0019_memory_source_email.sql` via the Supabase SQL editor if it's missing, (6) live-verify end-to-end with a throwaway test family, same pattern as the unsubscribe feature. Until then, memory prompts still work fully via the in-app deep link and AI chat — reply-to-email was always an additive convenience channel for the low-app-literacy demographic, not a blocker on the feature working.
+
+Also closed this session: ran a fresh `pnpm audit` (last done 2026-07-21, never fully triaged). Of 33 advisories, only two production-relevant module names surfaced after filtering out dev/build-only chains (orval/vite/vitest/esbuild/mockup-sandbox/typedoc): `nanoid` (direct dep of `api-server`) and `lodash` (transitive, via `recharts` in the frontend). `nanoid` bumped 5.1.11 → 5.1.16 (patched, within the existing `^5.1.11` semver range, typechecked + real esbuild bundle verified, commit `cad45e8`) — was never actually exploitable in Olive's usage (every call site passes a hardcoded positive size, never user input) but the fix was free. `lodash` is only reachable via `recharts`' own internals, not called directly anywhere in Olive's code, and the vulnerable functions (`_.template`, `_.unset`, `_.omit`) aren't things a charting library plausibly calls on attacker-controlled data — left as-is, matches the same low-risk reasoning `security.md` already applied to this exact package.
+
+**Deferred, unchanged:** the full test-account database sweep — still no fresh timeline, user's own words from 2026-08-20 were "sometime later." Not attempted this session.
 
 **Everything from the 2026-08-14→17 push is shipped, merged, and verified live** — see `git log` for the full commit list (account recovery, non-traditional-family support, several real bugs found via live testing, a landing-page Memories section). Not repeating the full detail here; it's a clean checkpoint, not a paused task.
 
