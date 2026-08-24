@@ -21,6 +21,7 @@ well.
 
 | Doc | What it's for |
 |---|---|
+| `SETUP.md` | Getting-started guide for a brand-new contributor — accounts, local tools, cloning, Claude Code, deploys. Standalone, meant to be sent before someone has repo access. |
 | `README.md` | Product framing — what Olive is, who it's for, priority order, feature list |
 | `CLAUDE.md` | Non-negotiable engineering rules (edge direction, no `pg` in api-server, etc.) — read before touching the backend |
 | `PROGRESS.md` | The living, dated changelog / task list — the most detailed record of what happened and why |
