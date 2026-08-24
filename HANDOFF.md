@@ -3,6 +3,10 @@
 > Rewritten: 2026-08-20 (previous version dated 2026-05-26 was badly stale — described
 > a pre-launch, single-feature snapshot of the app. This version reflects the app as it
 > stands at handoff, after a full summer of feature work and a security hardening pass.)
+> §5's punch list updated 2026-08-24, the actual last working day, to close out
+> reply-to-email as a deliberate scope cut rather than a paused task, and to drop two
+> items (test-family cleanup, memory-prompt unsubscribe) that were still open when §5
+> was first written but shipped before this handoff was final.
 >
 > Production: **https://myolive.app**
 > Supabase project: `rgrqqxymbsgtoqurvlbb`
@@ -45,8 +49,9 @@ worth reading in full, not just skimming.
   belongs to the developer who built this, used for live verification throughout the
   summer). The product was kept in "not ready for real families" mode intentionally
   until the core journey and security posture were solid. As of this handoff, that bar
-  has been met — see the punch list in §5 for the last couple of things worth doing
-  before opening it up to anyone real.
+  has been met — see §5 for what's still worth doing before opening it up to anyone real
+  (mainly: deciding a business model, and re-running the full security audit one more
+  time immediately beforehand).
 - **Core journey works end-to-end and has been live-tested repeatedly, not just
   code-reviewed:** register → add family members (by hand or via AI chat) → fill in
   birthdays/contact/relationships → receive email notifications → optionally add life
@@ -147,35 +152,41 @@ This is infrastructure-level access, separate from anything in this repo.
    "START HERE" section at the top plus the most recent session summaries) to see
    exactly what happened most recently and why.
 2. **Confirm you have Vercel + Supabase access** before touching anything live — see §4.
-3. **Two small, low-risk cleanup items were being closed out at the very end of this
-   handoff window** (may or may not be finished depending on when you're reading this —
-   check `PROGRESS.md`'s top section for their actual status):
-   - Verifying/finishing deletion of a couple of orphaned test families in the DB
-     (query pattern for finding test data is documented in `PROGRESS.md`/memory —
-     Gmail `+alias` emails, `%test%`/`%audit%` name matches, low member count + no
-     recent login).
-   - A no-login, one-click unsubscribe link for memory-prompt emails (magic-token
-     pattern, same shape as the existing invite-claim links).
+   The prior owner lost Vercel dashboard access on 2026-08-20 and it never came back
+   before handoff (see item 3 below) — worth checking early since it blocks real work.
+3. **Two known open items, both deliberately left rather than forgotten** — neither is
+   blocking, both have exact next steps written down if you want to pick them up:
+   - **Reply-to-email ingestion for memory prompts** — code is fully built, typechecked,
+     and deployed (the webhook route safely 503s with nothing configured), but the
+     external setup (a Resend inbound domain + DNS, a webhook + secret, confirming
+     migration `0019` ran) was never finished because Vercel access was lost mid-setup.
+     Cut from scope 2026-08-24 rather than left ambiguous — see `PROGRESS.md`'s
+     2026-08-24 entry for the exact resume steps in order. The feature already works
+     fully without this channel (in-app deep link + AI chat both work); this was always
+     the additive channel for the low-app-literacy demographic specifically.
+   - **A full sweep for leftover test/orphaned family units in the database** — cosmetic
+     debris, not a functional or security issue. Two known orphans were already found
+     and deleted 2026-08-20; a broader sweep for anything similar was explicitly
+     deferred by the prior owner ("sometime later," no timeline). Query pattern
+     (Gmail `+alias` emails, `%test%`/`%audit%` name matches, low member count + no
+     recent login) is documented in `PROGRESS.md`.
 4. **Before onboarding any real (non-test) family**, re-run the `security.md` audit one
    more time — its own stated policy is to re-check before real users arrive and after
    any auth/payments/new-personal-data-field work, and there's been a lot of the latter
-   this summer. It's a quick pass (grep for the known bug classes it already documents),
-   not a from-scratch audit.
+   this summer. The last *full* audit was 2026-07-21; a narrower dependency-only
+   re-check ran 2026-08-24 (one real fix applied, see §7 of `security.md`) — that's not
+   a substitute for the full pass. It's a quick pass (grep for the known bug classes it
+   already documents), not a from-scratch audit.
 5. **Decide on a business model** before building any billing — genuinely undecided.
    Freemium, billed per household (not per person), was the researched recommendation
    as of 2026-07-22 — see `PROGRESS.md`/the business-model notes for the comparison
    (Cozi, FamilyWall, Storyworth) and reasoning. Nothing is built toward this yet by
    design.
-6. **After that**, the open backlog (reply-to-email for memories, geographic map,
-   Ancestry.com import, real landing-page photography, dependency-audit CI) is listed
-   in `PROGRESS.md`'s Backlog section, roughly in priority order. None of it is
-   blocking — it's genuine "nice to have next."
-   - **Reply-to-email specifically:** code is fully built and deployed but the external
-     setup (Resend domain DNS, webhook + secret, confirming a DB migration ran) was
-     never finished — Vercel dashboard access was lost mid-setup and never came back
-     during this project's timeline. Deliberately cut, not an oversight — see
-     `PROGRESS.md`'s 2026-08-24 entry for exact resume steps. The feature works fully
-     without it (in-app deep link + AI chat); this was always the additive channel.
+6. **After that**, the open backlog (geographic map, Ancestry.com import, real
+   landing-page photography, dependency-audit CI) is listed in `PROGRESS.md`'s Backlog
+   section, roughly in priority order. None of it is blocking — it's genuine "nice to
+   have next," and none of it has been greenlit to build, just noted as worth
+   considering.
 
 ## 6. Things that look like bugs but aren't (save yourself the investigation)
 
