@@ -3,10 +3,13 @@
 > Rewritten: 2026-08-20 (previous version dated 2026-05-26 was badly stale — described
 > a pre-launch, single-feature snapshot of the app. This version reflects the app as it
 > stands at handoff, after a full summer of feature work and a security hardening pass.)
-> §5's punch list updated 2026-08-24, the actual last working day, to close out
-> reply-to-email as a deliberate scope cut rather than a paused task, and to drop two
-> items (test-family cleanup, memory-prompt unsubscribe) that were still open when §5
-> was first written but shipped before this handoff was final.
+> §5's punch list updated 2026-08-24 to close out reply-to-email as a deliberate scope
+> cut rather than a paused task, and to drop two items (test-family cleanup,
+> memory-prompt unsubscribe) that were still open when §5 was first written but shipped
+> before this handoff was final. **2026-08-26 was this contributor's actual last day** —
+> `SETUP.md` (a standalone new-contributor onboarding guide, separate from this file)
+> was added on it. No code changed after 2026-08-24; the two docs commits on 2026-08-26
+> are the true final state of this handoff.
 >
 > Production: **https://myolive.app**
 > Supabase project: `rgrqqxymbsgtoqurvlbb`
